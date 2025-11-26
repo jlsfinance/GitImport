@@ -59,7 +59,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
   }, [initialInvoice]);
 
   const handleAddItem = () => {
-    setItems([...items, { productId: '', description: '', quantity: 1, rate: 0, amount: 0, hsn: '', gstRate: gstEnabled ? gstRate : 0, gstAmount: 0 }]);
+    setItems([...items, { productId: '', description: '', quantity: 1, rate: 0, amount: 0, hsn: '', gstRate: 0, gstAmount: 0 }]);
   };
 
   const handleUpdateItem = (index: number, field: keyof InvoiceItem, value: any) => {
