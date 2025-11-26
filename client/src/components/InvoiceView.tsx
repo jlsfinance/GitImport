@@ -246,7 +246,8 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit }) =>
         doc.text(`Rs. ${item.rate.toFixed(2)}`, colX.rate, yPos + 5, { align: "right" });
         if (invoice.gstEnabled) doc.text(`${((item.gstRate || 0)).toFixed(1)}%`, colX.gst, yPos + 5, { align: "right" });
         doc.setFont("helvetica", "bold");
-        const amountWithGST = item.amount + (item.gstAmount || 0);
+        const totalTax = (item.cgstAmount || 0) + (item.sgstAmount || 0) + (item.igstAmount || 0);
+        const amountWithGST = (item.totalAmount || item.baseAmount) || 0;
         doc.text(`Rs. ${amountWithGST.toFixed(2)}`, colX.amount, yPos + 5, { align: "right" });
         doc.setFont("helvetica", "normal");
 
@@ -271,14 +272,32 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit }) =>
       yPos += 7;
 
       // GST
-      if (invoice.gstEnabled && invoice.gstAmount && invoice.gstAmount > 0) {
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(34, 197, 94);
-        doc.text("GST:", totalXLabel, yPos + 5, { align: "right" });
-        doc.setFont("helvetica", "normal");
-        doc.text(`Rs. ${invoice.gstAmount.toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
+      const totalGSTAmount = (invoice.totalCgst || 0) + (invoice.totalSgst || 0) + (invoice.totalIgst || 0);
+      if (invoice.gstEnabled && totalGSTAmount > 0) {
+        if ((invoice.totalCgst || 0) > 0) {
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(34, 197, 94);
+          doc.text("CGST:", totalXLabel, yPos + 5, { align: "right" });
+          doc.setFont("helvetica", "normal");
+          doc.text(`Rs. ${(invoice.totalCgst || 0).toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
+          yPos += 5;
+        }
+        if ((invoice.totalSgst || 0) > 0) {
+          doc.setFont("helvetica", "bold");
+          doc.text("SGST:", totalXLabel, yPos + 5, { align: "right" });
+          doc.setFont("helvetica", "normal");
+          doc.text(`Rs. ${(invoice.totalSgst || 0).toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
+          yPos += 5;
+        }
+        if ((invoice.totalIgst || 0) > 0) {
+          doc.setFont("helvetica", "bold");
+          doc.text("IGST:", totalXLabel, yPos + 5, { align: "right" });
+          doc.setFont("helvetica", "normal");
+          doc.text(`Rs. ${(invoice.totalIgst || 0).toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
+          yPos += 5;
+        }
         doc.setTextColor(0);
-        yPos += 7;
+        yPos += 2;
       }
 
       // Current Invoice Total
@@ -569,15 +588,15 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit }) =>
                   <td className="py-1.5 pl-2 align-top text-xs text-gray-500">{idx + 1}</td>
                   <td className="py-1.5 align-top text-gray-900 font-medium">
                     {item.description}
-                    {item.gstAmount && item.gstAmount > 0 && (
-                      <div className="text-xs text-green-600 font-normal">+₹{item.gstAmount.toFixed(2)} GST</div>
+                    {invoice.gstEnabled && ((item.cgstAmount || 0) + (item.sgstAmount || 0) + (item.igstAmount || 0)) > 0 && (
+                      <div className="text-xs text-green-600 font-normal">+₹{((item.cgstAmount || 0) + (item.sgstAmount || 0) + (item.igstAmount || 0)).toFixed(2)} Tax</div>
                     )}
                   </td>
                   {(invoice.items.some(i => i.hsn)) && <td className="py-1.5 align-top text-center text-xs text-gray-600">{item.hsn || '-'}</td>}
                   <td className="py-1.5 align-top text-right">{item.quantity}</td>
                   <td className="py-1.5 align-top text-right">Rs. {item.rate.toFixed(2)}</td>
                   {invoice.gstEnabled && <td className="py-1.5 align-top text-right">{((item.gstRate || 0)).toFixed(1)}%</td>}
-                  <td className="py-1.5 pr-2 align-top text-right font-bold">Rs. {item.amount.toFixed(2)}</td>
+                  <td className="py-1.5 pr-2 align-top text-right font-bold">Rs. {((item.totalAmount || item.baseAmount) || 0).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
@@ -590,10 +609,10 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit }) =>
                 <span className="font-medium text-gray-600">Subtotal:</span>
                 <span className="font-medium">Rs. {invoice.subtotal.toFixed(2)}</span>
               </div>
-              {invoice.gstEnabled && invoice.gstAmount && invoice.gstAmount > 0 && (
+              {invoice.gstEnabled && ((invoice.totalCgst || 0) + (invoice.totalSgst || 0) + (invoice.totalIgst || 0)) > 0 && (
                 <div className="flex justify-between py-1 border-b border-gray-200 text-sm">
-                  <span className="font-medium text-green-600">GST:</span>
-                  <span className="font-medium text-green-600">Rs. {invoice.gstAmount.toFixed(2)}</span>
+                  <span className="font-medium text-green-600">Total Tax:</span>
+                  <span className="font-medium text-green-600">Rs. {((invoice.totalCgst || 0) + (invoice.totalSgst || 0) + (invoice.totalIgst || 0)).toFixed(2)}</span>
                 </div>
               )}
               <div className={`flex justify-between py-2 ${showPreviousBalance ? 'border-b border-gray-200' : 'border-b border-black'} text-lg`}>
