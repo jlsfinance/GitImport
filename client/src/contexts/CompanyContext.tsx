@@ -8,6 +8,8 @@ interface CompanyData {
   address: string;
   gst: string;
   gst_enabled: boolean;
+  phone?: string;
+  email?: string;
 }
 
 interface CompanyContextType {

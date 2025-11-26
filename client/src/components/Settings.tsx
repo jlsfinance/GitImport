@@ -3,8 +3,11 @@ import { CompanyProfile, FirebaseConfig } from '../types';
 import { StorageService } from '../services/storageService';
 import { Save, Building2, Phone, Mail, MapPin, Database, Download, Upload, AlertCircle, Cloud, CheckCircle, XCircle, Wand2, ExternalLink, Wifi, WifiOff } from 'lucide-react';
 import { FirebaseService } from '../services/firebaseService';
+import { useCompany } from '@/contexts/CompanyContext';
 
 const Settings: React.FC = () => {
+  const { company, saveCompany } = useCompany();
+  
   const [profile, setProfile] = useState<CompanyProfile>({
     name: '',
     address: '',
@@ -26,15 +29,26 @@ const Settings: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const currentProfile = StorageService.getCompanyProfile();
-    setProfile(currentProfile);
+    // Sync from CompanyContext if available (primary source)
+    if (company) {
+        setProfile({
+            name: company.name || '',
+            address: company.address || '',
+            phone: company.phone || '',
+            email: company.email || ''
+        });
+    } else {
+        // Fallback to local storage
+        const currentProfile = StorageService.getCompanyProfile();
+        setProfile(currentProfile);
+    }
     
     const fbConfig = StorageService.getFirebaseConfig();
     if (fbConfig) {
         setFirebaseConfig(fbConfig);
     }
     setIsFirebaseReady(FirebaseService.isReady());
-  }, []);
+  }, [company]);
 
   const handleChange = (field: keyof CompanyProfile, value: string) => {
     setProfile(prev => ({ ...prev, [field]: value }));
@@ -46,11 +60,29 @@ const Settings: React.FC = () => {
       setConnectionStatus(null); // Reset status on edit
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    StorageService.saveCompanyProfile(profile);
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+    
+    // Save to Firestore via Context
+    try {
+        await saveCompany({
+            name: profile.name,
+            address: profile.address,
+            phone: profile.phone,
+            email: profile.email,
+            gst: company?.gst || '', // Preserve existing fields
+            gst_enabled: company?.gst_enabled ?? true
+        });
+        
+        // Also update local storage for offline backup
+        StorageService.saveCompanyProfile(profile);
+        
+        setIsSaved(true);
+        setTimeout(() => setIsSaved(false), 3000);
+    } catch (error) {
+        console.error("Failed to save settings:", error);
+        alert("Failed to save settings. Please try again.");
+    }
   };
 
   const handleSaveFirebase = async (e: React.FormEvent) => {
