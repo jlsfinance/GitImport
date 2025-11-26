@@ -13,6 +13,7 @@ interface CompanyData {
 interface CompanyContextType {
   company: CompanyData | null;
   loading: boolean;
+  permissionError: boolean;
   saveCompany: (data: CompanyData) => Promise<void>;
   reloadCompany: () => Promise<void>;
 }
@@ -23,6 +24,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [company, setCompany] = useState<CompanyData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [permissionError, setPermissionError] = useState(false);
 
   const fetchCompany = async () => {
     if (!user) {
@@ -32,14 +34,18 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
+      setPermissionError(false);
       const snap = await getDoc(doc(db, 'companies', user.uid));
       if (snap.exists()) {
         setCompany(snap.data() as CompanyData);
       } else {
         setCompany(null);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching company:", error);
+      if (error.code === 'permission-denied') {
+        setPermissionError(true);
+      }
       setCompany(null);
     } finally {
       setLoading(false);
@@ -53,18 +59,26 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const saveCompany = async (data: CompanyData) => {
     if (!user) return;
     
-    await setDoc(doc(db, 'companies', user.uid), {
-      ...data,
-      owner_uid: user.uid,
-      owner_email: user.email,
-      updated_at: serverTimestamp()
-    }, { merge: true });
-    
-    await fetchCompany();
+    try {
+      await setDoc(doc(db, 'companies', user.uid), {
+        ...data,
+        owner_uid: user.uid,
+        owner_email: user.email,
+        updated_at: serverTimestamp()
+      }, { merge: true });
+      
+      await fetchCompany();
+    } catch (error: any) {
+       if (error.code === 'permission-denied') {
+        setPermissionError(true);
+        throw new Error("Permission denied. Please check Firestore Rules.");
+      }
+      throw error;
+    }
   };
 
   return (
-    <CompanyContext.Provider value={{ company, loading, saveCompany, reloadCompany: fetchCompany }}>
+    <CompanyContext.Provider value={{ company, loading, permissionError, saveCompany, reloadCompany: fetchCompany }}>
       {children}
     </CompanyContext.Provider>
   );

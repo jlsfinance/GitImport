@@ -16,10 +16,11 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { CompanyProvider, useCompany } from '@/contexts/CompanyContext';
 import { CompanyForm } from '@/components/CompanyForm';
 import Auth from '@/components/Auth';
+import { PermissionErrorModal } from '@/components/PermissionErrorModal';
 
 const AppContent: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
-  const { company, loading: companyLoading } = useCompany();
+  const { company, loading: companyLoading, permissionError } = useCompany();
   
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -228,6 +229,10 @@ const AppContent: React.FC = () => {
           <p className="text-slate-500 font-medium">Loading...</p>
       </div>
     );
+  }
+
+  if (permissionError) {
+    return <PermissionErrorModal />;
   }
 
   if (!user) {
