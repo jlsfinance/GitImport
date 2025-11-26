@@ -1,29 +1,17 @@
-import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getFirestore, Firestore, collection, getDocs, setDoc, doc, writeBatch, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { FirebaseConfig } from '../types';
-
-let app: FirebaseApp | null = null;
-let db: Firestore | null = null;
+import { db } from '../lib/firebase';
 
 export const FirebaseService = {
+  // Deprecated init, kept for compatibility but does nothing as we init statically
   init: (config: FirebaseConfig): boolean => {
-    try {
-      if (!config.apiKey || !config.projectId) return false;
-      
-      app = initializeApp(config);
-      db = getFirestore(app);
-      console.log("Firebase Initialized Successfully");
+      console.log("Firebase already initialized via lib/firebase");
       return true;
-    } catch (error) {
-      console.error("Firebase Initialization Error:", error);
-      return false;
-    }
   },
 
-  isReady: () => !!db,
+  isReady: () => true,
 
   testConnection: async (): Promise<{ success: boolean; message: string }> => {
-    if (!db) return { success: false, message: "Firebase not initialized" };
     try {
         // Try to write a test document
         const testRef = doc(db, 'system', 'connection_test');
@@ -43,7 +31,6 @@ export const FirebaseService = {
 
   // Generic Fetch
   fetchCollection: async <T>(collectionName: string): Promise<T[]> => {
-    if (!db) return [];
     try {
       const querySnapshot = await getDocs(collection(db, collectionName));
       return querySnapshot.docs.map(doc => doc.data() as T);
@@ -55,7 +42,6 @@ export const FirebaseService = {
 
   // Generic Save (Set/Overwrite)
   saveDocument: async (collectionName: string, id: string, data: any) => {
-    if (!db) return;
     try {
       await setDoc(doc(db, collectionName, id), data);
     } catch (error) {
@@ -65,7 +51,6 @@ export const FirebaseService = {
 
   // Generic Delete
   deleteDocument: async (collectionName: string, id: string) => {
-    if (!db) return;
     try {
       await deleteDoc(doc(db, collectionName, id));
     } catch (error) {
@@ -75,7 +60,6 @@ export const FirebaseService = {
 
   // Batch Save (for initial sync)
   batchSave: async (collectionName: string, items: any[]) => {
-    if (!db) return;
     try {
         // Firestore batch limit is 500. For simplicity in this demo, assuming < 500 items.
         // In production, chunk array.
