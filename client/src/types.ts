@@ -26,6 +26,8 @@ export interface Product {
   price: number;
   stock: number;
   category: string;
+  hsn?: string;
+  gstRate?: number;
 }
 
 export interface CustomerNotification {
@@ -44,6 +46,8 @@ export interface Customer {
   email: string;
   phone: string;
   address: string;
+  state?: string;
+  gstin?: string;
   balance: number;
   notifications: CustomerNotification[];
 }
@@ -63,10 +67,13 @@ export interface InvoiceItem {
   description: string;
   quantity: number;
   rate: number;
-  amount: number;
+  baseAmount: number;
   hsn?: string;
   gstRate?: number;
-  gstAmount?: number;
+  cgstAmount?: number;
+  sgstAmount?: number;
+  igstAmount?: number;
+  totalAmount?: number;
 }
 
 export interface Invoice {
@@ -75,14 +82,18 @@ export interface Invoice {
   customerId: string;
   customerName: string;
   customerAddress: string;
+  customerState?: string;
+  customerGstin?: string;
+  supplierGstin?: string;
+  taxType?: 'INTRA_STATE' | 'INTER_STATE';
   date: string;
   dueDate: string;
   items: InvoiceItem[];
   subtotal: number;
-  tax: number; // Simple tax implementation
+  totalCgst?: number;
+  totalSgst?: number;
+  totalIgst?: number;
   gstEnabled?: boolean;
-  gstRate?: number;
-  gstAmount?: number;
   total: number;
   status: 'PAID' | 'PENDING' | 'OVERDUE';
 }
@@ -92,7 +103,8 @@ export interface CompanyProfile {
   address: string;
   phone: string;
   email: string;
-  gst?: string;
+  state?: string;
+  gstin?: string;
   gst_enabled?: boolean;
 }
 
@@ -101,5 +113,7 @@ export const DEFAULT_COMPANY: CompanyProfile = {
   name: "ABC Trading Company",
   address: "123, Market Road, Delhi - 110001",
   phone: "9876543210",
-  email: "info@abctrading.com"
+  email: "info@abctrading.com",
+  state: "Delhi",
+  gst_enabled: true
 };

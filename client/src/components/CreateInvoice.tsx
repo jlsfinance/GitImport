@@ -59,20 +59,42 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
   }, [initialInvoice]);
 
   const handleAddItem = () => {
-    setItems([...items, { productId: '', description: '', quantity: 1, rate: 0, amount: 0, hsn: '', gstRate: 0, gstAmount: 0 }]);
+    setItems([...items, { productId: '', description: '', quantity: 1, rate: 0, baseAmount: 0, hsn: '', gstRate: 0, cgstAmount: 0, sgstAmount: 0, igstAmount: 0, totalAmount: 0 }]);
+  };
+
+  const calculateTaxes = (item: InvoiceItem, supplier: any, customer: any) => {
+    const baseAmount = item.quantity * item.rate;
+    const gstRate = item.gstRate || 0;
+    const taxType = supplier?.state === customer?.state ? 'INTRA_STATE' : 'INTER_STATE';
+    
+    if (taxType === 'INTRA_STATE') {
+      item.cgstAmount = baseAmount * (gstRate / 2) / 100;
+      item.sgstAmount = baseAmount * (gstRate / 2) / 100;
+      item.igstAmount = 0;
+    } else {
+      item.cgstAmount = 0;
+      item.sgstAmount = 0;
+      item.igstAmount = baseAmount * gstRate / 100;
+    }
+    
+    item.baseAmount = baseAmount;
+    item.totalAmount = baseAmount + (item.cgstAmount || 0) + (item.sgstAmount || 0) + (item.igstAmount || 0);
   };
 
   const handleUpdateItem = (index: number, field: keyof InvoiceItem, value: any) => {
     const newItems = [...items];
     const item = newItems[index];
+    const supplier = company;
+    const customer = customers.find(c => c.id === selectedCustomerId);
 
     if (field === 'productId') {
       const product = products.find(p => p.id === value);
       if (product) {
         item.productId = product.id;
         item.description = product.name;
+        item.hsn = product.hsn || '';
+        item.gstRate = product.gstRate || 0;
         
-        // SMART RATE LOGIC
         let rateToUse = product.price;
         if (selectedCustomerId) {
              const lastRate = StorageService.getLastSalePrice(selectedCustomerId, product.id);
@@ -80,24 +102,23 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
                  rateToUse = lastRate;
              }
         }
-
         item.rate = rateToUse;
-        item.amount = item.quantity * rateToUse;
+        if (gstEnabled) {
+          calculateTaxes(item, supplier, customer);
+        }
       }
     } else if (field === 'quantity' || field === 'rate') {
-      // @ts-ignore
-      item[field] = Number(value);
-      item.amount = item.quantity * item.rate;
-      // Recalculate GST amount when amount changes
-      item.gstAmount = item.amount * ((item.gstRate || 0) / 100);
+      item[field as any] = Number(value);
+      if (gstEnabled) {
+        calculateTaxes(item, supplier, customer);
+      }
     } else if (field === 'gstRate') {
       item.gstRate = Number(value);
-      item.gstAmount = item.amount * (item.gstRate / 100);
+      if (gstEnabled) {
+        calculateTaxes(item, supplier, customer);
+      }
     } else if (field === 'hsn') {
       item.hsn = value;
-    } else {
-      // @ts-ignore
-      item[field] = value;
     }
 
     setItems(newItems);
@@ -107,17 +128,18 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     setItems(items.filter((_, i) => i !== index));
   };
 
-  const calculateSubtotal = () => items.reduce((sum, item) => sum + item.amount, 0);
+  const calculateSubtotal = () => items.reduce((sum, item) => sum + (item.baseAmount || 0), 0);
   
-  const calculateGST = () => {
-    // Sum GST from all items
-    return items.reduce((sum, item) => sum + (item.gstAmount || 0), 0);
-  };
+  const calculateTotalCGST = () => items.reduce((sum, item) => sum + (item.cgstAmount || 0), 0);
+  const calculateTotalSGST = () => items.reduce((sum, item) => sum + (item.sgstAmount || 0), 0);
+  const calculateTotalIGST = () => items.reduce((sum, item) => sum + (item.igstAmount || 0), 0);
 
   const calculateTotal = () => {
     const subtotal = calculateSubtotal();
-    const gst = calculateGST();
-    return subtotal + gst;
+    const cgst = calculateTotalCGST();
+    const sgst = calculateTotalSGST();
+    const igst = calculateTotalIGST();
+    return subtotal + cgst + sgst + igst;
   };
 
   // --- Inline Creation Handlers ---
@@ -193,7 +215,11 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     const status = paymentMode === 'CASH' ? 'PAID' : 'PENDING';
 
     const subtotal = calculateSubtotal();
-    const totalGST = calculateGST();
+    const totalCgst = calculateTotalCGST();
+    const totalSgst = calculateTotalSGST();
+    const totalIgst = calculateTotalIGST();
+    const supplier = company;
+    const taxType = supplier?.state === customer.state ? 'INTRA_STATE' : 'INTER_STATE';
     
     const invoiceData: Invoice = {
       id: initialInvoice ? initialInvoice.id : crypto.randomUUID(),
@@ -201,13 +227,18 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
       customerId: customer.id,
       customerName: customer.company || customer.name,
       customerAddress: customer.address,
+      customerState: customer.state,
+      customerGstin: customer.gstin,
+      supplierGstin: supplier?.gstin,
+      taxType: taxType,
       date,
       dueDate,
       items,
       subtotal: subtotal,
-      tax: 0,
-      gstEnabled: items.some(i => (i.gstRate || 0) > 0),
-      gstAmount: totalGST,
+      totalCgst: totalCgst,
+      totalSgst: totalSgst,
+      totalIgst: totalIgst,
+      gstEnabled: gstEnabled && items.some(i => (i.gstRate || 0) > 0),
       total: calculateTotal(),
       status: status
     };
@@ -403,10 +434,24 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
                  <span className="text-gray-500">Subtotal:</span>
                  <span className="text-slate-900 w-32">₹{calculateSubtotal().toFixed(2)}</span>
                </div>
-               <div className="flex justify-end gap-4">
-                 <span className="text-green-600 font-medium">GST (per item):</span>
-                 <span className="text-green-600 w-32">₹{calculateGST().toFixed(2)}</span>
-               </div>
+               {gstEnabled && calculateTotalCGST() > 0 && (
+                 <div className="flex justify-end gap-4">
+                   <span className="text-green-600 font-medium">CGST:</span>
+                   <span className="text-green-600 w-32">₹{calculateTotalCGST().toFixed(2)}</span>
+                 </div>
+               )}
+               {gstEnabled && calculateTotalSGST() > 0 && (
+                 <div className="flex justify-end gap-4">
+                   <span className="text-green-600 font-medium">SGST:</span>
+                   <span className="text-green-600 w-32">₹{calculateTotalSGST().toFixed(2)}</span>
+                 </div>
+               )}
+               {gstEnabled && calculateTotalIGST() > 0 && (
+                 <div className="flex justify-end gap-4">
+                   <span className="text-green-600 font-medium">IGST:</span>
+                   <span className="text-green-600 w-32">₹{calculateTotalIGST().toFixed(2)}</span>
+                 </div>
+               )}
                <div className="flex justify-end gap-4 border-t pt-2">
                  <span className="text-slate-900 font-bold">Total:</span>
                  <span className="text-2xl font-bold text-slate-900 w-32">₹{calculateTotal().toFixed(2)}</span>
