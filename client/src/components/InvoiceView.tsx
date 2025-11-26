@@ -614,24 +614,24 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit }) =>
                 <div>
                   {(invoice.totalCgst || 0) > 0 && (
                     <div className="flex justify-between py-1 border-b border-gray-200 text-sm">
-                      <span className="font-medium text-gray-600">CGST (9%):</span>
+                      <span className="font-medium text-gray-600">CGST:</span>
                       <span className="font-medium">Rs. {(invoice.totalCgst || 0).toFixed(2)}</span>
                     </div>
                   )}
                   {(invoice.totalSgst || 0) > 0 && (
                     <div className="flex justify-between py-1 border-b border-gray-200 text-sm">
-                      <span className="font-medium text-gray-600">SGST (9%):</span>
+                      <span className="font-medium text-gray-600">SGST:</span>
                       <span className="font-medium">Rs. {(invoice.totalSgst || 0).toFixed(2)}</span>
                     </div>
                   )}
                   {(invoice.totalIgst || 0) > 0 && (
                     <div className="flex justify-between py-1 border-b border-gray-200 text-sm">
-                      <span className="font-medium text-gray-600">IGST (18%):</span>
+                      <span className="font-medium text-gray-600">IGST:</span>
                       <span className="font-medium">Rs. {(invoice.totalIgst || 0).toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between py-1 border-b border-gray-200 text-sm">
-                    <span className="font-medium text-green-600 font-bold">Total Tax ({(invoice.gstEnabled ? ((invoice.totalCgst || 0) > 0 ? '18%' : '18%') : '0%')}):</span>
+                    <span className="font-medium text-green-600 font-bold">Total Tax:</span>
                     <span className="font-medium text-green-600 font-bold">Rs. {((invoice.totalCgst || 0) + (invoice.totalSgst || 0) + (invoice.totalIgst || 0)).toFixed(2)}</span>
                   </div>
                 </div>
