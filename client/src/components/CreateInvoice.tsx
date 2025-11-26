@@ -376,7 +376,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
               <thead>
                 <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   <th className="px-4 py-3 w-1/4">Product</th>
-                  <th className="px-4 py-3 w-20">HSN Code</th>
+                  {gstEnabled && <th className="px-4 py-3 w-20">HSN Code</th>}
                   <th className="px-4 py-3 w-16">Qty</th>
                   <th className="px-4 py-3 w-20">Rate</th>
                   {gstEnabled && <th className="px-4 py-3 w-16">GST %</th>}
@@ -405,7 +405,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
                            />
                       )}
                     </td>
-                    <td className="px-4 py-2 align-top">
+                    {gstEnabled && <td className="px-4 py-2 align-top">
                       <input
                         type="text"
                         className="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
@@ -413,7 +413,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
                         onChange={(e) => handleUpdateItem(idx, 'hsn', e.target.value)}
                         placeholder="HSN Code"
                       />
-                    </td>
+                    </td>}
                     <td className="px-4 py-2 align-top">
                       <input
                         type="number"
