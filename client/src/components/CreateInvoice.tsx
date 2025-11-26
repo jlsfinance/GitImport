@@ -108,7 +108,8 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
         }
       }
     } else if (field === 'quantity' || field === 'rate') {
-      item[field as any] = Number(value);
+      if (field === 'quantity') item.quantity = Number(value);
+      if (field === 'rate') item.rate = Number(value);
       if (gstEnabled) {
         calculateTaxes(item, supplier, customer);
       }
@@ -191,8 +192,10 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
           item.productId = newProduct.id;
           item.description = newProduct.name;
           item.rate = newProduct.price;
-          item.quantity = item.quantity || 1; 
-          item.amount = item.quantity * item.rate;
+          item.quantity = item.quantity || 1;
+          item.gstRate = newProduct.gstRate || 0;
+          item.hsn = newProduct.hsn || '';
+          calculateTaxes(item, company, customers.find(c => c.id === selectedCustomerId));
           setItems(newItems);
       }
       setShowProductModal(false);
@@ -218,8 +221,8 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     const totalCgst = calculateTotalCGST();
     const totalSgst = calculateTotalSGST();
     const totalIgst = calculateTotalIGST();
-    const supplier = company;
-    const taxType = supplier?.state === customer.state ? 'INTRA_STATE' : 'INTER_STATE';
+    const supplier = company as any;
+    const taxType = (supplier?.state || 'Delhi') === customer.state ? 'INTRA_STATE' : 'INTER_STATE';
     
     const invoiceData: Invoice = {
       id: initialInvoice ? initialInvoice.id : crypto.randomUUID(),
@@ -229,7 +232,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
       customerAddress: customer.address,
       customerState: customer.state,
       customerGstin: customer.gstin,
-      supplierGstin: supplier?.gstin,
+      supplierGstin: supplier?.gst,
       taxType: taxType,
       date,
       dueDate,
@@ -401,8 +404,10 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
                       />
                     </td>}
                     <td className="px-4 py-2 text-right font-medium text-slate-700 align-top pt-3">
-                      <div className="text-sm">₹{item.amount.toFixed(2)}</div>
-                      <div className="text-xs text-green-600">+₹{(item.gstAmount || 0).toFixed(2)}</div>
+                      <div className="text-sm">₹{(item.totalAmount || 0).toFixed(2)}</div>
+                      {gstEnabled && (item.cgstAmount || 0) + (item.sgstAmount || 0) + (item.igstAmount || 0) > 0 && (
+                        <div className="text-xs text-green-600">+₹{((item.cgstAmount || 0) + (item.sgstAmount || 0) + (item.igstAmount || 0)).toFixed(2)} Tax</div>
+                      )}
                     </td>
                     <td className="px-4 py-2 text-center align-top pt-3">
                       <button
