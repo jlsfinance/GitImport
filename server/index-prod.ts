@@ -1,13 +1,16 @@
 import fs from "node:fs";
 import { type Server } from "node:http";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import express, { type Express, type Request } from "express";
 
 import runApp from "./app";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 export async function serveStatic(app: Express, server: Server) {
-  const distPath = path.resolve(import.meta.dirname, "public");
+  const distPath = path.resolve(__dirname, "../client/dist");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
