@@ -35,6 +35,8 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
+  const [newProductHSN, setNewProductHSN] = useState('');
+  const [newProductGST, setNewProductGST] = useState('0');
   const [pendingProductIndex, setPendingProductIndex] = useState<number | null>(null); 
 
   useEffect(() => {
@@ -180,7 +182,9 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
           name: newProductName,
           price: Number(newProductPrice) || 0,
           stock: 100,
-          category: 'General'
+          category: 'General',
+          hsn: newProductHSN,
+          gstRate: Number(newProductGST) || 0
       };
       StorageService.saveProduct(newProduct);
       const updatedProducts = StorageService.getProducts();
@@ -199,6 +203,10 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
           setItems(newItems);
       }
       setShowProductModal(false);
+      setNewProductName('');
+      setNewProductPrice('');
+      setNewProductHSN('');
+      setNewProductGST('0');
       setPendingProductIndex(null);
   };
 
@@ -542,6 +550,33 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
                              onChange={(e) => setNewProductPrice(e.target.value)} 
                           />
                       </div>
+                      {gstEnabled && (
+                        <>
+                          <div>
+                              <label className="block text-sm font-medium text-gray-700">HSN Code</label>
+                              <input 
+                                 type="text" 
+                                 className="w-full border p-2 rounded" 
+                                 value={newProductHSN} 
+                                 onChange={(e) => setNewProductHSN(e.target.value)}
+                                 placeholder="e.g., 1234567890"
+                              />
+                          </div>
+                          <div>
+                              <label className="block text-sm font-medium text-gray-700">GST Rate (%)</label>
+                              <input 
+                                 type="number" 
+                                 className="w-full border p-2 rounded" 
+                                 value={newProductGST} 
+                                 onChange={(e) => setNewProductGST(e.target.value)}
+                                 min="0"
+                                 max="100"
+                                 step="0.5"
+                                 placeholder="0, 5, 12, 18, 28"
+                              />
+                          </div>
+                        </>
+                      )}
                       <button onClick={saveNewProduct} className="w-full bg-blue-600 text-white py-2 rounded font-medium">Save & Select</button>
                   </div>
               </div>
