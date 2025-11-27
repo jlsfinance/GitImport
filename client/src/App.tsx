@@ -134,9 +134,9 @@ const AppContent: React.FC = () => {
                         <tbody className="divide-y">
                             {invoices.slice(0, 5).map(inv => (
                                 <tr key={inv.id} className="text-sm hover:bg-gray-50">
-                                    <td className="py-3 font-medium text-blue-600">{inv.invoiceNumber}</td>
-                                    <td className="py-3">{inv.customerName}</td>
-                                    <td className="py-3 text-gray-500">{inv.date}</td>
+                                    <td className="py-3 font-medium text-blue-600 cursor-pointer hover:underline" onClick={() => handleViewInvoice(inv)}>{inv.invoiceNumber}</td>
+                                    <td className="py-3 cursor-pointer hover:underline" onClick={() => setCurrentView(ViewState.CUSTOMERS)}>{inv.customerName}</td>
+                                    <td className="py-3 text-gray-500 cursor-pointer hover:underline" onClick={() => setCurrentView(ViewState.DAYBOOK)}>{inv.date}</td>
                                     <td className="py-3 text-right font-medium">₹{inv.total.toFixed(2)}</td>
                                     <td className="py-3 text-center flex justify-center gap-3">
                                         <button 
