@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { Switch, Route, Link, useLocation } from "wouter";
 import Sidebar from './components/Sidebar';
 import InvoiceView from './components/InvoiceView';
 import CreateInvoice from './components/CreateInvoice';
@@ -8,6 +9,7 @@ import Customers from './components/Customers';
 import Settings from './components/Settings';
 import Daybook from './components/Daybook';
 import Import from './components/Import';
+import CustomerLedger from './components/CustomerLedger';
 import { ViewState, Invoice } from './types';
 import { StorageService } from './services/storageService';
 import { FirebaseService } from './services/firebaseService';
@@ -17,13 +19,14 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { CompanyProvider, useCompany } from '@/contexts/CompanyContext';
 import { CompanyForm } from '@/components/CompanyForm';
 import Auth from '@/components/Auth';
+import ForgotPassword from '@/components/ForgotPassword';
 import { PermissionErrorModal } from '@/components/PermissionErrorModal';
 
 const AppContent: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const { company, loading: companyLoading, permissionError } = useCompany();
+  const [location, setLocation] = useLocation();
   
-  const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -36,7 +39,6 @@ const AppContent: React.FC = () => {
         await StorageService.init(user?.uid || null);
         setInvoices(StorageService.getInvoices());
         
-        // Check cloud status
         const hasConfig = !!StorageService.getFirebaseConfig();
         const isReady = FirebaseService.isReady();
         setIsCloudConnected(hasConfig && isReady);
@@ -50,27 +52,30 @@ const AppContent: React.FC = () => {
     if (!isInitializing) {
         setInvoices(StorageService.getInvoices());
     }
-  }, [currentView, isInitializing]);
+  }, [isInitializing, location]);
 
   const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
-    setCurrentView(ViewState.VIEW_INVOICE);
+    setLocation(`/invoices/${invoice.id}`);
   };
 
   const handleEditInvoice = (invoice: Invoice) => {
     setInvoiceToEdit(invoice);
-    setCurrentView(ViewState.EDIT_INVOICE);
+    setLocation(`/invoices/${invoice.id}/edit`);
+  };
+  
+  const handleViewCustomer = (customerId: string) => {
+    setLocation(`/customers/${customerId}/ledger`);
   };
 
   const handleSaveInvoice = (invoice: Invoice) => {
-    if (currentView === ViewState.EDIT_INVOICE) {
+    if (invoiceToEdit) {
       StorageService.updateInvoice(invoice);
     } else {
       StorageService.saveInvoice(invoice);
     }
-    // Redirect to View Invoice immediately after save to allow sharing
     setSelectedInvoice(invoice);
-    setCurrentView(ViewState.VIEW_INVOICE);
+    setLocation(`/invoices/${invoice.id}`);
     setInvoiceToEdit(null);
   };
 
@@ -80,7 +85,6 @@ const AppContent: React.FC = () => {
       WhatsAppService.shareInvoice(invoice, customer, company);
   };
 
-  // --- DASHBOARD COMPONENT ---
   const Dashboard = () => {
     const totalRevenue = invoices.reduce((acc, inv) => acc + inv.total, 0);
     const pendingInvoices = invoices.filter(i => i.status === 'PENDING').length;
@@ -135,8 +139,8 @@ const AppContent: React.FC = () => {
                             {invoices.slice(0, 5).map(inv => (
                                 <tr key={inv.id} className="text-sm hover:bg-gray-50">
                                     <td className="py-3 font-medium text-blue-600 cursor-pointer hover:underline" onClick={() => handleViewInvoice(inv)}>{inv.invoiceNumber}</td>
-                                    <td className="py-3 cursor-pointer hover:underline" onClick={() => setCurrentView(ViewState.CUSTOMERS)}>{inv.customerName}</td>
-                                    <td className="py-3 text-gray-500 cursor-pointer hover:underline" onClick={() => setCurrentView(ViewState.DAYBOOK)}>{inv.date}</td>
+                                    <td className="py-3 cursor-pointer hover:underline" onClick={() => handleViewCustomer(inv.customerId)}>{inv.customerName}</td>
+                                    <td className="py-3 text-gray-500 cursor-pointer hover:underline" onClick={() => setLocation('/daybook')}>{inv.date}</td>
                                     <td className="py-3 text-right font-medium">₹{inv.total.toFixed(2)}</td>
                                     <td className="py-3 text-center flex justify-center gap-3">
                                         <button 
@@ -160,12 +164,11 @@ const AppContent: React.FC = () => {
     );
   };
 
-  // --- INVOICE LIST COMPONENT ---
   const InvoiceList = () => (
     <div className="p-4 md:p-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-4">
             <h2 className="text-xl md:text-2xl font-bold text-slate-800">All Invoices</h2>
-            <button onClick={() => { setInvoiceToEdit(null); setCurrentView(ViewState.CREATE_INVOICE); }} className="w-full md:w-auto bg-blue-600 text-white px-4 py-2 rounded-md shadow hover:bg-blue-700">Create New</button>
+            <button onClick={() => setLocation('/invoices/new')} className="w-full md:w-auto bg-blue-600 text-white px-4 py-2 rounded-md shadow hover:bg-blue-700">Create New</button>
         </div>
         <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="overflow-x-auto">
@@ -184,7 +187,7 @@ const AppContent: React.FC = () => {
                         {invoices.map(inv => (
                             <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
                                 <td className="px-6 py-4 font-medium text-blue-600 cursor-pointer" onClick={() => handleViewInvoice(inv)}>{inv.invoiceNumber}</td>
-                                <td className="px-6 py-4 cursor-pointer" onClick={() => handleViewInvoice(inv)}>{inv.customerName}</td>
+                                <td className="px-6 py-4 cursor-pointer hover:underline" onClick={() => handleViewCustomer(inv.customerId)}>{inv.customerName}</td>
                                 <td className="px-6 py-4 text-slate-500 cursor-pointer" onClick={() => handleViewInvoice(inv)}>{inv.date}</td>
                                 <td className="px-6 py-4 text-slate-500 cursor-pointer" onClick={() => handleViewInvoice(inv)}>{inv.dueDate}</td>
                                 <td className="px-6 py-4 text-right font-bold text-slate-800 cursor-pointer" onClick={() => handleViewInvoice(inv)}>₹{inv.total.toFixed(2)}</td>
@@ -223,7 +226,6 @@ const AppContent: React.FC = () => {
     </div>
   );
 
-  // Auth & Loading States
   if (authLoading || (user && companyLoading)) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-slate-50 flex-col gap-4">
@@ -238,7 +240,12 @@ const AppContent: React.FC = () => {
   }
 
   if (!user) {
-    return <Auth />;
+    return (
+      <Switch>
+        <Route path="/forgot-password" component={ForgotPassword} />
+        <Route><Auth /></Route>
+      </Switch>
+    );
   }
 
   if (!company) {
@@ -254,64 +261,77 @@ const AppContent: React.FC = () => {
       )
   }
 
-  // --- MAIN RENDER ---
+  const viewStateMap: { [key: string]: ViewState } = {
+    '/': ViewState.DASHBOARD,
+    '/invoices': ViewState.INVOICES,
+    '/daybook': ViewState.DAYBOOK,
+    '/inventory': ViewState.INVENTORY,
+    '/customers': ViewState.CUSTOMERS,
+    '/settings': ViewState.SETTINGS,
+  };
+  const currentView = viewStateMap[location] || ViewState.DASHBOARD;
+
+
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans flex-col md:flex-row">
       <Sidebar 
-        currentView={currentView} 
+        currentView={currentView}
         onChangeView={(view) => {
-          if (view === ViewState.CREATE_INVOICE) setInvoiceToEdit(null);
+          const path = Object.keys(viewStateMap).find(key => viewStateMap[key] === view);
+          if (path) setLocation(path);
           if (view === ViewState.IMPORT) {
             setShowImport(true);
-          } else if (view === ViewState.DASHBOARD) {
-            setCurrentView(view);
-          } else {
-            setCurrentView(view);
           }
         }}
-        isCloudConnected={isCloudConnected || !!user} // Show cloud connected if logged in
+        isCloudConnected={isCloudConnected || !!user}
       />
       
-      {/* Added padding bottom (pb-20) for mobile to account for fixed navbar */}
       <main className="flex-1 overflow-y-auto h-full relative pb-20 md:pb-0 w-full">
-        {currentView === ViewState.DASHBOARD && <Dashboard />}
-        {currentView === ViewState.INVOICES && <InvoiceList />}
-        {currentView === ViewState.DAYBOOK && <Daybook />}
-        {currentView === ViewState.INVENTORY && <Inventory />}
-        {currentView === ViewState.CUSTOMERS && <Customers onEditInvoice={handleEditInvoice} />}
-        {currentView === ViewState.SETTINGS && <Settings />}
-        
-        {currentView === ViewState.CREATE_INVOICE && (
-          <CreateInvoice 
-            onSave={handleSaveInvoice} 
-            onCancel={() => setCurrentView(ViewState.INVOICES)} 
-          />
-        )}
-        
-        {currentView === ViewState.EDIT_INVOICE && invoiceToEdit && (
-           <CreateInvoice
-             onSave={handleSaveInvoice}
-             onCancel={() => setCurrentView(ViewState.INVOICES)}
-             initialInvoice={invoiceToEdit}
-           />
-        )}
-        
-        {currentView === ViewState.VIEW_INVOICE && selectedInvoice && (
-          <InvoiceView 
-            invoice={selectedInvoice} 
-            onBack={() => setCurrentView(ViewState.INVOICES)}
-            onEdit={handleEditInvoice}
-          />
-        )}
+        <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/invoices" component={InvoiceList} />
+            <Route path="/daybook" component={Daybook} />
+            <Route path="/inventory" component={Inventory} />
+            <Route path="/customers" component={Customers} />
+            <Route path="/customers/:id" component={Customers} />
+            <Route path="/customers/:id/ledger" component={CustomerLedger} />
+            <Route path="/settings" component={Settings} />
+            <Route path="/invoices/new">
+                <CreateInvoice 
+                    onSave={handleSaveInvoice} 
+                    onCancel={() => setLocation('/invoices')} 
+                />
+            </Route>
+            <Route path="/invoices/:id/edit">
+                {({ id }) => {
+                    const invoice = invoices.find(inv => inv.id === id) || null;
+                    return <CreateInvoice
+                            onSave={handleSaveInvoice}
+                            onCancel={() => setLocation('/invoices')}
+                            initialInvoice={invoice}
+                        />
+                }}
+            </Route>
+            <Route path="/invoices/:id">
+                {({ id }) => {
+                    const invoice = invoices.find(inv => inv.id === id) || null;
+                    if (!invoice) return <div className="p-4">Invoice not found</div>;
+                    return <InvoiceView 
+                                invoice={invoice} 
+                                onBack={() => setLocation('/invoices')}
+                                onEdit={handleEditInvoice}
+                            />
+                }}
+            </Route>
+        </Switch>
       </main>
 
-      {/* Import Modal */}
       {showImport && (
         <Import 
           onClose={() => setShowImport(false)}
           onImportComplete={() => {
             setInvoices(StorageService.getInvoices());
-            setCurrentView(ViewState.INVENTORY);
+            setLocation('/inventory');
           }}
         />
       )}

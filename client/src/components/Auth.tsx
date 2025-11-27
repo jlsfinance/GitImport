@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Receipt, Lock, Mail, UserPlus, LogIn, AlertTriangle } from 'lucide-react';
+import { Link } from 'wouter';
 
 export const Auth = () => {
   const { signIn, signUp } = useAuth();
@@ -94,9 +95,18 @@ export const Auth = () => {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-700">
-                Password
-              </label>
+              <div className="flex justify-between">
+                <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+                  Password
+                </label>
+                {isLogin && (
+                  <div className="text-sm">
+                    <Link href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
+                      Forgot your password?
+                    </Link>
+                  </div>
+                )}
+              </div>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Lock className="h-5 w-5 text-gray-400" />
