@@ -588,19 +588,24 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice }) => {
     alert("Customer added successfully!");
   };
 
-  // Get GST status from company - need to fetch it
-  const company = StorageService.getCompanyProfile();
-  const gstEnabled = company?.gst_enabled ?? true;
+  // Get GST status from company - fetch fresh when modal is about to open
+  const getCurrentGstEnabled = () => {
+    const company = StorageService.getCompanyProfile();
+    // Check both gst_enabled and gst fields for backwards compatibility
+    return company?.gst_enabled ?? (company?.gst ? true : false) ?? false;
+  };
 
   return (
     <div className="p-4 md:p-6">
       {/* Add Customer Modal */}
-      {showAddCustomer && (
+      {showAddCustomer && (() => {
+        const gstEnabled = getCurrentGstEnabled();
+        return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-4 sticky top-0 bg-white">
               <h3 className="text-lg font-bold text-slate-900">Add New Customer</h3>
-              <button onClick={() => setShowAddCustomer(false)}><X className="w-5 h-5 text-gray-400 hover:text-gray-600" /></button>
+              <button onClick={() => setShowAddCustomer(false)} className="p-1"><X className="w-5 h-5 text-gray-400 hover:text-gray-600" /></button>
             </div>
             <form onSubmit={handleAddCustomer} className="space-y-4">
               <div>
@@ -612,6 +617,7 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice }) => {
                   onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})}
                   className="w-full border border-slate-300 rounded-md p-2 text-sm"
                   placeholder="Full name"
+                  data-testid="input-customer-name"
                 />
               </div>
               <div>
@@ -623,6 +629,7 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice }) => {
                   onChange={(e) => setNewCustomer({...newCustomer, company: e.target.value})}
                   className="w-full border border-slate-300 rounded-md p-2 text-sm"
                   placeholder="Company name"
+                  data-testid="input-company-name"
                 />
               </div>
               <div>
@@ -634,6 +641,7 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice }) => {
                   onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})}
                   className="w-full border border-slate-300 rounded-md p-2 text-sm"
                   placeholder="email@example.com"
+                  data-testid="input-email"
                 />
               </div>
               <div>
@@ -644,6 +652,7 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice }) => {
                   onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
                   className="w-full border border-slate-300 rounded-md p-2 text-sm"
                   placeholder="10-digit number"
+                  data-testid="input-phone"
                 />
               </div>
               <div>
@@ -652,8 +661,9 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice }) => {
                   value={newCustomer.address}
                   onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})}
                   rows={2}
-                  className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                  className="w-full border border-slate-300 rounded-md p-2 text-sm resize-none"
                   placeholder="Billing address"
+                  data-testid="textarea-address"
                 />
               </div>
               {gstEnabled && (
@@ -666,6 +676,7 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice }) => {
                       onChange={(e) => setNewCustomer({...newCustomer, state: e.target.value})}
                       className="w-full border border-slate-300 rounded-md p-2 text-sm"
                       placeholder="State name"
+                      data-testid="input-state"
                     />
                   </div>
                   <div>
@@ -677,6 +688,7 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice }) => {
                       className="w-full border border-slate-300 rounded-md p-2 text-sm"
                       placeholder="15-digit GSTIN"
                       maxLength={15}
+                      data-testid="input-gstin"
                     />
                     <p className="text-xs text-gray-500 mt-1">Only visible when GST is enabled in Settings</p>
                   </div>
@@ -685,13 +697,15 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice }) => {
               <button 
                 type="submit"
                 className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700"
+                data-testid="button-add-customer"
               >
                 Add Customer
               </button>
             </form>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl md:text-2xl font-bold text-slate-800">Customer Portal & Ledger</h2>
