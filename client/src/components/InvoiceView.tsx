@@ -354,14 +354,27 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit }) =>
         yPos += 2;
       }
 
-      // Current Invoice Total
+      // Current Invoice Total or Rounded Total
       doc.setDrawColor(0);
       doc.line(rightMargin - 70, yPos, rightMargin, yPos);
       yPos += 2;
 
+      if (invoice.roundUpTo && invoice.roundUpTo > 0) {
+        // Show original total with round up
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.text("Original Total:", totalXLabel, yPos + 5, { align: "right" });
+        doc.text(`Rs. ${(invoice.total - (invoice.roundUpAmount || 0)).toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
+        yPos += 5;
+        
+        doc.text("Round Up Amt:", totalXLabel, yPos + 5, { align: "right" });
+        doc.text(`Rs. ${(invoice.roundUpAmount || 0).toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
+        yPos += 5;
+      }
+
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
-      doc.text("Invoice Total:", totalXLabel, yPos + 5, { align: "right" });
+      doc.text(invoice.roundUpTo ? "Final Total:" : "Invoice Total:", totalXLabel, yPos + 5, { align: "right" });
       doc.text(`Rs. ${invoice.total.toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
       yPos += 8;
 
@@ -789,8 +802,20 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit }) =>
                   </div>
                 </div>
               )}
+              {invoice.roundUpTo && invoice.roundUpTo > 0 && (
+                <>
+                  <div className="flex justify-between py-1 border-b border-gray-200 text-sm">
+                    <span className="font-medium text-gray-600">Original Total:</span>
+                    <span className="font-medium">Rs. {(invoice.total - (invoice.roundUpAmount || 0)).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-gray-200 text-sm text-blue-600">
+                    <span className="font-medium">Round Up (₹{invoice.roundUpTo}):</span>
+                    <span className="font-medium">+Rs. {(invoice.roundUpAmount || 0).toFixed(2)}</span>
+                  </div>
+                </>
+              )}
               <div className={`flex justify-between py-2 ${showPreviousBalance ? 'border-b border-gray-200' : 'border-b border-black'} text-lg`}>
-                <span className="font-bold">Invoice Total:</span>
+                <span className="font-bold">{invoice.roundUpTo ? 'Final Total:' : 'Invoice Total:'}</span>
                 <span className="font-bold">Rs. {invoice.total.toFixed(2)}</span>
               </div>
               

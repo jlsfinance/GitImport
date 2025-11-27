@@ -278,6 +278,10 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     const supplier = company as any;
     const taxType = (supplier?.state || 'Delhi') === (customer.state || '') ? 'INTRA_STATE' : 'INTER_STATE';
     
+    const calculatedTotal = calculateTotal();
+    const roundedTotal = calculateRoundedTotal();
+    const roundUpAmount = getRoundUpAmount();
+    
     const invoiceData: Invoice = {
       id: initialInvoice ? initialInvoice.id : crypto.randomUUID(),
       invoiceNumber: initialInvoice ? initialInvoice.invoiceNumber : `INV-2025-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
@@ -296,7 +300,9 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
       totalSgst: Math.round(totalSgst * 100) / 100,
       totalIgst: Math.round(totalIgst * 100) / 100,
       gstEnabled: gstEnabled && cleanedItems.some(i => (i.gstRate || 0) > 0),
-      total: Math.round(calculateTotal() * 100) / 100,
+      roundUpTo: roundUpTo,
+      roundUpAmount: Math.round(roundUpAmount * 100) / 100,
+      total: Math.round(roundedTotal * 100) / 100,
       status: status
     };
 
@@ -515,7 +521,56 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
                  <span className="text-slate-900 font-bold">Total:</span>
                  <span className="text-2xl font-bold text-slate-900 w-32">₹{calculateTotal().toFixed(2)}</span>
                </div>
+               {roundUpTo > 0 && getRoundUpAmount() > 0 && (
+                 <div className="flex justify-end gap-4 text-blue-600">
+                   <span className="font-medium">Round Up (₹{roundUpTo}):</span>
+                   <span className="w-32">+₹{getRoundUpAmount().toFixed(2)}</span>
+                 </div>
+               )}
+               {roundUpTo > 0 && (
+                 <div className="flex justify-end gap-4 border-t pt-2">
+                   <span className="text-slate-900 font-bold">Final Total:</span>
+                   <span className="text-2xl font-bold text-blue-600 w-32">₹{calculateRoundedTotal().toFixed(2)}</span>
+                 </div>
+               )}
            </div>
+        </div>
+
+        {/* Round Up Selection */}
+        <div className="border-t pt-6 mb-8">
+          <label className="block text-sm font-medium text-slate-700 mb-3">Round Up Total</label>
+          <div className="flex gap-4">
+            <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all ${roundUpTo === 0 ? 'bg-blue-50 border-blue-200 text-blue-700 ring-1 ring-blue-200' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+              <input 
+                type="radio" 
+                name="roundUp" 
+                value="0"
+                checked={roundUpTo === 0}
+                onChange={() => setRoundUpTo(0)}
+              />
+              <span>No Rounding</span>
+            </label>
+            <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all ${roundUpTo === 10 ? 'bg-blue-50 border-blue-200 text-blue-700 ring-1 ring-blue-200' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+              <input 
+                type="radio" 
+                name="roundUp" 
+                value="10"
+                checked={roundUpTo === 10}
+                onChange={() => setRoundUpTo(10)}
+              />
+              <span>Round to ₹10</span>
+            </label>
+            <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all ${roundUpTo === 100 ? 'bg-blue-50 border-blue-200 text-blue-700 ring-1 ring-blue-200' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+              <input 
+                type="radio" 
+                name="roundUp" 
+                value="100"
+                checked={roundUpTo === 100}
+                onChange={() => setRoundUpTo(100)}
+              />
+              <span>Round to ₹100</span>
+            </label>
+          </div>
         </div>
 
         <div className="flex justify-end gap-3 mt-8">
