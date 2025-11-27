@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ViewState } from '../types';
-import { LayoutDashboard, FileText, Users, Package, PlusCircle, Receipt, Settings, Cloud, CloudOff, LogOut } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, Package, PlusCircle, Receipt, Settings, Cloud, CloudOff, LogOut, Upload, Book } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface SidebarProps {
@@ -19,6 +19,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCloudCon
     { id: ViewState.CREATE_INVOICE, label: 'Create', icon: PlusCircle },
     { id: ViewState.INVENTORY, label: 'Stock', icon: Package },
     { id: ViewState.CUSTOMERS, label: 'People', icon: Users },
+    { id: ViewState.DAYBOOK, label: 'Daybook', icon: Book },
     { id: ViewState.IMPORT, label: 'Import', icon: Upload },
     { id: ViewState.SETTINGS, label: 'Settings', icon: Settings },
   ];
