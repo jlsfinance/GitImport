@@ -373,8 +373,8 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit }) =>
           yPos += 8;
       }
 
-      // --- HSN SUMMARY (Tally-Style Format) ---
-      if (invoice.gstEnabled) {
+      // --- HSN SUMMARY (Tally-Style Format) - Only if toggle enabled ---
+      if (invoice.gstEnabled && company.show_hsn_summary !== false) {
         yPos += 8;
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
@@ -675,6 +675,9 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit }) =>
             <h1 className="text-2xl font-bold mb-1 uppercase">{company.name}</h1>
             <p className="text-xs text-gray-600">{company.address}</p>
             <p className="text-xs text-gray-600">Ph: {company.phone} | {company.email}</p>
+            {invoice.gstEnabled && (company.gstin || company.gst) && (
+              <p className="text-xs text-green-600 font-bold mt-1">GSTIN: {company.gstin || company.gst}</p>
+            )}
           </div>
 
           <div className="border-b border-black mb-4"></div>
@@ -788,8 +791,8 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit }) =>
             </div>
           </div>
 
-          {/* HSN Summary Table for GST Invoices */}
-          {invoice.gstEnabled && (
+          {/* HSN Summary Table for GST Invoices - Only if toggle enabled */}
+          {invoice.gstEnabled && company.show_hsn_summary !== false && (
             <div className="mb-8 overflow-x-auto">
               <h3 className="text-sm font-bold text-gray-800 mb-3 uppercase">HSN-Wise Tax Summary</h3>
               <table className="w-full text-xs border-collapse">

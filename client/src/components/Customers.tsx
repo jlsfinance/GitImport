@@ -549,12 +549,154 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice }) => {
     );
   }
 
+  // Add Customer States
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [newCustomer, setNewCustomer] = useState({
+    name: '',
+    company: '',
+    email: '',
+    phone: '',
+    address: '',
+    state: '',
+    gstin: ''
+  });
+
+  const handleAddCustomer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCustomer.name || !newCustomer.company || !newCustomer.email) {
+      alert("Please fill name, company, and email");
+      return;
+    }
+    
+    const customer: Customer = {
+      id: crypto.randomUUID(),
+      name: newCustomer.name,
+      company: newCustomer.company,
+      email: newCustomer.email,
+      phone: newCustomer.phone,
+      address: newCustomer.address,
+      state: newCustomer.state,
+      gstin: newCustomer.gstin,
+      balance: 0,
+      notifications: []
+    };
+    
+    StorageService.saveCustomer(customer);
+    setCustomers(StorageService.getCustomers());
+    setShowAddCustomer(false);
+    setNewCustomer({ name: '', company: '', email: '', phone: '', address: '', state: '', gstin: '' });
+    alert("Customer added successfully!");
+  };
+
+  // Get GST status from company - need to fetch it
+  const company = StorageService.getCompanyProfile();
+  const gstEnabled = company?.gst_enabled ?? true;
+
   return (
     <div className="p-4 md:p-6">
+      {/* Add Customer Modal */}
+      {showAddCustomer && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-slate-900">Add New Customer</h3>
+              <button onClick={() => setShowAddCustomer(false)}><X className="w-5 h-5 text-gray-400 hover:text-gray-600" /></button>
+            </div>
+            <form onSubmit={handleAddCustomer} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name *</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={newCustomer.name}
+                  onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})}
+                  className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                  placeholder="Full name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={newCustomer.company}
+                  onChange={(e) => setNewCustomer({...newCustomer, company: e.target.value})}
+                  className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                  placeholder="Company name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                <input 
+                  type="email" 
+                  required 
+                  value={newCustomer.email}
+                  onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})}
+                  className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                  placeholder="email@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <input 
+                  type="tel" 
+                  value={newCustomer.phone}
+                  onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
+                  className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                  placeholder="10-digit number"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <textarea 
+                  value={newCustomer.address}
+                  onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})}
+                  rows={2}
+                  className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                  placeholder="Billing address"
+                />
+              </div>
+              {gstEnabled && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                    <input 
+                      type="text" 
+                      value={newCustomer.state}
+                      onChange={(e) => setNewCustomer({...newCustomer, state: e.target.value})}
+                      className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                      placeholder="State name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">GST Number (Optional)</label>
+                    <input 
+                      type="text" 
+                      value={newCustomer.gstin}
+                      onChange={(e) => setNewCustomer({...newCustomer, gstin: e.target.value})}
+                      className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                      placeholder="15-digit GSTIN"
+                      maxLength={15}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Only visible when GST is enabled in Settings</p>
+                  </div>
+                </>
+              )}
+              <button 
+                type="submit"
+                className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700"
+              >
+                Add Customer
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl md:text-2xl font-bold text-slate-800">Customer Portal & Ledger</h2>
         <button 
-            onClick={() => alert('Feature not implemented in this demo')}
+            onClick={() => setShowAddCustomer(true)}
             className="bg-blue-600 text-white px-3 py-2 md:px-4 rounded-md flex items-center gap-2 hover:bg-blue-700 shadow-sm text-sm md:text-base"
         >
           <UserPlus className="w-4 h-4" /> <span className="hidden sm:inline">Add Customer</span>
