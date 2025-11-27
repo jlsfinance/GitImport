@@ -35,7 +35,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCloudCon
             <Receipt className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">BillFlow</h1>
+            <h1 className="text-lg font-bold tracking-tight">BillFlow</h1>
+            <p className="text-xs text-blue-300 font-semibold">by Lavneet Rathi</p>
             <div className="flex items-center gap-1 text-[10px] font-medium mt-0.5">
               {isCloudConnected ? (
                  <span className="text-green-400 flex items-center gap-1"><Cloud className="w-3 h-3"/> Cloud Sync</span>
@@ -73,7 +74,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCloudCon
             Logout
           </button>
           <div className="text-xs text-slate-500 text-center">
-            © 2025 BillFlow Sys
+            © 2025 BillFlow<br/>by Lavneet Rathi
           </div>
         </div>
       </div>
