@@ -243,12 +243,13 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete }) => {
           )}
 
           {/* Info Box */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-xs text-blue-900">
+          <div className={`rounded-lg p-3 ${company?.gst_enabled ? 'bg-blue-50 border border-blue-200' : 'bg-amber-50 border border-amber-200'}`}>
+            <p className={`text-xs ${company?.gst_enabled ? 'text-blue-900' : 'text-amber-900'}`}>
               <span className="font-medium">Supported formats:</span><br/>
-              • Excel: Products sheet with Name, Price, Stock, HSN, GST Rate<br/>
-              • Excel: Customers sheet with Name, Email, Phone, Address, State, GSTIN<br/>
+              • Excel: Products sheet with Name, Price, Stock{company?.gst_enabled ? ', HSN, GST Rate' : ''}<br/>
+              • Excel: Customers sheet with Name, Email, Phone, Address{company?.gst_enabled ? ', State, GSTIN' : ''}<br/>
               • Tally XML: Extract ITEM and LEDGER masters
+              {!company?.gst_enabled && <><br/><br/><span className="font-medium">⚠️ GST is currently disabled</span> - GST fields will be ignored</>}
             </p>
           </div>
         </div>
