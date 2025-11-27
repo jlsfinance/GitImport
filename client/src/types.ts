@@ -110,6 +110,7 @@ export interface CompanyProfile {
   gst?: string;
   gst_enabled?: boolean;
   show_hsn_summary?: boolean;
+  roundUpDefault?: 0 | 10 | 100; // Default round-up for all invoices (0 = no rounding)
 }
 
 // Mock Data Defaults

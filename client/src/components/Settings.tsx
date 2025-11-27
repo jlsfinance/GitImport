@@ -23,6 +23,7 @@ const Settings: React.FC = () => {
   const [gstEnabled, setGstEnabled] = useState(company?.gst_enabled ?? true);
   const [gstNumber, setGstNumber] = useState(company?.gst ?? '');
   const [showHSNSummary, setShowHSNSummary] = useState(company?.show_hsn_summary ?? true);
+  const [roundUpDefault, setRoundUpDefault] = useState<0 | 10 | 100>(company?.roundUpDefault ?? 0);
   const [importStatus, setImportStatus] = useState<'IDLE' | 'SUCCESS' | 'ERROR'>('IDLE');
   const [isFirebaseReady, setIsFirebaseReady] = useState(false);
   const [showAutoFill, setShowAutoFill] = useState(false);
@@ -42,6 +43,7 @@ const Settings: React.FC = () => {
         });
         setGstEnabled(company.gst_enabled ?? true);
         setGstNumber(company.gst || '');
+        setRoundUpDefault(company.roundUpDefault ?? 0);
     } else {
         // Fallback to local storage
         const currentProfile = StorageService.getCompanyProfile();
@@ -77,7 +79,8 @@ const Settings: React.FC = () => {
             email: profile.email,
             gst: gstNumber,
             gst_enabled: gstEnabled,
-            show_hsn_summary: showHSNSummary
+            show_hsn_summary: showHSNSummary,
+            roundUpDefault: roundUpDefault
         });
         
         // Also update local storage for offline backup
