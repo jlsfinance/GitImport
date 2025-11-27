@@ -16,19 +16,27 @@ export const Auth = () => {
     setLoading(true);
 
     try {
+      console.log("Starting sign in/up process...");
       if (isLogin) {
+        console.log("Attempting sign in with:", email);
         await signIn(email, password);
+        console.log("Sign in successful!");
       } else {
+        console.log("Attempting sign up with:", email);
         await signUp(email, password);
+        console.log("Sign up successful!");
       }
     } catch (err: any) {
-      console.error("Auth Error:", err);
+      console.error("Auth Error Full Object:", err);
+      console.error("Auth Error Code:", err.code);
+      console.error("Auth Error Message:", err.message);
       let msg = "Authentication failed.";
-      if (err.message?.includes("auth/invalid-email")) msg = "Invalid email address.";
-      if (err.message?.includes("auth/user-not-found") || err.message?.includes("auth/invalid-credential")) msg = "Invalid email or password.";
-      if (err.message?.includes("auth/wrong-password")) msg = "Incorrect password.";
-      if (err.message?.includes("auth/email-already-in-use")) msg = "Email already registered.";
-      if (err.message?.includes("auth/weak-password")) msg = "Password should be at least 6 characters.";
+      if (err.code?.includes("auth/invalid-email") || err.message?.includes("auth/invalid-email")) msg = "Invalid email address.";
+      if (err.code?.includes("auth/user-not-found") || err.code?.includes("auth/invalid-credential")) msg = "Invalid email or password.";
+      if (err.code?.includes("auth/wrong-password")) msg = "Incorrect password.";
+      if (err.code?.includes("auth/email-already-in-use")) msg = "Email already registered.";
+      if (err.code?.includes("auth/weak-password")) msg = "Password should be at least 6 characters.";
+      if (err.code?.includes("auth/network-request-failed")) msg = "Network error. Check your connection.";
       setError(msg);
     } finally {
       setLoading(false);
