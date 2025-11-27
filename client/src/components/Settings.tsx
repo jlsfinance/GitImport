@@ -22,6 +22,7 @@ const Settings: React.FC = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [gstEnabled, setGstEnabled] = useState(company?.gst_enabled ?? true);
   const [gstNumber, setGstNumber] = useState(company?.gst ?? '');
+  const [showHSNSummary, setShowHSNSummary] = useState(company?.show_hsn_summary ?? true);
   const [importStatus, setImportStatus] = useState<'IDLE' | 'SUCCESS' | 'ERROR'>('IDLE');
   const [isFirebaseReady, setIsFirebaseReady] = useState(false);
   const [showAutoFill, setShowAutoFill] = useState(false);
@@ -75,7 +76,8 @@ const Settings: React.FC = () => {
             phone: profile.phone,
             email: profile.email,
             gst: gstNumber,
-            gst_enabled: gstEnabled
+            gst_enabled: gstEnabled,
+            show_hsn_summary: showHSNSummary
         });
         
         // Also update local storage for offline backup
@@ -197,16 +199,30 @@ const Settings: React.FC = () => {
                   <p className="text-xs text-blue-700 mt-2">When enabled, GST rate can be set per item in invoices</p>
                 </div>
                 {gstEnabled && (
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">GST Number</label>
-                    <input
-                      type="text"
-                      value={gstNumber}
-                      onChange={(e) => setGstNumber(e.target.value)}
-                      placeholder="Your GST Registration Number"
-                      className="w-full rounded-md border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    />
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">GST Number</label>
+                      <input
+                        type="text"
+                        value={gstNumber}
+                        onChange={(e) => setGstNumber(e.target.value)}
+                        placeholder="Your GST Registration Number"
+                        className="w-full rounded-md border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={showHSNSummary}
+                          onChange={(e) => setShowHSNSummary(e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-300"
+                        />
+                        <span className="text-sm font-medium text-slate-700">Show HSN Summary in Invoices</span>
+                      </label>
+                      <p className="text-xs text-slate-500 mt-1 ml-7">Display HSN-wise tax summary in invoice PDFs (Tally format)</p>
+                    </div>
+                  </>
                 )}
                 <div className="grid grid-cols-1 gap-4">
                   <div>

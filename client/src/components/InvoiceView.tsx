@@ -161,7 +161,18 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit }) =>
       doc.text(company.address, a4Width / 2, yPos, { align: "center" });
       yPos += 4;
       doc.text(`Ph: ${company.phone} | ${company.email}`, a4Width / 2, yPos, { align: "center" });
-      yPos += 6;
+      yPos += 4;
+      
+      // Company GSTIN (if GST enabled)
+      if (invoice.gstEnabled && company.gstin) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(34, 197, 94);
+        doc.text(`GSTIN: ${company.gstin}`, a4Width / 2, yPos, { align: "center" });
+        yPos += 4;
+        doc.setTextColor(80);
+      }
+      yPos += 2;
 
       // Separator Line
       doc.setDrawColor(0);
@@ -361,59 +372,97 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit }) =>
           yPos += 8;
       }
 
-      // --- HSN SUMMARY (for GST invoices) ---
+      // --- HSN SUMMARY (Tally-Style Format) ---
       if (invoice.gstEnabled) {
         yPos += 8;
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
-        doc.text("HSN-WISE TAX SUMMARY", leftMargin, yPos);
+        doc.text("HSN-WISE TAX SUMMARY (TALLY FORMAT)", leftMargin, yPos);
         yPos += 6;
 
         const hsnSummary = getHSNSummary(invoice, company);
-        const colWidths = { hsn: 20, desc: 50, qty: 15, taxVal: 30, cgst: 20, sgst: 20, igst: 20, tax: 25 };
-        const colStart = { hsn: leftMargin, desc: leftMargin + colWidths.hsn, qty: leftMargin + colWidths.hsn + colWidths.desc, taxVal: leftMargin + colWidths.hsn + colWidths.desc + colWidths.qty, cgst: 0, sgst: 0, igst: 0, tax: rightMargin - 25 };
-
-        // Header
-        doc.setFillColor(240, 240, 240);
-        doc.rect(leftMargin, yPos - 4, rightMargin - leftMargin, 6, 'F');
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "bold");
-        doc.text("HSN", colStart.hsn, yPos);
-        doc.text("Description", colStart.desc, yPos);
-        doc.text("Qty", colStart.qty, yPos, { align: "right" });
-        doc.text("Taxable Val", colStart.taxVal, yPos, { align: "right" });
-        if ((invoice.totalCgst || 0) > 0) doc.text("CGST", rightMargin - 70, yPos, { align: "right" });
-        if ((invoice.totalSgst || 0) > 0) doc.text("SGST", rightMargin - 45, yPos, { align: "right" });
-        if ((invoice.totalIgst || 0) > 0) doc.text("IGST", rightMargin - 45, yPos, { align: "right" });
-        doc.text("Total Tax", rightMargin - 5, yPos, { align: "right" });
+        const isInterState = invoice.supplierState !== invoice.buyerState;
         
-        yPos += 7;
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "normal");
+        // Tally-style column positions
+        const col = {
+          hsn: leftMargin + 5,
+          desc: leftMargin + 22,
+          uom: leftMargin + 52,
+          qty: leftMargin + 62,
+          taxVal: leftMargin + 80,
+          cgst: isInterState ? 0 : leftMargin + 110,
+          sgst: isInterState ? 0 : leftMargin + 135,
+          igst: isInterState ? leftMargin + 110 : 0,
+          totalTax: rightMargin - 20
+        };
 
-        // Rows
+        // Header Background
+        doc.setFillColor(220, 220, 220);
+        doc.rect(leftMargin, yPos - 5, rightMargin - leftMargin, 7, 'F');
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0);
+        
+        doc.text("HSN/SAC", col.hsn, yPos);
+        doc.text("Description", col.desc, yPos);
+        doc.text("UOM", col.uom, yPos);
+        doc.text("Qty", col.qty, yPos, { align: "right" });
+        doc.text("Taxable Value", col.taxVal, yPos, { align: "right" });
+        if (!isInterState) {
+          doc.text("CGST%", col.cgst, yPos, { align: "right" });
+          doc.text("CGST Amt", col.cgst + 15, yPos, { align: "right" });
+          doc.text("SGST%", col.sgst, yPos, { align: "right" });
+          doc.text("SGST Amt", col.sgst + 15, yPos, { align: "right" });
+        } else {
+          doc.text("IGST%", col.igst, yPos, { align: "right" });
+          doc.text("IGST Amt", col.igst + 15, yPos, { align: "right" });
+        }
+        doc.text("Total Tax", col.totalTax, yPos, { align: "right" });
+        
+        yPos += 8;
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(0);
+
+        // Data rows
         hsnSummary.forEach(group => {
+          const gstRate = group.gstRate || 0;
           const totalTax = group.cgstAmount + group.sgstAmount + group.igstAmount;
-          doc.text((group.hsn || 'N/A').substring(0, 10), colStart.hsn, yPos);
-          doc.text(group.description.substring(0, 25), colStart.desc, yPos);
-          doc.text(group.quantity.toString(), colStart.qty, yPos, { align: "right" });
-          doc.text(`${group.baseAmount.toFixed(2)}`, colStart.taxVal, yPos, { align: "right" });
-          if ((invoice.totalCgst || 0) > 0) doc.text(`${group.cgstAmount.toFixed(2)}`, rightMargin - 70, yPos, { align: "right" });
-          if ((invoice.totalSgst || 0) > 0) doc.text(`${group.sgstAmount.toFixed(2)}`, rightMargin - 45, yPos, { align: "right" });
-          if ((invoice.totalIgst || 0) > 0) doc.text(`${group.igstAmount.toFixed(2)}`, rightMargin - 45, yPos, { align: "right" });
-          doc.text(`${totalTax.toFixed(2)}`, rightMargin - 5, yPos, { align: "right" });
+          
+          doc.text((group.hsn || 'N/A'), col.hsn, yPos);
+          doc.text(group.description.substring(0, 20), col.desc, yPos);
+          doc.text('PCS', col.uom, yPos);
+          doc.text(group.quantity.toString(), col.qty, yPos, { align: "right" });
+          doc.text(`${group.baseAmount.toFixed(2)}`, col.taxVal, yPos, { align: "right" });
+          
+          if (!isInterState) {
+            doc.text(`${(gstRate/2).toFixed(1)}%`, col.cgst, yPos, { align: "right" });
+            doc.text(`${group.cgstAmount.toFixed(2)}`, col.cgst + 15, yPos, { align: "right" });
+            doc.text(`${(gstRate/2).toFixed(1)}%`, col.sgst, yPos, { align: "right" });
+            doc.text(`${group.sgstAmount.toFixed(2)}`, col.sgst + 15, yPos, { align: "right" });
+          } else {
+            doc.text(`${gstRate.toFixed(1)}%`, col.igst, yPos, { align: "right" });
+            doc.text(`${group.igstAmount.toFixed(2)}`, col.igst + 15, yPos, { align: "right" });
+          }
+          doc.text(`${totalTax.toFixed(2)}`, col.totalTax, yPos, { align: "right" });
           yPos += 6;
         });
 
-        // Total row
+        // Total row - bold separator
         doc.setFont("helvetica", "bold");
-        doc.line(leftMargin, yPos - 1, rightMargin, yPos - 1);
-        doc.text("TOTAL", colStart.hsn, yPos);
-        doc.text(`${invoice.subtotal.toFixed(2)}`, colStart.taxVal, yPos, { align: "right" });
-        if ((invoice.totalCgst || 0) > 0) doc.text(`${(invoice.totalCgst || 0).toFixed(2)}`, rightMargin - 70, yPos, { align: "right" });
-        if ((invoice.totalSgst || 0) > 0) doc.text(`${(invoice.totalSgst || 0).toFixed(2)}`, rightMargin - 45, yPos, { align: "right" });
-        if ((invoice.totalIgst || 0) > 0) doc.text(`${(invoice.totalIgst || 0).toFixed(2)}`, rightMargin - 45, yPos, { align: "right" });
-        doc.text(`${((invoice.totalCgst || 0) + (invoice.totalSgst || 0) + (invoice.totalIgst || 0)).toFixed(2)}`, rightMargin - 5, yPos, { align: "right" });
+        doc.line(leftMargin, yPos, rightMargin, yPos);
+        yPos += 5;
+        
+        doc.text("TOTAL", col.hsn, yPos);
+        doc.text(`${invoice.subtotal.toFixed(2)}`, col.taxVal, yPos, { align: "right" });
+        
+        if (!isInterState) {
+          doc.text(`${(invoice.totalCgst || 0).toFixed(2)}`, col.cgst + 15, yPos, { align: "right" });
+          doc.text(`${(invoice.totalSgst || 0).toFixed(2)}`, col.sgst + 15, yPos, { align: "right" });
+        } else {
+          doc.text(`${(invoice.totalIgst || 0).toFixed(2)}`, col.igst + 15, yPos, { align: "right" });
+        }
+        doc.text(`${((invoice.totalCgst || 0) + (invoice.totalSgst || 0) + (invoice.totalIgst || 0)).toFixed(2)}`, col.totalTax, yPos, { align: "right" });
         yPos += 8;
       }
 
