@@ -50,57 +50,99 @@ const RecognizeBill: React.FC<RecognizeBillProps> = ({ onClose, onExtract }) => 
     });
   };
 
-  const parseInvoiceText = (text: string) => {
+  const parseInvoiceWithAI = async (text: string) => {
+    try {
+      setStatus({type: 'idle', message: 'Using AI to understand bill format...'});
+      
+      // Call backend API to use Gemini for parsing
+      const response = await fetch('/api/parse-bill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ billText: text })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to parse bill with AI');
+      }
+
+      const parsedData = await response.json();
+      
+      // Validate and transform the response
+      const items = (parsedData.items || []).map((item: any) => ({
+        productId: '',
+        description: item.name || item.description || 'Item',
+        quantity: parseFloat(item.quantity) || 1,
+        rate: parseFloat(item.rate) || parseFloat(item.price) || 0,
+        baseAmount: parseFloat(item.baseAmount) || (parseFloat(item.quantity) * parseFloat(item.rate)) || 0,
+        hsn: item.hsn || '',
+        gstRate: parseFloat(item.gstRate) || parseFloat(item.gst) || 0,
+        cgstAmount: 0,
+        sgstAmount: 0,
+        igstAmount: 0,
+        totalAmount: parseFloat(item.totalAmount) || (parseFloat(item.quantity) * parseFloat(item.rate)) || 0
+      }));
+
+      const customers = [{
+        id: Math.random().toString(36).substr(2, 9),
+        name: parsedData.customerName || parsedData.vendorName || 'Recognized Customer',
+        company: parsedData.company || '',
+        email: parsedData.email || '',
+        phone: parsedData.phone || '',
+        address: parsedData.address || '',
+        state: parsedData.state || '',
+        gstin: parsedData.gstin || parsedData.gstNumber || '',
+        balance: 0,
+        notifications: []
+      }];
+
+      return { items, customers };
+    } catch (error) {
+      // Fallback to basic parsing if AI fails
+      console.log('AI parsing failed, using fallback regex...');
+      return parseInvoiceTextBasic(text);
+    }
+  };
+
+  const parseInvoiceTextBasic = (text: string) => {
     const items: InvoiceItem[] = [];
     const customers: Customer[] = [];
 
-    // Extract customer name (usually after "Bill To" or "Customer")
-    const billToMatch = text.match(/(?:Bill\s+To|Customer|Billed\s+To|TO:?)\s*([^\n]+)/i);
+    // Extract customer name
+    const billToMatch = text.match(/(?:Bill\s+To|Customer|Billed\s+To|Vendor|TO:?|From:?)\s*([^\n]+)/i);
     const customerName = billToMatch?.[1]?.trim() || 'Recognized Customer';
     
-    // Extract GSTIN if present
-    const gstinMatch = text.match(/(?:GSTIN|GST\s+No|GSTNO|GST IN)?[\s:]*([0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[0-9]{1})/i);
+    // Extract GSTIN
+    const gstinMatch = text.match(/(?:GSTIN|GST\s+(?:IN|No)|GSTNO)?[\s:]*([0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[0-9]{1})/i);
     const gstin = gstinMatch?.[1]?.trim() || '';
 
-    // Extract items - look for patterns like "Product Name - Qty X Rate 100 Amount 1000"
-    const itemPattern = /([A-Za-z\s]+?)\s+(\d+(?:\.\d+)?)\s*(?:x|@|qty|Qty)\s*(?:₹?)?\s*(\d+(?:\.\d+)?)\s*(?:=|Amount)?[\s₹]*(\d+(?:\.\d+)?)?/gi;
-    let match;
+    // Try multiple patterns for items
+    const patterns = [
+      /([A-Za-z\s]+?)\s+(\d+(?:\.\d+)?)\s*(?:x|@|\*)\s*(?:₹?)?\s*(\d+(?:\.\d+)?)\s*(?:=)?[\s₹]*(\d+(?:\.\d+)?)?/gi,
+      /([A-Za-z\s]+?)\s+Qty:?\s*(\d+)\s+(?:@|Rs|₹)?\s*(\d+(?:\.\d+)?)\s*(?:=|Total)?[\s₹]*(\d+(?:\.\d+)?)?/gi,
+      /([A-Za-z\s]+)\s+(\d+)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)/g
+    ];
 
-    while ((match = itemPattern.exec(text)) !== null) {
-      if (match[1].length > 3 && match[1].length < 50) {
-        const gstMatch = text.match(/(\d+(?:\.\d+)?)[\s%]*(?:GST|CGST|SGST|IGST)/i);
-        items.push({
-          productId: '',
-          description: match[1].trim(),
-          quantity: parseFloat(match[2]),
-          rate: parseFloat(match[3]),
-          baseAmount: parseFloat(match[3]) * parseFloat(match[2]),
-          gstRate: gstMatch ? parseFloat(gstMatch[1]) : 0,
-          cgstAmount: 0,
-          sgstAmount: 0,
-          igstAmount: 0,
-          totalAmount: parseFloat(match[4]) || (parseFloat(match[3]) * parseFloat(match[2]))
-        });
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        if (match[1].length > 2 && match[1].length < 60 && !match[1].match(/total|amount|gst|tax/i)) {
+          const gstMatch = text.match(/(\d+(?:\.\d+)?)[\s%]*(?:GST|CGST|SGST|IGST)/i);
+          items.push({
+            productId: '',
+            description: match[1].trim(),
+            quantity: parseFloat(match[2]),
+            rate: parseFloat(match[3]),
+            baseAmount: parseFloat(match[3]) * parseFloat(match[2]),
+            gstRate: gstMatch ? parseFloat(gstMatch[1]) : 0,
+            cgstAmount: 0,
+            sgstAmount: 0,
+            igstAmount: 0,
+            totalAmount: parseFloat(match[4]) || (parseFloat(match[3]) * parseFloat(match[2]))
+          });
+        }
       }
-    }
-
-    if (items.length === 0) {
-      // Fallback: try to find any numbers that look like line items
-      const linePattern = /([A-Za-z\s]+)\s+(\d+)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)/g;
-      while ((match = linePattern.exec(text)) !== null) {
-        items.push({
-          productId: '',
-          description: match[1].trim(),
-          quantity: parseInt(match[2]),
-          rate: parseFloat(match[3]),
-          baseAmount: parseFloat(match[3]) * parseInt(match[2]),
-          gstRate: 0,
-          cgstAmount: 0,
-          sgstAmount: 0,
-          igstAmount: 0,
-          totalAmount: parseFloat(match[4])
-        });
-      }
+      if (items.length > 0) break;
     }
 
     customers.push({
@@ -110,6 +152,7 @@ const RecognizeBill: React.FC<RecognizeBillProps> = ({ onClose, onExtract }) => 
       email: '',
       phone: '',
       address: '',
+      state: '',
       gstin: gstin,
       balance: 0,
       notifications: []
@@ -141,7 +184,7 @@ const RecognizeBill: React.FC<RecognizeBillProps> = ({ onClose, onExtract }) => 
       }
 
       setExtractedText(text);
-      const parsed = parseInvoiceText(text);
+      const parsed = await parseInvoiceWithAI(text);
       setRecognizedData(parsed);
 
       setStatus({
