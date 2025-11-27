@@ -84,18 +84,31 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit }) =>
   const [showOptions, setShowOptions] = useState(false);
 
   useEffect(() => {
+    let companyData: CompanyProfile;
+    
     if (firebaseCompany?.name) {
-      setCompany({
+      companyData = {
         name: firebaseCompany.name || '',
         address: firebaseCompany.address || '',
         phone: firebaseCompany.phone || '',
         email: firebaseCompany.email || '',
         state: firebaseCompany.state || '',
-        gstin: firebaseCompany.gstin || ''
-      });
+        gst: firebaseCompany.gst || '',
+        gstin: firebaseCompany.gstin || firebaseCompany.gst || '',
+        gst_enabled: firebaseCompany.gst_enabled ?? true,
+        show_hsn_summary: firebaseCompany.show_hsn_summary ?? true
+      };
     } else {
-      setCompany(StorageService.getCompanyProfile());
+      const stored = StorageService.getCompanyProfile();
+      companyData = {
+        ...stored,
+        gstin: stored.gstin || stored.gst || '',
+        gst_enabled: stored.gst_enabled ?? true,
+        show_hsn_summary: stored.show_hsn_summary ?? true
+      };
     }
+    
+    setCompany(companyData);
     const foundCustomer = StorageService.getCustomers().find(c => c.id === invoice.customerId);
     setCustomer(foundCustomer || null);
   }, [invoice, firebaseCompany]);
