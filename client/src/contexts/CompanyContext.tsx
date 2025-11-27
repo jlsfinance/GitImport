@@ -12,6 +12,9 @@ interface CompanyData {
   email?: string;
   show_hsn_summary?: boolean;
   roundUpDefault?: 0 | 10 | 100;
+  invoicePrefix?: string;
+  invoiceNextNumber?: number;
+  invoiceSuffix?: string;
 }
 
 interface CompanyContextType {

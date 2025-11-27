@@ -80,6 +80,7 @@ export interface InvoiceItem {
 export interface Invoice {
   id: string;
   invoiceNumber: string;
+  invoiceNumberRaw?: number;
   customerId: string;
   customerName: string;
   customerAddress: string;
@@ -101,12 +102,6 @@ export interface Invoice {
   status: 'PAID' | 'PENDING' | 'OVERDUE';
 }
 
-export interface InvoiceNumberSettings {
-    prefix?: string;
-    suffix?: string;
-    startNumber?: number;
-}
-
 export interface CompanyProfile {
   name: string;
   address: string;
@@ -118,7 +113,9 @@ export interface CompanyProfile {
   gst_enabled?: boolean;
   show_hsn_summary?: boolean;
   roundUpDefault?: 0 | 10 | 100; // Default round-up for all invoices (0 = no rounding)
-  invoiceNumberSettings?: InvoiceNumberSettings;
+  invoicePrefix?: string;
+  invoiceNextNumber?: number;
+  invoiceSuffix?: string;
 }
 
 // Mock Data Defaults

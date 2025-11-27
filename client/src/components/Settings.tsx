@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CompanyProfile, FirebaseConfig } from '../types';
 import { StorageService } from '../services/storageService';
-import { Save, Building2, Phone, Mail, MapPin, Database, Download, Upload, AlertCircle, Cloud, CheckCircle, XCircle, Wand2, ExternalLink, Wifi, WifiOff } from 'lucide-react';
+import { Save, Building2, Phone, Mail, MapPin, Database, Download, Upload, AlertCircle, Cloud, CheckCircle, XCircle, Wand2, ExternalLink, Wifi, WifiOff, FileText } from 'lucide-react';
 import { FirebaseService } from '../services/firebaseService';
 import { useCompany } from '@/contexts/CompanyContext';
 
@@ -24,6 +24,12 @@ const Settings: React.FC = () => {
   const [gstNumber, setGstNumber] = useState(company?.gst ?? '');
   const [showHSNSummary, setShowHSNSummary] = useState(company?.show_hsn_summary ?? true);
   const [roundUpDefault, setRoundUpDefault] = useState<0 | 10 | 100>(company?.roundUpDefault ?? 0);
+  
+  // New state for invoice numbering
+  const [invoicePrefix, setInvoicePrefix] = useState(company?.invoicePrefix ?? 'INV-');
+  const [invoiceNextNumber, setInvoiceNextNumber] = useState(company?.invoiceNextNumber ?? 1);
+  const [invoiceSuffix, setInvoiceSuffix] = useState(company?.invoiceSuffix ?? '');
+
   const [importStatus, setImportStatus] = useState<'IDLE' | 'SUCCESS' | 'ERROR'>('IDLE');
   const [isFirebaseReady, setIsFirebaseReady] = useState(false);
   const [showAutoFill, setShowAutoFill] = useState(false);
@@ -45,6 +51,9 @@ const Settings: React.FC = () => {
         setGstNumber(company.gst || '');
         setShowHSNSummary(company.show_hsn_summary ?? true);
         setRoundUpDefault(company.roundUpDefault ?? 0);
+        setInvoicePrefix(company.invoicePrefix ?? 'INV-');
+        setInvoiceNextNumber(company.invoiceNextNumber ?? 1);
+        setInvoiceSuffix(company.invoiceSuffix ?? '');
     } else {
         // Fallback to local storage
         const currentProfile = StorageService.getCompanyProfile();
@@ -81,7 +90,10 @@ const Settings: React.FC = () => {
             gst: gstNumber,
             gst_enabled: gstEnabled,
             show_hsn_summary: showHSNSummary,
-            roundUpDefault: roundUpDefault
+            roundUpDefault: roundUpDefault,
+            invoicePrefix: invoicePrefix,
+            invoiceNextNumber: invoiceNextNumber,
+            invoiceSuffix: invoiceSuffix
         });
         
         // Also update local storage for offline backup
@@ -173,6 +185,8 @@ const Settings: React.FC = () => {
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+  
+  const generatedInvoiceNumberPreview = `${invoicePrefix || ''}${invoiceNextNumber || ''}${invoiceSuffix || ''}`;
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto pb-24">
@@ -341,6 +355,133 @@ const Settings: React.FC = () => {
             </div>
           </form>
         </div>
+        
+        {/* Data Management Section */}
+        <div className="lg:col-span-2">
+           <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+             <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+               <h3 className="text-lg font-medium text-slate-900 flex items-center gap-2">
+                  <Database className="w-5 h-5 text-purple-600" /> Data Management
+                </h3>
+             </div>
+             <div className="p-6">
+                <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-100 mb-6 flex gap-3">
+                    <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-yellow-800">
+                        <p className="font-bold mb-1">Important Note</p>
+                        This application stores data in your browser. To prevent data loss, please download a backup regularly or before clearing your browser history.
+                    </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4">
+                    <button 
+                      onClick={handleDownloadBackup}
+                      className="flex-1 flex items-center justify-center gap-2 p-4 border-2 border-slate-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all group text-slate-700"
+                    >
+                        <div className="bg-blue-100 p-2 rounded-full group-hover:bg-blue-200 transition-colors">
+                            <Download className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <div className="text-left">
+                            <div className="font-bold">Download Backup</div>
+                            <div className="text-xs text-slate-500">Save data as JSON file</div>
+                        </div>
+                    </button>
+
+                    <button 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex-1 flex items-center justify-center gap-2 p-4 border-2 border-slate-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all group text-slate-700"
+                    >
+                        <div className="bg-green-100 p-2 rounded-full group-hover:bg-green-200 transition-colors">
+                            <Upload className="w-6 h-6 text-green-600" />
+                        </div>
+                        <div className="text-left">
+                            <div className="font-bold">Restore Backup</div>
+                            <div className="text-xs text-slate-500">Import JSON file</div>
+                        </div>
+                        <input 
+                           type="file" 
+                           ref={fileInputRef}
+                           onChange={handleImportBackup}
+                           accept=".json"
+                           className="hidden"
+                        />
+                    </button>
+                </div>
+
+                {importStatus === 'SUCCESS' && (
+                    <div className="mt-4 p-3 bg-green-100 text-green-800 rounded text-center text-sm">
+                        Data restored successfully! Reloading app...
+                    </div>
+                )}
+                 {importStatus === 'ERROR' && (
+                    <div className="mt-4 p-3 bg-red-100 text-red-800 rounded text-center text-sm">
+                        Failed to restore data. Invalid file format.
+                    </div>
+                )}
+             </div>
+           </div>
+        </div>
+        
+        {/* Invoice Numbering Section */}
+        <div className="lg:col-span-2">
+           <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+             <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+               <h3 className="text-lg font-medium text-slate-900 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-indigo-600" /> Invoice Numbering
+                </h3>
+             </div>
+             <div className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Prefix</label>
+                        <input
+                            type="text"
+                            value={invoicePrefix}
+                            onChange={(e) => setInvoicePrefix(e.target.value)}
+                            placeholder="e.g. INV-"
+                            className="w-full rounded-md border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Next Number</label>
+                        <input
+                            type="number"
+                            value={invoiceNextNumber}
+                            onChange={(e) => setInvoiceNextNumber(parseInt(e.target.value, 10))}
+                            placeholder="e.g. 1001"
+                            className="w-full rounded-md border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Suffix</label>
+                        <input
+                            type="text"
+                            value={invoiceSuffix}
+                            onChange={(e) => setInvoiceSuffix(e.target.value)}
+                            placeholder="e.g. /24-25"
+                            className="w-full rounded-md border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                        />
+                    </div>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                    <p className="text-sm font-medium text-slate-600">Preview:</p>
+                    <p className="text-lg font-mono font-bold text-slate-800">{generatedInvoiceNumberPreview}</p>
+                </div>
+             </div>
+             <div className="bg-gray-50 px-6 py-4 flex justify-between items-center">
+              <div className="text-sm text-green-600 font-medium">
+                {isSaved && 'Settings saved successfully!'}
+              </div>
+              <button
+                type="submit"
+                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium shadow-sm transition-colors"
+              >
+                <Save className="w-4 h-4" /> Save Changes
+              </button>
+            </div>
+           </form>
+        </div>
+
 
         {/* Firebase Configuration */}
         <div className="lg:col-span-2">
@@ -430,73 +571,6 @@ const Settings: React.FC = () => {
                 </div>
             </form>
         </div>
-
-        {/* Data Management Section */}
-        <div className="lg:col-span-2">
-           <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-             <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-               <h3 className="text-lg font-medium text-slate-900 flex items-center gap-2">
-                  <Database className="w-5 h-5 text-purple-600" /> Data Management
-                </h3>
-             </div>
-             <div className="p-6">
-                <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-100 mb-6 flex gap-3">
-                    <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm text-yellow-800">
-                        <p className="font-bold mb-1">Important Note</p>
-                        This application stores data in your browser. To prevent data loss, please download a backup regularly or before clearing your browser history.
-                    </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-4">
-                    <button 
-                      onClick={handleDownloadBackup}
-                      className="flex-1 flex items-center justify-center gap-2 p-4 border-2 border-slate-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all group text-slate-700"
-                    >
-                        <div className="bg-blue-100 p-2 rounded-full group-hover:bg-blue-200 transition-colors">
-                            <Download className="w-6 h-6 text-blue-600" />
-                        </div>
-                        <div className="text-left">
-                            <div className="font-bold">Download Backup</div>
-                            <div className="text-xs text-slate-500">Save data as JSON file</div>
-                        </div>
-                    </button>
-
-                    <button 
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex-1 flex items-center justify-center gap-2 p-4 border-2 border-slate-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all group text-slate-700"
-                    >
-                        <div className="bg-green-100 p-2 rounded-full group-hover:bg-green-200 transition-colors">
-                            <Upload className="w-6 h-6 text-green-600" />
-                        </div>
-                        <div className="text-left">
-                            <div className="font-bold">Restore Backup</div>
-                            <div className="text-xs text-slate-500">Import JSON file</div>
-                        </div>
-                        <input 
-                           type="file" 
-                           ref={fileInputRef}
-                           onChange={handleImportBackup}
-                           accept=".json"
-                           className="hidden"
-                        />
-                    </button>
-                </div>
-
-                {importStatus === 'SUCCESS' && (
-                    <div className="mt-4 p-3 bg-green-100 text-green-800 rounded text-center text-sm">
-                        Data restored successfully! Reloading app...
-                    </div>
-                )}
-                 {importStatus === 'ERROR' && (
-                    <div className="mt-4 p-3 bg-red-100 text-red-800 rounded text-center text-sm">
-                        Failed to restore data. Invalid file format.
-                    </div>
-                )}
-             </div>
-           </div>
-        </div>
-
       </div>
 
       {/* Auto Fill Modal */}
