@@ -109,10 +109,16 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       const periodStart = startDate ? formatDate(startDate) : '1-Apr';
       const periodEnd = endDate ? formatDate(endDate) : 'Today';
       doc.text(`Period: ${periodStart} to ${periodEnd}`, pageWidth / 2, yPos, { align: 'center' });
-      yPos += 10;
+      yPos += 8;
 
       // Separator line
       doc.line(leftMargin, yPos, pageWidth - leftMargin, yPos);
+      yPos += 8;
+
+      // Bold Ledger Report Line
+      doc.setFontSize(normalFont);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Ledger Report of ${customer.name}`, pageWidth / 2, yPos, { align: 'center' });
       yPos += 10;
 
       // Check if we need new page
@@ -201,6 +207,13 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       doc.setFont('helvetica', 'bold');
       doc.text('Closing Balance', rightMargin + 2, yPos);
       doc.text(formatCurrency(balance), pageWidth - leftMargin - 10, yPos, { align: 'right' });
+
+      // Aakpa Balance Section
+      doc.setFontSize(normalFont);
+      doc.setFont('helvetica', 'bold');
+      const balanceText = balance >= 0 ? formatCurrency(balance) : 'jma hai';
+      doc.text(`Aakpa Balance (${balanceText})`, leftMargin, yPos);
+      yPos += 10;
 
       // Footer
       yPos = pageHeight - 25;
@@ -291,6 +304,11 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
           </div>
         </div>
 
+        {/* Bold Ledger Report Line */}
+        <div className="text-center font-bold text-sm mb-6">
+          Ledger Report of {customer?.name}
+        </div>
+
         {/* Two-Column Ledger Layout */}
         <div className="mb-8">
           <table className="w-full border-collapse mb-4">
@@ -370,6 +388,13 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
               </tr>
             </tbody>
           </table>
+        </div>
+
+        {/* Aakpa Balance Section */}
+        <div className="my-8 pt-6 border-t-2 border-slate-400 text-sm">
+          <div className="font-bold">
+            Aakpa Balance ({balance >= 0 ? formatCurrency(balance) : 'jma hai'})
+          </div>
         </div>
 
         {/* Footer */}
