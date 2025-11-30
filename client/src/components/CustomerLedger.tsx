@@ -208,21 +208,21 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       doc.text('Closing Balance', rightMargin + 2, yPos);
       doc.text(formatCurrency(balance), pageWidth - leftMargin - 10, yPos, { align: 'right' });
 
-      // Aakpa Balance Section
-      doc.setFontSize(normalFont);
+      // Aakpa Balance Section - Centered and Larger
+      doc.setFontSize(normalFont + 1);
       doc.setFont('helvetica', 'bold');
       const balanceStatus = balance < 0 ? 'jama hai' : balance > 0 ? 'baaki h' : 'balance';
-      doc.text(`Aakpa Balance ${balanceStatus} Rs ${Math.abs(balance).toFixed(2)}`, leftMargin, yPos);
-      yPos += 10;
+      doc.text(`Aakpa Balance ${balanceStatus} Rs ${Math.abs(balance).toFixed(2)}`, pageWidth / 2, yPos, { align: 'center' });
+      yPos += 12;
 
-      // Footer - Signature and Company Name
-      yPos = pageHeight - 30;
+      // Footer - Signature and Company Name on Right
+      yPos = pageHeight - 25;
       doc.setFontSize(smallFont);
       doc.setFont('helvetica', 'normal');
-      doc.line(rightMargin + 20, yPos, rightMargin + 50, yPos);
-      yPos += 8;
+      doc.line(pageWidth - leftMargin - 30, yPos, pageWidth - leftMargin, yPos);
+      yPos += 7;
       doc.setFont('helvetica', 'bold');
-      doc.text(company?.name || 'Company', rightMargin + 20, yPos);
+      doc.text(company?.name || 'Company', pageWidth - leftMargin - 15, yPos, { align: 'center' });
 
       const fileName = `${customer?.name || 'Customer'}-confirmation-accounts.pdf`;
       doc.save(fileName);
@@ -386,14 +386,14 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
         </div>
 
         {/* Aakpa Balance Section */}
-        <div className="my-8 pt-6 border-t-2 border-slate-400 text-sm">
-          <div className="font-bold">
+        <div className="my-8 pt-6 border-t-2 border-slate-400 text-center">
+          <div className="font-bold text-base">
             Aakpa Balance {balance < 0 ? 'jama hai' : balance > 0 ? 'baaki h' : 'balance'} Rs {Math.abs(balance).toFixed(2)}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="mt-12 pt-6 text-right text-xs">
+        <div className="mt-20 pt-6 text-right text-xs">
           <p className="mb-12">_________________</p>
           <p className="font-semibold">{company?.name}</p>
         </div>
