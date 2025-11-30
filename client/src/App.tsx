@@ -8,6 +8,7 @@ import Customers from './components/Customers';
 import Settings from './components/Settings';
 import Daybook from './components/Daybook';
 import Import from './components/Import';
+import CustomerLedger from './components/CustomerLedger';
 import { ViewState, Invoice } from './types';
 import { StorageService } from './services/storageService';
 import { FirebaseService } from './services/firebaseService';
@@ -26,6 +27,7 @@ const AppContent: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isCloudConnected, setIsCloudConnected] = useState(false);
@@ -55,6 +57,11 @@ const AppContent: React.FC = () => {
   const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setCurrentView(ViewState.VIEW_INVOICE);
+  };
+
+  const handleViewCustomerLedger = (customerId: string) => {
+    setSelectedCustomerId(customerId);
+    setCurrentView(ViewState.CUSTOMER_LEDGER);
   };
 
   const handleEditInvoice = (invoice: Invoice) => {
@@ -134,8 +141,8 @@ const AppContent: React.FC = () => {
                         <tbody className="divide-y">
                             {invoices.slice(0, 5).map(inv => (
                                 <tr key={inv.id} className="text-sm hover:bg-gray-50">
-                                    <td className="py-3 font-medium text-blue-600">{inv.invoiceNumber}</td>
-                                    <td className="py-3">{inv.customerName}</td>
+                                    <td className="py-3 font-medium text-blue-600 cursor-pointer hover:underline" onClick={() => handleViewInvoice(inv)}>{inv.invoiceNumber}</td>
+                                    <td className="py-3 cursor-pointer hover:text-blue-600 hover:underline" onClick={() => handleViewCustomerLedger(inv.customerId)}>{inv.customerName}</td>
                                     <td className="py-3 text-gray-500">{inv.date}</td>
                                     <td className="py-3 text-right font-medium">₹{inv.total.toFixed(2)}</td>
                                     <td className="py-3 text-center flex justify-center gap-3">
@@ -280,6 +287,13 @@ const AppContent: React.FC = () => {
         {currentView === ViewState.INVENTORY && <Inventory />}
         {currentView === ViewState.CUSTOMERS && <Customers onEditInvoice={handleEditInvoice} />}
         {currentView === ViewState.SETTINGS && <Settings />}
+        
+        {currentView === ViewState.CUSTOMER_LEDGER && selectedCustomerId && (
+          <CustomerLedger 
+            customerId={selectedCustomerId}
+            onBack={() => setCurrentView(ViewState.DASHBOARD)}
+          />
+        )}
         
         {currentView === ViewState.CREATE_INVOICE && (
           <CreateInvoice 
