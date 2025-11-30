@@ -5,20 +5,16 @@
     "NODE_ENV": "production"
   },
   "functions": {
-    "dist/index.js": {
+    "api/**.js": {
+      "runtime": "nodejs24.x",
       "memory": 1024,
-      "maxDuration": 60,
-      "runtime": "nodejs20.x"
+      "maxDuration": 60
     }
   },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/dist/index.js"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/dist/index.js"
+      "destination": "/api/$1"
     }
   ]
 }
