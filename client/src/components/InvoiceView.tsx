@@ -92,9 +92,9 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit }) =>
         address: firebaseCompany.address || '',
         phone: firebaseCompany.phone || '',
         email: firebaseCompany.email || '',
-        state: firebaseCompany.state || '',
-        gst: firebaseCompany.gst || '',
-        gstin: firebaseCompany.gstin || firebaseCompany.gst || '',
+        state: (firebaseCompany as any).state || '',
+        gst: (firebaseCompany as any).gst || '',
+        gstin: (firebaseCompany as any).gstin || (firebaseCompany as any).gst || '',
         gst_enabled: firebaseCompany.gst_enabled ?? true,
         show_hsn_summary: firebaseCompany.show_hsn_summary ?? true
       };

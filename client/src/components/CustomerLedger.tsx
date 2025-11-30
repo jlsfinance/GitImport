@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Invoice, Customer } from '../types';
 import { StorageService } from '../services/storageService';
+import { useCompany } from '@/contexts/CompanyContext';
 import { ArrowLeft, Calendar, Download, Filter } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 
@@ -10,6 +11,7 @@ interface CustomerLedgerProps {
 }
 
 const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) => {
+  const { company } = useCompany();
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   
@@ -65,22 +67,41 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       y += 8;
     }
 
-    // Table headers
+    // Header with company info
+    y += 5;
     doc.setFontSize(10);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
+    doc.text(company?.name || 'Company', 20, y);
+    y += 5;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`To: ${customer?.name || 'N/A'}`, pageWidth - 80, 25);
+    y = 50;
+
+    // Subject
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Confirmation of Accounts', 20, y);
+    y += 8;
+
+    // Table headers
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
     const headers = ['Date', 'Invoice #', 'Description', 'Debit (₹)', 'Credit (₹)', 'Balance (₹)'];
-    const columnWidths = [25, 30, 50, 25, 25, 30];
+    const columnWidths = [25, 28, 45, 25, 25, 32];
     let x = 20;
     
     headers.forEach((header, i) => {
-      doc.text(header, x, y, { maxWidth: columnWidths[i] });
+      doc.text(header, x, y);
       x += columnWidths[i];
     });
-    y += 8;
+    y += 1;
+    doc.line(20, y, pageWidth - 20, y);
+    y += 6;
 
     // Table data
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
     let balance = 0;
 
     filteredInvoices.forEach((invoice) => {
@@ -92,25 +113,26 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       x += columnWidths[0];
       doc.text(invoice.invoiceNumber, x, y);
       x += columnWidths[1];
-      doc.text('Invoice', x, y);
+      doc.text('Sale', x, y);
       x += columnWidths[2];
       doc.text(debit.toFixed(2), x, y, { align: 'right' });
       x += columnWidths[3];
-      doc.text('', x, y);
       x += columnWidths[4];
       doc.text(balance.toFixed(2), x, y, { align: 'right' });
 
-      y += 6;
-      if (y > pageHeight - 20) {
+      y += 5;
+      if (y > pageHeight - 25) {
         doc.addPage();
         y = 20;
       }
     });
 
-    // Total
-    y += 4;
-    doc.setFont(undefined, 'bold');
-    doc.text('Total Balance:', 20, y);
+    // Closing Balance
+    y += 2;
+    doc.line(20, y, pageWidth - 20, y);
+    y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Closing Balance:', 20, y);
     doc.text(balance.toFixed(2), pageWidth - 30, y, { align: 'right' });
 
     doc.save(`${customer?.name}-ledger.pdf`);
