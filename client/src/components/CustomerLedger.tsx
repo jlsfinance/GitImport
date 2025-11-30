@@ -82,71 +82,52 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
   }, [customerId, startDate, endDate, allInvoices, allPayments]);
 
   const downloadPDF = () => {
+    if (!customer) return;
+    
     try {
       const doc = new jsPDF('p', 'mm', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       let yPos = 15;
       const leftMargin = 10;
-      const rightMargin = 110;
       const lineHeight = 4;
       const smallFont = 8;
       const normalFont = 9;
-      const boldFont = 10;
+      const largeFont = 12;
 
-      // Header
-      doc.setFontSize(boldFont);
+      // CENTER-ALIGNED HEADER
+      doc.setFontSize(largeFont);
       doc.setFont('helvetica', 'bold');
-      doc.text(company?.name || 'Company', leftMargin, yPos);
-      yPos += lineHeight;
+      doc.text(company?.name || 'Company', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 6;
       
-      doc.setFontSize(smallFont);
-      doc.setFont('helvetica', 'normal');
-      doc.text(company?.address || '', leftMargin, yPos);
-      yPos += lineHeight;
-      doc.text(`Phone: ${company?.phone || ''}`, leftMargin, yPos);
-      yPos += lineHeight + 2;
-
-      // Customer info on right
       doc.setFontSize(normalFont);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`To: ${customer.name}`, rightMargin, 15);
-      doc.setFontSize(smallFont);
       doc.setFont('helvetica', 'normal');
-      doc.text(customer.address || '', rightMargin, 19);
-      doc.text(`GSTIN: ${customer.gstin || 'N/A'}`, rightMargin, 23);
-      doc.text(`State: ${customer.state || 'N/A'}`, rightMargin, 27);
-
-      // Date
-      const todayDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-      doc.setFontSize(smallFont);
-      doc.text(`Dated: ${todayDate}`, rightMargin, 35);
-
-      yPos = 35;
-      doc.line(leftMargin, yPos, pageWidth - leftMargin, yPos);
-      yPos += 8;
-
-      // Subject
-      doc.setFontSize(normalFont);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Sub: Confirmation of Accounts', leftMargin, yPos);
-      yPos += lineHeight;
-      doc.setFontSize(smallFont);
-      doc.setFont('helvetica', 'normal');
+      doc.text(`Ledger Report of ${customer.name}`, pageWidth / 2, yPos, { align: 'center' });
+      yPos += 5;
+      
       const periodStart = startDate ? formatDate(startDate) : '1-Apr';
       const periodEnd = endDate ? formatDate(endDate) : 'Today';
-      doc.text(`Period: ${periodStart} to ${periodEnd}`, leftMargin, yPos);
-      yPos += 8;
+      doc.text(`Period: ${periodStart} to ${periodEnd}`, pageWidth / 2, yPos, { align: 'center' });
+      yPos += 10;
 
-      // Intro paragraph
+      // Separator line
+      doc.line(leftMargin, yPos, pageWidth - leftMargin, yPos);
+      yPos += 6;
+
+      // Customer and Company Details (Below Header)
       doc.setFontSize(smallFont);
-      const intro = 'Given below are the details of our Account as stated in our Books of Accounts for the above mentioned period.';
-      const introLines = doc.splitTextToSize(intro, pageWidth - 20);
-      introLines.forEach((line: string) => {
-        doc.text(line, leftMargin, yPos);
-        yPos += lineHeight;
-      });
-      yPos += 4;
+      doc.setFont('helvetica', 'normal');
+      doc.text(`From: ${company?.name || 'Company'}`, leftMargin, yPos);
+      yPos += 3;
+      doc.text(company?.address || '', leftMargin, yPos);
+      yPos += 3;
+      doc.text(`To: ${customer.name}`, leftMargin, yPos);
+      yPos += 3;
+      doc.text(customer.address || '', leftMargin, yPos);
+      yPos += 3;
+      doc.text(`GSTIN: ${customer.gstin || 'N/A'} | State: ${customer.state || 'N/A'}`, leftMargin, yPos);
+      yPos += 8;
 
       // Check if we need new page
       if (yPos > pageHeight - 40) {
@@ -157,6 +138,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       // Two-column layout
       const colWidth = (pageWidth - 30) / 2;
       const startY = yPos;
+      const rightMargin = pageWidth / 2 + 5;
 
       // LEFT COLUMN - DEBIT
       doc.setFontSize(normalFont);
@@ -199,16 +181,16 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       yPos = startY;
       doc.setFontSize(normalFont);
       doc.setFont('helvetica', 'bold');
-      doc.text('CREDIT SIDE', rightMargin, yPos);
+      doc.text('CREDIT SIDE', pageWidth / 2 + 5, yPos);
       yPos += lineHeight + 2;
 
       doc.setFontSize(smallFont - 1);
       doc.setFont('helvetica', 'bold');
       doc.text('Date', rightMargin + 2, yPos);
       doc.text('Particulars', rightMargin + 16, yPos);
-      doc.text('Amount', rightMargin + colWidth - 18, yPos);
+      doc.text('Amount', pageWidth - leftMargin - 10, yPos, { align: 'right' });
       yPos += lineHeight + 1;
-      doc.line(rightMargin, yPos, rightMargin + colWidth - 2, yPos);
+      doc.line(rightMargin, yPos, pageWidth - leftMargin, yPos);
       yPos += lineHeight;
 
       doc.setFont('helvetica', 'normal');
@@ -220,7 +202,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
         doc.text(formatDate(entry.date), rightMargin + 2, yPos);
         const narrationLines = doc.splitTextToSize(entry.narration, 35);
         doc.text(narrationLines[0] || '', rightMargin + 16, yPos);
-        doc.text(formatCurrency(entry.amount), rightMargin + colWidth - 18, yPos, { align: 'right' });
+        doc.text(formatCurrency(entry.amount), pageWidth - leftMargin - 10, yPos, { align: 'right' });
         yPos += lineHeight;
       });
 
@@ -228,11 +210,11 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
         doc.addPage();
         yPos = 15;
       }
-      doc.line(rightMargin, yPos, rightMargin + colWidth - 2, yPos);
+      doc.line(rightMargin, yPos, pageWidth - leftMargin, yPos);
       yPos += lineHeight;
       doc.setFont('helvetica', 'bold');
       doc.text('Closing Balance', rightMargin + 2, yPos);
-      doc.text(formatCurrency(balance), rightMargin + colWidth - 18, yPos, { align: 'right' });
+      doc.text(formatCurrency(balance), pageWidth - leftMargin - 10, yPos, { align: 'right' });
 
       // Footer
       yPos = pageHeight - 25;
@@ -314,40 +296,22 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       {/* Ledger Report - Tally Style */}
       <div className="bg-white rounded-lg shadow p-8 font-mono text-xs leading-relaxed" ref={ledgerRef} style={{ fontFamily: 'Courier New, monospace' }}>
         
-        {/* Header */}
-        <div className="mb-8 pb-6 border-b-2 border-slate-400">
-          <div className="flex justify-between mb-6">
-            <div className="w-1/2">
-              <div className="font-bold text-sm mb-2">{company?.name}</div>
-              <div className="text-xs">{company?.address}</div>
-              <div className="text-xs">Phone: {company?.phone}</div>
-            </div>
-            <div className="w-1/2 text-right">
-              <div className="font-bold text-sm mb-2">To: {customer.name}</div>
-              <div className="text-xs">{customer.address}</div>
-              <div className="text-xs">GSTIN: {customer.gstin || 'N/A'}</div>
-              <div className="text-xs">State: {customer.state || 'N/A'}</div>
-            </div>
-          </div>
-          <div className="text-right text-xs font-semibold">
-            Dated: {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-          </div>
-        </div>
-
-        {/* Subject */}
-        <div className="text-center mb-6 pb-6 border-b border-slate-300">
-          <div className="font-bold text-sm mb-2">Sub: Confirmation of Accounts</div>
+        {/* CENTER-ALIGNED HEADER */}
+        <div className="text-center mb-8 pb-6 border-b-2 border-slate-400">
+          <div className="font-bold text-lg mb-2">{company?.name}</div>
+          <div className="font-semibold text-sm mb-1">Ledger Report of {customer?.name}</div>
           <div className="text-xs text-slate-600">
             Period: {periodStart} to {periodEnd}
           </div>
         </div>
 
-        {/* Introductory Text */}
-        <div className="mb-6 text-xs text-justify leading-relaxed">
-          <p>Dear Sir/Madam,</p>
-          <p className="mt-2">
-            Given below are the details of our Account as stated in our Books of Accounts for the above mentioned period. Kindly return 3 copies stating your comments duly signed and sealed. In confirmation of the same. Please note that if no reply is received from you within a fortnight, it will be assumed that you have accepted the balance shown below.
-          </p>
+        {/* Customer and Company Details */}
+        <div className="mb-6 text-xs space-y-1">
+          <div>From: <span className="font-semibold">{company?.name}</span></div>
+          <div>{company?.address}</div>
+          <div>To: <span className="font-semibold">{customer?.name}</span></div>
+          <div>{customer?.address}</div>
+          <div>GSTIN: {customer?.gstin || 'N/A'} | State: {customer?.state || 'N/A'}</div>
         </div>
 
         {/* Two-Column Ledger Layout */}
