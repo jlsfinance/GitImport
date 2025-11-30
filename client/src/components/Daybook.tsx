@@ -96,9 +96,9 @@ const Daybook: React.FC<DaybookProps> = ({ initialDate }) => {
       // Summary
       doc.setFontSize(smallFont);
       doc.setFont('helvetica', 'bold');
-      doc.text(`Total Sales: ₹${summary.totalSales.toLocaleString()}`, leftMargin, yPos);
+      doc.text(`Total Sales: Rs${summary.totalSales.toLocaleString()}`, leftMargin, yPos);
       yPos += 4;
-      doc.text(`Cash Collection: ₹${summary.totalReceived.toLocaleString()}`, leftMargin, yPos);
+      doc.text(`Cash Collection: Rs${summary.totalReceived.toLocaleString()}`, leftMargin, yPos);
       yPos += 4;
       doc.text(`Total Transactions: ${summary.totalTransactions}`, leftMargin, yPos);
       yPos += 8;
@@ -124,7 +124,7 @@ const Daybook: React.FC<DaybookProps> = ({ initialDate }) => {
         doc.text(tx.type, leftMargin, yPos);
         doc.text(tx.party, leftMargin + 25, yPos);
         doc.text(tx.ref, leftMargin + 80, yPos);
-        doc.text(`₹${tx.amount.toFixed(2)}`, pageWidth - leftMargin - 20, yPos, { align: 'right' });
+        doc.text(`Rs${tx.amount.toFixed(2)}`, pageWidth - leftMargin - 20, yPos, { align: 'right' });
         yPos += 4;
       });
 
