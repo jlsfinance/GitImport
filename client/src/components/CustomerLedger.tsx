@@ -212,7 +212,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       doc.setFontSize(normalFont);
       doc.setFont('helvetica', 'bold');
       const balanceStatus = balance < 0 ? 'jama hai' : balance > 0 ? 'baaki h' : 'balance';
-      doc.text(`Aakpa Balance ${balanceStatus} ${formatCurrency(Math.abs(balance))}`, leftMargin, yPos);
+      doc.text(`Aakpa Balance ${balanceStatus} Rs ${Math.abs(balance).toFixed(2)}`, leftMargin, yPos);
       yPos += 10;
 
       // Footer
@@ -393,7 +393,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
         {/* Aakpa Balance Section */}
         <div className="my-8 pt-6 border-t-2 border-slate-400 text-sm">
           <div className="font-bold">
-            Aakpa Balance {balance < 0 ? 'jama hai' : balance > 0 ? 'baaki h' : 'balance'} Rs{Math.abs(balance).toFixed(2)}
+            Aakpa Balance {balance < 0 ? 'jama hai' : balance > 0 ? 'baaki h' : 'balance'} Rs {Math.abs(balance).toFixed(2)}
           </div>
         </div>
 
