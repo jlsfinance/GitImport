@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Invoice, Customer } from '../types';
 import { StorageService } from '../services/storageService';
 import { useCompany } from '@/contexts/CompanyContext';
-import { ArrowLeft, Calendar, Download, Filter } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
+import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
 interface CustomerLedgerProps {
@@ -14,6 +15,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
   const { company } = useCompany();
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const ledgerRef = useRef<HTMLDivElement>(null);
   
   const customer = StorageService.getCustomers().find(c => c.id === customerId);
   const allInvoices = StorageService.getInvoices();
@@ -28,114 +30,43 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       invoices = invoices.filter(i => i.date <= endDate);
     }
     
-    return invoices.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return invoices.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [customerId, startDate, endDate, allInvoices]);
 
-  const calculateBalance = () => {
-    let balance = 0;
-    filteredInvoices.forEach(invoice => {
-      balance += invoice.total;
-      const payments = StorageService.getPayments().filter(p => p.customerId === customerId && p.date <= invoice.date);
-      const paid = payments.reduce((sum, p) => sum + p.amount, 0);
-      balance -= paid;
-    });
-    return balance;
-  };
+  const totalBalance = filteredInvoices.reduce((sum, inv) => sum + inv.total, 0);
 
-  const downloadPDF = () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    let y = 20;
-
-    // Header
-    doc.setFontSize(16);
-    doc.text('Customer Ledger', pageWidth / 2, y, { align: 'center' });
-    y += 10;
-
-    doc.setFontSize(11);
-    doc.text(`Customer: ${customer?.name || 'N/A'}`, 20, y);
-    y += 6;
-    doc.text(`GSTIN: ${customer?.gstin || 'N/A'}`, 20, y);
-    y += 6;
-    doc.text(`Address: ${customer?.address || 'N/A'}`, 20, y);
-    y += 10;
-
-    if (startDate || endDate) {
-      doc.setFontSize(10);
-      doc.text(`Period: ${startDate || 'Start'} to ${endDate || 'End'}`, 20, y);
-      y += 8;
-    }
-
-    // Header with company info
-    y += 5;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text(company?.name || 'Company', 20, y);
-    y += 5;
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`To: ${customer?.name || 'N/A'}`, pageWidth - 80, 25);
-    y = 50;
-
-    // Subject
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Confirmation of Accounts', 20, y);
-    y += 8;
-
-    // Table headers
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    const headers = ['Date', 'Invoice #', 'Description', 'Debit (₹)', 'Credit (₹)', 'Balance (₹)'];
-    const columnWidths = [25, 28, 45, 25, 25, 32];
-    let x = 20;
+  const downloadPDF = async () => {
+    if (!ledgerRef.current) return;
     
-    headers.forEach((header, i) => {
-      doc.text(header, x, y);
-      x += columnWidths[i];
-    });
-    y += 1;
-    doc.line(20, y, pageWidth - 20, y);
-    y += 6;
-
-    // Table data
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    let balance = 0;
-
-    filteredInvoices.forEach((invoice) => {
-      const debit = invoice.total;
-      balance += debit;
-
-      x = 20;
-      doc.text(invoice.date, x, y);
-      x += columnWidths[0];
-      doc.text(invoice.invoiceNumber, x, y);
-      x += columnWidths[1];
-      doc.text('Sale', x, y);
-      x += columnWidths[2];
-      doc.text(debit.toFixed(2), x, y, { align: 'right' });
-      x += columnWidths[3];
-      x += columnWidths[4];
-      doc.text(balance.toFixed(2), x, y, { align: 'right' });
-
-      y += 5;
-      if (y > pageHeight - 25) {
+    try {
+      const canvas = await html2canvas(ledgerRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= 297;
+      
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
         doc.addPage();
-        y = 20;
+        doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= 297;
       }
-    });
-
-    // Closing Balance
-    y += 2;
-    doc.line(20, y, pageWidth - 20, y);
-    y += 6;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Closing Balance:', 20, y);
-    doc.text(balance.toFixed(2), pageWidth - 30, y, { align: 'right' });
-
-    doc.save(`${customer?.name}-ledger.pdf`);
+      
+      doc.save(`${customer?.name || 'Ledger'}-statement.pdf`);
+    } catch (error) {
+      console.error('PDF generation failed:', error);
+    }
   };
 
   if (!customer) {
@@ -153,24 +84,6 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Customer Ledger</h2>
           <p className="text-sm text-slate-500">{customer.name}</p>
-        </div>
-      </div>
-
-      {/* Customer Info */}
-      <div className="bg-white rounded-lg shadow p-4 md:p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <p className="text-sm text-slate-500">Company</p>
-            <p className="font-semibold text-slate-800">{customer.company || 'N/A'}</p>
-          </div>
-          <div>
-            <p className="text-sm text-slate-500">GSTIN</p>
-            <p className="font-semibold text-slate-800">{customer.gstin || 'N/A'}</p>
-          </div>
-          <div>
-            <p className="text-sm text-slate-500">State</p>
-            <p className="font-semibold text-slate-800">{customer.state || 'N/A'}</p>
-          </div>
         </div>
       </div>
 
@@ -200,6 +113,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
           <button 
             onClick={downloadPDF}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700"
+            data-testid="button-download-ledger-pdf"
           >
             <Download className="w-4 h-4" />
             Download PDF
@@ -207,40 +121,77 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
         </div>
       </div>
 
-      {/* Ledger Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px]">
-            <thead className="bg-slate-50 border-b">
-              <tr className="text-left text-xs font-semibold text-slate-600 uppercase">
-                <th className="px-6 py-4">Date</th>
-                <th className="px-6 py-4">Invoice #</th>
-                <th className="px-6 py-4">Description</th>
-                <th className="px-6 py-4 text-right">Amount (₹)</th>
-                <th className="px-6 py-4 text-right">Balance (₹)</th>
+      {/* Ledger Content */}
+      <div className="bg-white rounded-lg shadow p-6" ref={ledgerRef}>
+        {/* Header Section - Tally Style */}
+        <div className="flex justify-between mb-8 pb-4 border-b-2 border-slate-300">
+          <div>
+            <h3 className="text-lg font-bold">{company?.name || 'Company'}</h3>
+            <p className="text-xs text-slate-600">{company?.address}</p>
+            <p className="text-xs text-slate-600">Phone: {company?.phone}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-semibold">To: {customer.name}</p>
+            <p className="text-xs text-slate-600">{customer.address}</p>
+            <p className="text-xs text-slate-600">GSTIN: {customer.gstin || 'N/A'}</p>
+          </div>
+        </div>
+
+        {/* Subject */}
+        <div className="text-center mb-6">
+          <h4 className="text-sm font-bold">CONFIRMATION OF ACCOUNTS</h4>
+          <p className="text-xs text-slate-600">
+            {startDate && endDate ? `Period: ${startDate} to ${endDate}` : 'Complete Account History'}
+          </p>
+        </div>
+
+        {/* Table */}
+        <table className="w-full mb-6 text-sm">
+          <thead>
+            <tr className="border-b-2 border-slate-400">
+              <th className="text-left py-2 px-2 font-bold text-xs">Date</th>
+              <th className="text-left py-2 px-2 font-bold text-xs">Invoice #</th>
+              <th className="text-left py-2 px-2 font-bold text-xs">Description</th>
+              <th className="text-right py-2 px-2 font-bold text-xs">Debit (₹)</th>
+              <th className="text-right py-2 px-2 font-bold text-xs">Credit (₹)</th>
+              <th className="text-right py-2 px-2 font-bold text-xs">Balance (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredInvoices.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-4 text-center text-slate-500">No transactions found</td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredInvoices.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500">No invoices found</td>
-                </tr>
-              ) : (
-                filteredInvoices.map((invoice) => {
-                  const balance = filteredInvoices.slice(0, filteredInvoices.indexOf(invoice) + 1).reduce((sum, inv) => sum + inv.total, 0);
-                  return (
-                    <tr key={invoice.id} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 text-sm text-slate-600">{invoice.date}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-blue-600">{invoice.invoiceNumber}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600">Sale</td>
-                      <td className="px-6 py-4 text-sm text-right font-medium">₹{invoice.total.toFixed(2)}</td>
-                      <td className="px-6 py-4 text-sm text-right font-bold text-slate-800">₹{balance.toFixed(2)}</td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+            ) : (
+              filteredInvoices.map((invoice, idx) => {
+                const balance = filteredInvoices
+                  .slice(0, idx + 1)
+                  .reduce((sum, inv) => sum + inv.total, 0);
+                
+                return (
+                  <tr key={invoice.id} className="border-b border-slate-200 hover:bg-slate-50">
+                    <td className="py-2 px-2 text-xs">{invoice.date}</td>
+                    <td className="py-2 px-2 text-xs font-medium">{invoice.invoiceNumber}</td>
+                    <td className="py-2 px-2 text-xs">Sale</td>
+                    <td className="py-2 px-2 text-right text-xs">{invoice.total.toFixed(2)}</td>
+                    <td className="py-2 px-2 text-right text-xs">-</td>
+                    <td className="py-2 px-2 text-right text-xs font-semibold">{balance.toFixed(2)}</td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+
+        {/* Footer */}
+        <div className="flex justify-between pt-4 border-t-2 border-slate-400">
+          <div className="text-xs">
+            <p>We hereby confirm the above account statement as correct.</p>
+          </div>
+          <div className="text-right">
+            <p className="font-bold">Closing Balance</p>
+            <p className="text-sm font-bold">₹{totalBalance.toFixed(2)}</p>
+          </div>
         </div>
       </div>
     </div>
