@@ -6,7 +6,7 @@
   },
   "functions": {
     "dist/index.js": {
-      "runtime": "nodejs24.x",
+      "runtime": "vercel-nodejs@4.0.0",
       "memory": 1024,
       "maxDuration": 60
     }
