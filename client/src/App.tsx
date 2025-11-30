@@ -32,6 +32,7 @@ const AppContent: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [isCloudConnected, setIsCloudConnected] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [selectedDaybookDate, setSelectedDaybookDate] = useState<string | null>(null);
 
   useEffect(() => {
     const initApp = async () => {
@@ -85,6 +86,11 @@ const AppContent: React.FC = () => {
       const customer = StorageService.getCustomers().find(c => c.id === invoice.customerId);
       const company = StorageService.getCompanyProfile();
       WhatsAppService.shareInvoice(invoice, customer, company);
+  };
+
+  const handleViewDaybook = (date: string) => {
+    setSelectedDaybookDate(date);
+    setCurrentView(ViewState.DAYBOOK);
   };
 
   // --- DASHBOARD COMPONENT ---
@@ -143,7 +149,7 @@ const AppContent: React.FC = () => {
                                 <tr key={inv.id} className="text-sm hover:bg-gray-50">
                                     <td className="py-3 font-medium text-blue-600 cursor-pointer hover:underline" onClick={() => handleViewInvoice(inv)}>{inv.invoiceNumber}</td>
                                     <td className="py-3 cursor-pointer hover:text-blue-600 hover:underline" onClick={() => handleViewCustomerLedger(inv.customerId)}>{inv.customerName}</td>
-                                    <td className="py-3 text-gray-500">{inv.date}</td>
+                                    <td className="py-3 text-gray-500 cursor-pointer hover:text-blue-600 hover:underline" onClick={() => handleViewDaybook(inv.date)}>{inv.date}</td>
                                     <td className="py-3 text-right font-medium">₹{inv.total.toFixed(2)}</td>
                                     <td className="py-3 text-center flex justify-center gap-3">
                                         <button 
@@ -283,7 +289,7 @@ const AppContent: React.FC = () => {
       <main className="flex-1 overflow-y-auto h-full relative pb-20 md:pb-0 w-full">
         {currentView === ViewState.DASHBOARD && <Dashboard />}
         {currentView === ViewState.INVOICES && <InvoiceList />}
-        {currentView === ViewState.DAYBOOK && <Daybook />}
+        {currentView === ViewState.DAYBOOK && <Daybook initialDate={selectedDaybookDate} />}
         {currentView === ViewState.INVENTORY && <Inventory />}
         {currentView === ViewState.CUSTOMERS && <Customers onEditInvoice={handleEditInvoice} />}
         {currentView === ViewState.SETTINGS && <Settings />}

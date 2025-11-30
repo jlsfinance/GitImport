@@ -1,10 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
-import { Calendar, ArrowUpRight, ArrowDownLeft, Filter } from 'lucide-react';
+import { Calendar, ArrowUpRight, ArrowDownLeft, Filter, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
 
-const Daybook: React.FC = () => {
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+interface DaybookProps {
+  initialDate?: string | null;
+}
+
+const Daybook: React.FC<DaybookProps> = ({ initialDate }) => {
+  const [date, setDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [summary, setSummary] = useState({
       totalSales: 0,
@@ -63,6 +68,73 @@ const Daybook: React.FC = () => {
 
   }, [date]);
 
+  const downloadPDF = () => {
+    try {
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const company = StorageService.getCompanyProfile();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      let yPos = 15;
+      const leftMargin = 10;
+      const smallFont = 8;
+      const normalFont = 9;
+      const largeFont = 12;
+
+      // Header
+      doc.setFontSize(largeFont);
+      doc.setFont('helvetica', 'bold');
+      doc.text(company?.name || 'Company', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 6;
+      
+      doc.setFontSize(normalFont);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Day Book - ${date}`, pageWidth / 2, yPos, { align: 'center' });
+      yPos += 8;
+
+      doc.line(leftMargin, yPos, pageWidth - leftMargin, yPos);
+      yPos += 8;
+
+      // Summary
+      doc.setFontSize(smallFont);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Total Sales: ₹${summary.totalSales.toLocaleString()}`, leftMargin, yPos);
+      yPos += 4;
+      doc.text(`Cash Collection: ₹${summary.totalReceived.toLocaleString()}`, leftMargin, yPos);
+      yPos += 4;
+      doc.text(`Total Transactions: ${summary.totalTransactions}`, leftMargin, yPos);
+      yPos += 8;
+
+      // Table Header
+      doc.setFont('helvetica', 'bold');
+      doc.text('Type', leftMargin, yPos);
+      doc.text('Party', leftMargin + 25, yPos);
+      doc.text('Ref', leftMargin + 80, yPos);
+      doc.text('Amount', pageWidth - leftMargin - 20, yPos, { align: 'right' });
+      yPos += 4;
+      doc.line(leftMargin, yPos, pageWidth - leftMargin, yPos);
+      yPos += 4;
+
+      // Transactions
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(smallFont - 1);
+      transactions.forEach((tx) => {
+        if (yPos > 270) {
+          doc.addPage();
+          yPos = 15;
+        }
+        doc.text(tx.type, leftMargin, yPos);
+        doc.text(tx.party, leftMargin + 25, yPos);
+        doc.text(tx.ref, leftMargin + 80, yPos);
+        doc.text(`₹${tx.amount.toFixed(2)}`, pageWidth - leftMargin - 20, yPos, { align: 'right' });
+        yPos += 4;
+      });
+
+      doc.save(`daybook-${date}.pdf`);
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      alert('Failed to download PDF. Please try again.');
+    }
+  };
+
   return (
     <div className="p-4 md:p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -72,14 +144,25 @@ const Daybook: React.FC = () => {
             </h2>
             <p className="text-sm text-slate-500">Daily transaction register</p>
         </div>
-        <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-300 shadow-sm">
-            <Filter className="w-4 h-4 text-gray-500" />
-            <input 
-                type="date" 
-                value={date} 
-                onChange={(e) => setDate(e.target.value)}
-                className="outline-none text-sm font-medium text-slate-700"
-            />
+        <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-300 shadow-sm">
+                <Filter className="w-4 h-4 text-gray-500" />
+                <input 
+                    type="date" 
+                    value={date} 
+                    onChange={(e) => setDate(e.target.value)}
+                    className="outline-none text-sm font-medium text-slate-700"
+                    data-testid="input-daybook-date"
+                />
+            </div>
+            <button 
+                onClick={downloadPDF}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700"
+                data-testid="button-download-daybook-pdf"
+            >
+                <Download className="w-4 h-4" />
+                Download
+            </button>
         </div>
       </div>
 
