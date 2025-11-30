@@ -115,8 +115,8 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       doc.line(leftMargin, yPos, pageWidth - leftMargin, yPos);
       yPos += 8;
 
-      // Bold Ledger Report Line
-      doc.setFontSize(normalFont);
+      // Bold Ledger Report Line - Larger
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
       doc.text(`Ledger Report of ${customer.name}`, pageWidth / 2, yPos, { align: 'center' });
       yPos += 10;
@@ -133,12 +133,12 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       const rightMargin = pageWidth / 2 + 5;
 
       // LEFT COLUMN - DEBIT
-      doc.setFontSize(normalFont);
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.text('DEBIT SIDE', leftMargin, yPos);
       yPos += lineHeight + 2;
 
-      doc.setFontSize(smallFont - 1);
+      doc.setFontSize(smallFont);
       doc.setFont('helvetica', 'bold');
       doc.text('Date', leftMargin + 2, yPos);
       doc.text('Particulars', leftMargin + 16, yPos);
@@ -171,12 +171,12 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
 
       // RIGHT COLUMN - CREDIT
       yPos = startY;
-      doc.setFontSize(normalFont);
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.text('CREDIT SIDE', pageWidth / 2 + 5, yPos);
       yPos += lineHeight + 2;
 
-      doc.setFontSize(smallFont - 1);
+      doc.setFontSize(smallFont);
       doc.setFont('helvetica', 'bold');
       doc.text('Date', rightMargin + 2, yPos);
       doc.text('Particulars', rightMargin + 16, yPos);
@@ -205,6 +205,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       doc.line(rightMargin, yPos, pageWidth - leftMargin, yPos);
       yPos += lineHeight;
       doc.setFont('helvetica', 'bold');
+      doc.setFontSize(smallFont + 1);
       doc.text('Closing Balance', rightMargin + 2, yPos);
       doc.text(formatCurrency(balance), pageWidth - leftMargin - 10, yPos, { align: 'right' });
 
@@ -302,7 +303,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
         </div>
 
         {/* Bold Ledger Report Line */}
-        <div className="text-center font-bold text-sm mb-6">
+        <div className="text-center font-bold text-lg mb-6">
           Ledger Report of {customer?.name}
         </div>
 
@@ -313,10 +314,10 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
               <tr>
                 {/* LEFT COLUMN - DEBIT */}
                 <td className="w-1/2 pr-8 align-top border-r border-slate-300">
-                  <div className="font-bold text-xs mb-4">
+                  <div className="font-bold text-sm mb-4">
                     <div className="text-center underline">DEBIT SIDE</div>
                   </div>
-                  <table className="w-full text-xs mb-4">
+                  <table className="w-full text-sm mb-4">
                     <thead>
                       <tr className="border-b border-slate-400">
                         <th className="text-left py-1 px-1 font-bold w-14">Date</th>
@@ -339,7 +340,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
                       )}
                     </tbody>
                   </table>
-                  <div className="text-xs border-t-2 border-slate-400 pt-2">
+                  <div className="text-sm border-t-2 border-slate-400 pt-2">
                     <div className="flex justify-between font-bold">
                       <span></span>
                       <span className="text-right">{formatCurrency(totalDebit)}</span>
@@ -349,10 +350,10 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
 
                 {/* RIGHT COLUMN - CREDIT */}
                 <td className="w-1/2 pl-8 align-top">
-                  <div className="font-bold text-xs mb-4">
+                  <div className="font-bold text-sm mb-4">
                     <div className="text-center underline">CREDIT SIDE</div>
                   </div>
-                  <table className="w-full text-xs mb-4">
+                  <table className="w-full text-sm mb-4">
                     <thead>
                       <tr className="border-b border-slate-400">
                         <th className="text-left py-1 px-1 font-bold w-14">Date</th>
@@ -375,7 +376,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
                       )}
                     </tbody>
                   </table>
-                  <div className="text-xs border-t-2 border-slate-400 pt-2">
+                  <div className="text-sm border-t-2 border-slate-400 pt-2">
                     <div className="flex justify-between font-bold">
                       <span>Closing Balance</span>
                       <span className="text-right">{formatCurrency(balance)}</span>
