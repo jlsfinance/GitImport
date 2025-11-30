@@ -5,8 +5,8 @@
     "NODE_ENV": "production"
   },
   "functions": {
-    "api/**.js": {
-      "runtime": "nodejs24.x",
+    "dist/index.js": {
+      "runtime": "nodejs@24.x",
       "memory": 1024,
       "maxDuration": 60
     }
@@ -14,7 +14,11 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "destination": "/dist/index.js"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/dist/index.js"
     }
   ]
 }
