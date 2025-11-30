@@ -81,46 +81,175 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
     };
   }, [customerId, startDate, endDate, allInvoices, allPayments]);
 
-  const downloadPDF = async () => {
-    if (!ledgerRef.current) return;
-    
+  const downloadPDF = () => {
     try {
-      const element = ledgerRef.current;
-      const canvas = await html2canvas(element, {
-        scale: 1.5,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        backgroundColor: '#ffffff'
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      let yPos = 15;
+      const leftMargin = 10;
+      const rightMargin = 110;
+      const lineHeight = 4;
+      const smallFont = 8;
+      const normalFont = 9;
+      const boldFont = 10;
+
+      // Header
+      doc.setFontSize(boldFont);
+      doc.setFont('helvetica', 'bold');
+      doc.text(company?.name || 'Company', leftMargin, yPos);
+      yPos += lineHeight;
+      
+      doc.setFontSize(smallFont);
+      doc.setFont('helvetica', 'normal');
+      doc.text(company?.address || '', leftMargin, yPos);
+      yPos += lineHeight;
+      doc.text(`Phone: ${company?.phone || ''}`, leftMargin, yPos);
+      yPos += lineHeight + 2;
+
+      // Customer info on right
+      doc.setFontSize(normalFont);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`To: ${customer.name}`, rightMargin, 15);
+      doc.setFontSize(smallFont);
+      doc.setFont('helvetica', 'normal');
+      doc.text(customer.address || '', rightMargin, 19);
+      doc.text(`GSTIN: ${customer.gstin || 'N/A'}`, rightMargin, 23);
+      doc.text(`State: ${customer.state || 'N/A'}`, rightMargin, 27);
+
+      // Date
+      const todayDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      doc.setFontSize(smallFont);
+      doc.text(`Dated: ${todayDate}`, rightMargin, 35);
+
+      yPos = 35;
+      doc.line(leftMargin, yPos, pageWidth - leftMargin, yPos);
+      yPos += 8;
+
+      // Subject
+      doc.setFontSize(normalFont);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Sub: Confirmation of Accounts', leftMargin, yPos);
+      yPos += lineHeight;
+      doc.setFontSize(smallFont);
+      doc.setFont('helvetica', 'normal');
+      const periodStart = startDate ? formatDate(startDate) : '1-Apr';
+      const periodEnd = endDate ? formatDate(endDate) : 'Today';
+      doc.text(`Period: ${periodStart} to ${periodEnd}`, leftMargin, yPos);
+      yPos += 8;
+
+      // Intro paragraph
+      doc.setFontSize(smallFont);
+      const intro = 'Given below are the details of our Account as stated in our Books of Accounts for the above mentioned period.';
+      const introLines = doc.splitTextToSize(intro, pageWidth - 20);
+      introLines.forEach((line: string) => {
+        doc.text(line, leftMargin, yPos);
+        yPos += lineHeight;
       });
-      
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-      
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pageWidth - 10;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      let heightLeft = imgHeight;
-      let position = 5;
-      
-      pdf.addImage(imgData, 'PNG', 5, position, imgWidth, imgHeight);
-      heightLeft -= (pageHeight - 10);
-      
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight + 5;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 5, position, imgWidth, imgHeight);
-        heightLeft -= (pageHeight - 10);
+      yPos += 4;
+
+      // Check if we need new page
+      if (yPos > pageHeight - 40) {
+        doc.addPage();
+        yPos = 15;
       }
-      
+
+      // Two-column layout
+      const colWidth = (pageWidth - 30) / 2;
+      const startY = yPos;
+
+      // LEFT COLUMN - DEBIT
+      doc.setFontSize(normalFont);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DEBIT SIDE', leftMargin, yPos);
+      yPos += lineHeight + 2;
+
+      doc.setFontSize(smallFont - 1);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Date', leftMargin + 2, yPos);
+      doc.text('Particulars', leftMargin + 16, yPos);
+      doc.text('Amount', leftMargin + colWidth - 18, yPos);
+      yPos += lineHeight + 1;
+      doc.line(leftMargin, yPos, leftMargin + colWidth - 2, yPos);
+      yPos += lineHeight;
+
+      doc.setFont('helvetica', 'normal');
+      debitEntries.forEach((entry) => {
+        if (yPos > pageHeight - 15) {
+          doc.addPage();
+          yPos = 15;
+        }
+        doc.text(formatDate(entry.date), leftMargin + 2, yPos);
+        const narrationLines = doc.splitTextToSize(entry.narration, 35);
+        doc.text(narrationLines[0] || '', leftMargin + 16, yPos);
+        doc.text(formatCurrency(entry.amount), leftMargin + colWidth - 18, yPos, { align: 'right' });
+        yPos += lineHeight;
+      });
+
+      if (yPos > pageHeight - 15) {
+        doc.addPage();
+        yPos = 15;
+      }
+      doc.line(leftMargin, yPos, leftMargin + colWidth - 2, yPos);
+      yPos += lineHeight;
+      doc.setFont('helvetica', 'bold');
+      doc.text(formatCurrency(totalDebit), leftMargin + colWidth - 18, yPos, { align: 'right' });
+
+      // RIGHT COLUMN - CREDIT
+      yPos = startY;
+      doc.setFontSize(normalFont);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CREDIT SIDE', rightMargin, yPos);
+      yPos += lineHeight + 2;
+
+      doc.setFontSize(smallFont - 1);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Date', rightMargin + 2, yPos);
+      doc.text('Particulars', rightMargin + 16, yPos);
+      doc.text('Amount', rightMargin + colWidth - 18, yPos);
+      yPos += lineHeight + 1;
+      doc.line(rightMargin, yPos, rightMargin + colWidth - 2, yPos);
+      yPos += lineHeight;
+
+      doc.setFont('helvetica', 'normal');
+      creditEntries.forEach((entry) => {
+        if (yPos > pageHeight - 15) {
+          doc.addPage();
+          yPos = 15;
+        }
+        doc.text(formatDate(entry.date), rightMargin + 2, yPos);
+        const narrationLines = doc.splitTextToSize(entry.narration, 35);
+        doc.text(narrationLines[0] || '', rightMargin + 16, yPos);
+        doc.text(formatCurrency(entry.amount), rightMargin + colWidth - 18, yPos, { align: 'right' });
+        yPos += lineHeight;
+      });
+
+      if (yPos > pageHeight - 15) {
+        doc.addPage();
+        yPos = 15;
+      }
+      doc.line(rightMargin, yPos, rightMargin + colWidth - 2, yPos);
+      yPos += lineHeight;
+      doc.setFont('helvetica', 'bold');
+      doc.text('Closing Balance', rightMargin + 2, yPos);
+      doc.text(formatCurrency(balance), rightMargin + colWidth - 18, yPos, { align: 'right' });
+
+      // Footer
+      yPos = pageHeight - 25;
+      doc.setFontSize(smallFont);
+      doc.setFont('helvetica', 'normal');
+      doc.text('I/We hereby confirm the above', leftMargin, yPos);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Yours faithfully,', rightMargin + 20, yPos);
+      yPos += 10;
+      doc.setFont('helvetica', 'normal');
+      doc.line(rightMargin + 20, yPos, rightMargin + 50, yPos);
+      yPos += 4;
+      doc.text('Manager', rightMargin + 20, yPos);
+
       const fileName = `${customer?.name || 'Customer'}-confirmation-accounts.pdf`;
-      pdf.save(fileName);
+      doc.save(fileName);
     } catch (error) {
       console.error('PDF generation error:', error);
       alert('Failed to download PDF. Please try again.');
