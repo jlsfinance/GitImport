@@ -393,7 +393,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
         {/* Aakpa Balance Section */}
         <div className="my-8 pt-6 border-t-2 border-slate-400 text-sm">
           <div className="font-bold">
-            Aakpa Balance {balance < 0 ? 'jama hai' : balance > 0 ? 'baaki h' : 'balance'} {formatCurrency(Math.abs(balance))}
+            Aakpa Balance {balance < 0 ? 'jama hai' : balance > 0 ? 'baaki h' : 'balance'} Rs{Math.abs(balance).toFixed(2)}
           </div>
         </div>
 
