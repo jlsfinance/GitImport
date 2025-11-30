@@ -113,21 +113,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
 
       // Separator line
       doc.line(leftMargin, yPos, pageWidth - leftMargin, yPos);
-      yPos += 6;
-
-      // Customer and Company Details (Below Header)
-      doc.setFontSize(smallFont);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`From: ${company?.name || 'Company'}`, leftMargin, yPos);
-      yPos += 3;
-      doc.text(company?.address || '', leftMargin, yPos);
-      yPos += 3;
-      doc.text(`To: ${customer.name}`, leftMargin, yPos);
-      yPos += 3;
-      doc.text(customer.address || '', leftMargin, yPos);
-      yPos += 3;
-      doc.text(`GSTIN: ${customer.gstin || 'N/A'} | State: ${customer.state || 'N/A'}`, leftMargin, yPos);
-      yPos += 8;
+      yPos += 10;
 
       // Check if we need new page
       if (yPos > pageHeight - 40) {
@@ -303,15 +289,6 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
           <div className="text-xs text-slate-600">
             Period: {periodStart} to {periodEnd}
           </div>
-        </div>
-
-        {/* Customer and Company Details */}
-        <div className="mb-6 text-xs space-y-1">
-          <div>From: <span className="font-semibold">{company?.name}</span></div>
-          <div>{company?.address}</div>
-          <div>To: <span className="font-semibold">{customer?.name}</span></div>
-          <div>{customer?.address}</div>
-          <div>GSTIN: {customer?.gstin || 'N/A'} | State: {customer?.state || 'N/A'}</div>
         </div>
 
         {/* Two-Column Ledger Layout */}
