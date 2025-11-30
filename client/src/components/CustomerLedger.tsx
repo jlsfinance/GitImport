@@ -19,21 +19,54 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
   
   const customer = StorageService.getCustomers().find(c => c.id === customerId);
   const allInvoices = StorageService.getInvoices();
+  const allPayments = StorageService.getPayments();
   
-  const filteredInvoices = useMemo(() => {
-    let invoices = allInvoices.filter(i => i.customerId === customerId);
+  const transactions = useMemo(() => {
+    const items: any[] = [];
     
+    // Add invoices (Debit)
+    allInvoices.forEach(inv => {
+      if (inv.customerId === customerId) {
+        items.push({
+          date: inv.date,
+          type: 'INVOICE',
+          ref: inv.invoiceNumber,
+          debit: inv.total,
+          credit: 0,
+          description: 'Sale'
+        });
+      }
+    });
+    
+    // Add payments (Credit)
+    allPayments.forEach(payment => {
+      if (payment.customerId === customerId) {
+        items.push({
+          date: payment.date,
+          type: 'PAYMENT',
+          ref: payment.reference || 'Payment',
+          debit: 0,
+          credit: payment.amount,
+          description: `${payment.mode} Payment`
+        });
+      }
+    });
+    
+    // Filter by date and sort
+    let filtered = items;
     if (startDate) {
-      invoices = invoices.filter(i => i.date >= startDate);
+      filtered = filtered.filter(i => i.date >= startDate);
     }
     if (endDate) {
-      invoices = invoices.filter(i => i.date <= endDate);
+      filtered = filtered.filter(i => i.date <= endDate);
     }
     
-    return invoices.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [customerId, startDate, endDate, allInvoices]);
+    return filtered.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [customerId, startDate, endDate, allInvoices, allPayments]);
 
-  const totalBalance = filteredInvoices.reduce((sum, inv) => sum + inv.total, 0);
+  const totalDebit = transactions.reduce((sum, t) => sum + t.debit, 0);
+  const totalCredit = transactions.reduce((sum, t) => sum + t.credit, 0);
+  const totalBalance = totalDebit - totalCredit;
 
   const downloadPDF = async () => {
     if (!ledgerRef.current) return;
@@ -150,7 +183,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
           <thead>
             <tr className="border-b-2 border-slate-400">
               <th className="text-left py-2 px-2 font-bold text-xs">Date</th>
-              <th className="text-left py-2 px-2 font-bold text-xs">Invoice #</th>
+              <th className="text-left py-2 px-2 font-bold text-xs">Ref #</th>
               <th className="text-left py-2 px-2 font-bold text-xs">Description</th>
               <th className="text-right py-2 px-2 font-bold text-xs">Debit (₹)</th>
               <th className="text-right py-2 px-2 font-bold text-xs">Credit (₹)</th>
@@ -158,24 +191,28 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
             </tr>
           </thead>
           <tbody>
-            {filteredInvoices.length === 0 ? (
+            {transactions.length === 0 ? (
               <tr>
                 <td colSpan={6} className="py-4 text-center text-slate-500">No transactions found</td>
               </tr>
             ) : (
-              filteredInvoices.map((invoice, idx) => {
-                const balance = filteredInvoices
+              transactions.map((transaction, idx) => {
+                const balanceSoFar = transactions
                   .slice(0, idx + 1)
-                  .reduce((sum, inv) => sum + inv.total, 0);
+                  .reduce((sum, t) => sum + (t.debit - t.credit), 0);
                 
                 return (
-                  <tr key={invoice.id} className="border-b border-slate-200 hover:bg-slate-50">
-                    <td className="py-2 px-2 text-xs">{invoice.date}</td>
-                    <td className="py-2 px-2 text-xs font-medium">{invoice.invoiceNumber}</td>
-                    <td className="py-2 px-2 text-xs">Sale</td>
-                    <td className="py-2 px-2 text-right text-xs">{invoice.total.toFixed(2)}</td>
-                    <td className="py-2 px-2 text-right text-xs">-</td>
-                    <td className="py-2 px-2 text-right text-xs font-semibold">{balance.toFixed(2)}</td>
+                  <tr key={`${transaction.type}-${idx}`} className="border-b border-slate-200 hover:bg-slate-50">
+                    <td className="py-2 px-2 text-xs">{transaction.date}</td>
+                    <td className="py-2 px-2 text-xs font-medium">{transaction.ref}</td>
+                    <td className="py-2 px-2 text-xs">{transaction.description}</td>
+                    <td className="py-2 px-2 text-right text-xs font-semibold text-red-600">
+                      {transaction.debit > 0 ? transaction.debit.toFixed(2) : '-'}
+                    </td>
+                    <td className="py-2 px-2 text-right text-xs font-semibold text-green-600">
+                      {transaction.credit > 0 ? transaction.credit.toFixed(2) : '-'}
+                    </td>
+                    <td className="py-2 px-2 text-right text-xs font-bold text-blue-700">{balanceSoFar.toFixed(2)}</td>
                   </tr>
                 );
               })
@@ -184,13 +221,21 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
         </table>
 
         {/* Footer */}
-        <div className="flex justify-between pt-4 border-t-2 border-slate-400">
-          <div className="text-xs">
-            <p>We hereby confirm the above account statement as correct.</p>
+        <div className="space-y-3 pt-4 border-t-2 border-slate-400">
+          <div className="flex justify-end gap-8 text-xs font-semibold">
+            <div>Total Debit: ₹{totalDebit.toFixed(2)}</div>
+            <div>Total Credit: ₹{totalCredit.toFixed(2)}</div>
           </div>
-          <div className="text-right">
-            <p className="font-bold">Closing Balance</p>
-            <p className="text-sm font-bold">₹{totalBalance.toFixed(2)}</p>
+          <div className="flex justify-between pt-2">
+            <div className="text-xs">
+              <p>We hereby confirm the above account statement as correct.</p>
+            </div>
+            <div className="text-right">
+              <p className="font-bold">Closing Balance</p>
+              <p className="text-sm font-bold" style={{ color: totalBalance >= 0 ? '#dc2626' : '#16a34a' }}>
+                ₹{totalBalance.toFixed(2)}
+              </p>
+            </div>
           </div>
         </div>
       </div>
