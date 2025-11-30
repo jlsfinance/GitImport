@@ -211,8 +211,8 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       // Footer - Aakpa Balance and Signature
       yPos = pageHeight - 35;
       
-      // Aakpa Balance - Centered
-      doc.setFontSize(normalFont);
+      // Aakpa Balance - Centered with Larger Font
+      doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       const balanceStatus = balance < 0 ? 'jama hai' : balance > 0 ? 'baaki h' : 'balance';
       doc.text(`Aakpa Balance ${balanceStatus} Rs ${Math.abs(balance).toFixed(2)}`, pageWidth / 2, yPos, { align: 'center' });
@@ -390,7 +390,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
         {/* Footer with Aakpa Balance and Signature */}
         <div className="mt-20 pt-8 flex justify-between items-end">
           <div className="text-center flex-1">
-            <div className="font-bold text-base mb-16">
+            <div className="font-bold text-2xl mb-16">
               Aakpa Balance {balance < 0 ? 'jama hai' : balance > 0 ? 'baaki h' : 'balance'} Rs {Math.abs(balance).toFixed(2)}
             </div>
           </div>
