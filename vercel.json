@@ -6,7 +6,7 @@
   },
   "functions": {
     "dist/index.js": {
-      "runtime": "nodejs@24.x",
+      "runtime": "nodejs24.x",
       "memory": 1024,
       "maxDuration": 60
     }
