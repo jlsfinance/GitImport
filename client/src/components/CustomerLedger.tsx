@@ -85,33 +85,45 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
     if (!ledgerRef.current) return;
     
     try {
-      const canvas = await html2canvas(ledgerRef.current, {
-        scale: 2,
+      const element = ledgerRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 1.5,
         useCORS: true,
-        logging: false
+        allowTaint: true,
+        logging: false,
+        backgroundColor: '#ffffff'
       });
       
       const imgData = canvas.toDataURL('image/png');
-      const doc = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 210;
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth - 10;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
       let heightLeft = imgHeight;
-      let position = 0;
+      let position = 5;
       
-      doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= 297;
+      pdf.addImage(imgData, 'PNG', 5, position, imgWidth, imgHeight);
+      heightLeft -= (pageHeight - 10);
       
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        doc.addPage();
-        doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= 297;
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight + 5;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 5, position, imgWidth, imgHeight);
+        heightLeft -= (pageHeight - 10);
       }
       
-      doc.save(`${customer?.name || 'Ledger'}-confirmation.pdf`);
+      const fileName = `${customer?.name || 'Customer'}-confirmation-accounts.pdf`;
+      pdf.save(fileName);
     } catch (error) {
-      console.error('PDF generation failed:', error);
+      console.error('PDF generation error:', error);
+      alert('Failed to download PDF. Please try again.');
     }
   };
 
@@ -299,7 +311,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
             <p className="font-semibold mb-8">Yours faithfully,</p>
             <p>_________________</p>
             <p>Manager</p>
-            <p className="mt-2">PAN: {company?.gstin || 'N/A'}</p>
+            <p className="mt-2">PAN: {(company as any)?.gstin || (company as any)?.gst || 'N/A'}</p>
           </div>
         </div>
       </div>
