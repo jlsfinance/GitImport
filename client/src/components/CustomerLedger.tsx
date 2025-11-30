@@ -215,19 +215,14 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       doc.text(`Aakpa Balance ${balanceStatus} Rs ${Math.abs(balance).toFixed(2)}`, leftMargin, yPos);
       yPos += 10;
 
-      // Footer
-      yPos = pageHeight - 25;
+      // Footer - Signature and Company Name
+      yPos = pageHeight - 30;
       doc.setFontSize(smallFont);
       doc.setFont('helvetica', 'normal');
-      doc.text('I/We hereby confirm the above', leftMargin, yPos);
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('Yours faithfully,', rightMargin + 20, yPos);
-      yPos += 10;
-      doc.setFont('helvetica', 'normal');
       doc.line(rightMargin + 20, yPos, rightMargin + 50, yPos);
-      yPos += 4;
-      doc.text('Manager', rightMargin + 20, yPos);
+      yPos += 8;
+      doc.setFont('helvetica', 'bold');
+      doc.text(company?.name || 'Company', rightMargin + 20, yPos);
 
       const fileName = `${customer?.name || 'Customer'}-confirmation-accounts.pdf`;
       doc.save(fileName);
@@ -398,16 +393,9 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
         </div>
 
         {/* Footer */}
-        <div className="mt-12 pt-6 flex justify-between text-xs">
-          <div>
-            <p className="font-semibold">I/We hereby confirm the above</p>
-          </div>
-          <div className="text-right">
-            <p className="font-semibold mb-8">Yours faithfully,</p>
-            <p>_________________</p>
-            <p>Manager</p>
-            <p className="mt-2">PAN: {(company as any)?.gstin || (company as any)?.gst || 'N/A'}</p>
-          </div>
+        <div className="mt-12 pt-6 text-right text-xs">
+          <p className="mb-12">_________________</p>
+          <p className="font-semibold">{company?.name}</p>
         </div>
       </div>
     </div>
