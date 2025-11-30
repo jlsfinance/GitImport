@@ -90,10 +90,10 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       const pageHeight = doc.internal.pageSize.getHeight();
       let yPos = 15;
       const leftMargin = 10;
-      const lineHeight = 4;
-      const smallFont = 8;
-      const normalFont = 9;
-      const largeFont = 12;
+      const lineHeight = 5;
+      const smallFont = 10;
+      const normalFont = 11;
+      const largeFont = 14;
 
       // CENTER-ALIGNED HEADER
       doc.setFontSize(largeFont);
@@ -116,7 +116,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       yPos += 8;
 
       // Bold Ledger Report Line - Larger
-      doc.setFontSize(11);
+      doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
       doc.text(`Ledger Report of ${customer.name}`, pageWidth / 2, yPos, { align: 'center' });
       yPos += 10;
@@ -133,7 +133,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       const rightMargin = pageWidth / 2 + 5;
 
       // LEFT COLUMN - DEBIT
-      doc.setFontSize(10);
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('DEBIT SIDE', leftMargin, yPos);
       yPos += lineHeight + 2;
@@ -148,6 +148,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       yPos += lineHeight;
 
       doc.setFont('helvetica', 'normal');
+      doc.setFontSize(smallFont);
       debitEntries.forEach((entry) => {
         if (yPos > pageHeight - 15) {
           doc.addPage();
@@ -167,11 +168,12 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       doc.line(leftMargin, yPos, leftMargin + colWidth - 2, yPos);
       yPos += lineHeight;
       doc.setFont('helvetica', 'bold');
+      doc.setFontSize(smallFont);
       doc.text(formatCurrency(totalDebit), leftMargin + colWidth - 18, yPos, { align: 'right' });
 
       // RIGHT COLUMN - CREDIT
       yPos = startY;
-      doc.setFontSize(10);
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('CREDIT SIDE', pageWidth / 2 + 5, yPos);
       yPos += lineHeight + 2;
@@ -186,6 +188,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       yPos += lineHeight;
 
       doc.setFont('helvetica', 'normal');
+      doc.setFontSize(smallFont);
       creditEntries.forEach((entry) => {
         if (yPos > pageHeight - 15) {
           doc.addPage();
@@ -213,18 +216,19 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
       yPos = pageHeight - 35;
       
       // Aakpa Balance - Centered with Larger Font
-      doc.setFontSize(14);
+      doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       const balanceStatus = balance < 0 ? 'jama hai' : balance > 0 ? 'baaki h' : 'balance';
       doc.text(`Aakpa Balance ${balanceStatus} Rs ${Math.abs(balance).toFixed(2)}`, pageWidth / 2, yPos, { align: 'center' });
       
       // Signature and Company Name on Right
       yPos = pageHeight - 20;
-      doc.setFontSize(smallFont);
+      doc.setFontSize(smallFont - 1);
       doc.setFont('helvetica', 'normal');
       doc.line(pageWidth - leftMargin - 30, yPos, pageWidth - leftMargin, yPos);
       yPos += 7;
       doc.setFont('helvetica', 'bold');
+      doc.setFontSize(smallFont);
       doc.text(company?.name || 'Company', pageWidth - leftMargin - 15, yPos, { align: 'center' });
 
       const fileName = `${customer?.name || 'Customer'}-confirmation-accounts.pdf`;
