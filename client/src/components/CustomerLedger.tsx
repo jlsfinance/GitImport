@@ -11,6 +11,15 @@ interface CustomerLedgerProps {
   onBack: () => void;
 }
 
+const formatCurrency = (amount: number): string => {
+  return amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const formatDate = (dateStr: string): string => {
+  const date = new Date(dateStr + 'T00:00:00');
+  return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
 const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) => {
   const { company } = useCompany();
   const [startDate, setStartDate] = useState('');
@@ -21,52 +30,56 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
   const allInvoices = StorageService.getInvoices();
   const allPayments = StorageService.getPayments();
   
-  const transactions = useMemo(() => {
-    const items: any[] = [];
+  const { debitEntries, creditEntries, totalDebit, totalCredit, balance } = useMemo(() => {
+    let debits: any[] = [];
+    let credits: any[] = [];
     
     // Add invoices (Debit)
     allInvoices.forEach(inv => {
       if (inv.customerId === customerId) {
-        items.push({
-          date: inv.date,
-          type: 'INVOICE',
-          ref: inv.invoiceNumber,
-          debit: inv.total,
-          credit: 0,
-          description: 'Sale'
-        });
+        if (!startDate || inv.date >= startDate) {
+          if (!endDate || inv.date <= endDate) {
+            debits.push({
+              date: inv.date,
+              ref: inv.invoiceNumber,
+              narration: `Sale - ${inv.invoiceNumber}`,
+              amount: inv.total
+            });
+          }
+        }
       }
     });
     
     // Add payments (Credit)
     allPayments.forEach(payment => {
       if (payment.customerId === customerId) {
-        items.push({
-          date: payment.date,
-          type: 'PAYMENT',
-          ref: payment.reference || 'Payment',
-          debit: 0,
-          credit: payment.amount,
-          description: `${payment.mode} Payment`
-        });
+        if (!startDate || payment.date >= startDate) {
+          if (!endDate || payment.date <= endDate) {
+            credits.push({
+              date: payment.date,
+              ref: payment.reference || 'Payment',
+              narration: `${payment.mode} Payment Received`,
+              amount: payment.amount
+            });
+          }
+        }
       }
     });
     
-    // Filter by date and sort
-    let filtered = items;
-    if (startDate) {
-      filtered = filtered.filter(i => i.date >= startDate);
-    }
-    if (endDate) {
-      filtered = filtered.filter(i => i.date <= endDate);
-    }
+    debits.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    credits.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
-    return filtered.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const td = debits.reduce((sum, d) => sum + d.amount, 0);
+    const tc = credits.reduce((sum, c) => sum + c.amount, 0);
+    
+    return {
+      debitEntries: debits,
+      creditEntries: credits,
+      totalDebit: td,
+      totalCredit: tc,
+      balance: td - tc
+    };
   }, [customerId, startDate, endDate, allInvoices, allPayments]);
-
-  const totalDebit = transactions.reduce((sum, t) => sum + t.debit, 0);
-  const totalCredit = transactions.reduce((sum, t) => sum + t.credit, 0);
-  const totalBalance = totalDebit - totalCredit;
 
   const downloadPDF = async () => {
     if (!ledgerRef.current) return;
@@ -96,7 +109,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
         heightLeft -= 297;
       }
       
-      doc.save(`${customer?.name || 'Ledger'}-statement.pdf`);
+      doc.save(`${customer?.name || 'Ledger'}-confirmation.pdf`);
     } catch (error) {
       console.error('PDF generation failed:', error);
     }
@@ -106,21 +119,24 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
     return <div className="p-6 text-center text-slate-500">Customer not found</div>;
   }
 
+  const periodStart = startDate ? formatDate(startDate) : '1-Apr';
+  const periodEnd = endDate ? formatDate(endDate) : 'Today';
+
   return (
     <div className="p-4 md:p-6">
-      {/* Header */}
+      {/* Navigation */}
       <div className="flex items-center gap-4 mb-6">
         <button onClick={onBack} className="flex items-center gap-2 px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">
           <ArrowLeft className="w-5 h-5" />
           Back
         </button>
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Customer Ledger</h2>
+          <h2 className="text-2xl font-bold text-slate-800">Confirmation of Accounts</h2>
           <p className="text-sm text-slate-500">{customer.name}</p>
         </div>
       </div>
 
-      {/* Filters & Actions */}
+      {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4 md:p-6 mb-6">
         <div className="flex flex-col md:flex-row gap-4 md:items-end md:justify-between">
           <div className="flex flex-col md:flex-row gap-4 flex-1">
@@ -154,88 +170,136 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) =
         </div>
       </div>
 
-      {/* Ledger Content */}
-      <div className="bg-white rounded-lg shadow p-6" ref={ledgerRef}>
-        {/* Header Section - Tally Style */}
-        <div className="flex justify-between mb-8 pb-4 border-b-2 border-slate-300">
-          <div>
-            <h3 className="text-lg font-bold">{company?.name || 'Company'}</h3>
-            <p className="text-xs text-slate-600">{company?.address}</p>
-            <p className="text-xs text-slate-600">Phone: {company?.phone}</p>
+      {/* Ledger Report - Tally Style */}
+      <div className="bg-white rounded-lg shadow p-8 font-mono text-xs leading-relaxed" ref={ledgerRef} style={{ fontFamily: 'Courier New, monospace' }}>
+        
+        {/* Header */}
+        <div className="mb-8 pb-6 border-b-2 border-slate-400">
+          <div className="flex justify-between mb-6">
+            <div className="w-1/2">
+              <div className="font-bold text-sm mb-2">{company?.name}</div>
+              <div className="text-xs">{company?.address}</div>
+              <div className="text-xs">Phone: {company?.phone}</div>
+            </div>
+            <div className="w-1/2 text-right">
+              <div className="font-bold text-sm mb-2">To: {customer.name}</div>
+              <div className="text-xs">{customer.address}</div>
+              <div className="text-xs">GSTIN: {customer.gstin || 'N/A'}</div>
+              <div className="text-xs">State: {customer.state || 'N/A'}</div>
+            </div>
           </div>
-          <div className="text-right">
-            <p className="text-sm font-semibold">To: {customer.name}</p>
-            <p className="text-xs text-slate-600">{customer.address}</p>
-            <p className="text-xs text-slate-600">GSTIN: {customer.gstin || 'N/A'}</p>
+          <div className="text-right text-xs font-semibold">
+            Dated: {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
           </div>
         </div>
 
         {/* Subject */}
-        <div className="text-center mb-6">
-          <h4 className="text-sm font-bold">CONFIRMATION OF ACCOUNTS</h4>
-          <p className="text-xs text-slate-600">
-            {startDate && endDate ? `Period: ${startDate} to ${endDate}` : 'Complete Account History'}
+        <div className="text-center mb-6 pb-6 border-b border-slate-300">
+          <div className="font-bold text-sm mb-2">Sub: Confirmation of Accounts</div>
+          <div className="text-xs text-slate-600">
+            Period: {periodStart} to {periodEnd}
+          </div>
+        </div>
+
+        {/* Introductory Text */}
+        <div className="mb-6 text-xs text-justify leading-relaxed">
+          <p>Dear Sir/Madam,</p>
+          <p className="mt-2">
+            Given below are the details of our Account as stated in our Books of Accounts for the above mentioned period. Kindly return 3 copies stating your comments duly signed and sealed. In confirmation of the same. Please note that if no reply is received from you within a fortnight, it will be assumed that you have accepted the balance shown below.
           </p>
         </div>
 
-        {/* Table */}
-        <table className="w-full mb-6 text-sm">
-          <thead>
-            <tr className="border-b-2 border-slate-400">
-              <th className="text-left py-2 px-2 font-bold text-xs">Date</th>
-              <th className="text-left py-2 px-2 font-bold text-xs">Ref #</th>
-              <th className="text-left py-2 px-2 font-bold text-xs">Description</th>
-              <th className="text-right py-2 px-2 font-bold text-xs">Debit (₹)</th>
-              <th className="text-right py-2 px-2 font-bold text-xs">Credit (₹)</th>
-              <th className="text-right py-2 px-2 font-bold text-xs">Balance (₹)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {transactions.length === 0 ? (
+        {/* Two-Column Ledger Layout */}
+        <div className="mb-8">
+          <table className="w-full border-collapse mb-4">
+            <tbody>
               <tr>
-                <td colSpan={6} className="py-4 text-center text-slate-500">No transactions found</td>
+                {/* LEFT COLUMN - DEBIT */}
+                <td className="w-1/2 pr-8 align-top border-r border-slate-300">
+                  <div className="font-bold text-xs mb-4">
+                    <div className="text-center underline">DEBIT SIDE</div>
+                  </div>
+                  <table className="w-full text-xs mb-4">
+                    <thead>
+                      <tr className="border-b border-slate-400">
+                        <th className="text-left py-1 px-1 font-bold w-14">Date</th>
+                        <th className="text-left py-1 px-1 font-bold flex-1">Particulars</th>
+                        <th className="text-right py-1 px-1 font-bold w-24">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {debitEntries.map((entry, idx) => (
+                        <tr key={`debit-${idx}`} className="border-b border-slate-200">
+                          <td className="py-2 px-1 text-left">{formatDate(entry.date)}</td>
+                          <td className="py-2 px-1 text-left whitespace-pre-wrap break-words">{entry.narration}</td>
+                          <td className="py-2 px-1 text-right font-semibold">{formatCurrency(entry.amount)}</td>
+                        </tr>
+                      ))}
+                      {debitEntries.length === 0 && (
+                        <tr>
+                          <td colSpan={3} className="py-4 text-center text-slate-400">No debit entries</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                  <div className="text-xs border-t-2 border-slate-400 pt-2">
+                    <div className="flex justify-between font-bold">
+                      <span></span>
+                      <span className="text-right">{formatCurrency(totalDebit)}</span>
+                    </div>
+                  </div>
+                </td>
+
+                {/* RIGHT COLUMN - CREDIT */}
+                <td className="w-1/2 pl-8 align-top">
+                  <div className="font-bold text-xs mb-4">
+                    <div className="text-center underline">CREDIT SIDE</div>
+                  </div>
+                  <table className="w-full text-xs mb-4">
+                    <thead>
+                      <tr className="border-b border-slate-400">
+                        <th className="text-left py-1 px-1 font-bold w-14">Date</th>
+                        <th className="text-left py-1 px-1 font-bold flex-1">Particulars</th>
+                        <th className="text-right py-1 px-1 font-bold w-24">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {creditEntries.map((entry, idx) => (
+                        <tr key={`credit-${idx}`} className="border-b border-slate-200">
+                          <td className="py-2 px-1 text-left">{formatDate(entry.date)}</td>
+                          <td className="py-2 px-1 text-left whitespace-pre-wrap break-words">{entry.narration}</td>
+                          <td className="py-2 px-1 text-right font-semibold">{formatCurrency(entry.amount)}</td>
+                        </tr>
+                      ))}
+                      {creditEntries.length === 0 && (
+                        <tr>
+                          <td colSpan={3} className="py-4 text-center text-slate-400">No credit entries</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                  <div className="text-xs border-t-2 border-slate-400 pt-2">
+                    <div className="flex justify-between font-bold">
+                      <span>Closing Balance</span>
+                      <span className="text-right">{formatCurrency(balance)}</span>
+                    </div>
+                  </div>
+                </td>
               </tr>
-            ) : (
-              transactions.map((transaction, idx) => {
-                const balanceSoFar = transactions
-                  .slice(0, idx + 1)
-                  .reduce((sum, t) => sum + (t.debit - t.credit), 0);
-                
-                return (
-                  <tr key={`${transaction.type}-${idx}`} className="border-b border-slate-200 hover:bg-slate-50">
-                    <td className="py-2 px-2 text-xs">{transaction.date}</td>
-                    <td className="py-2 px-2 text-xs font-medium">{transaction.ref}</td>
-                    <td className="py-2 px-2 text-xs">{transaction.description}</td>
-                    <td className="py-2 px-2 text-right text-xs font-semibold text-red-600">
-                      {transaction.debit > 0 ? transaction.debit.toFixed(2) : '-'}
-                    </td>
-                    <td className="py-2 px-2 text-right text-xs font-semibold text-green-600">
-                      {transaction.credit > 0 ? transaction.credit.toFixed(2) : '-'}
-                    </td>
-                    <td className="py-2 px-2 text-right text-xs font-bold text-blue-700">{balanceSoFar.toFixed(2)}</td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
 
         {/* Footer */}
-        <div className="space-y-3 pt-4 border-t-2 border-slate-400">
-          <div className="flex justify-end gap-8 text-xs font-semibold">
-            <div>Total Debit: ₹{totalDebit.toFixed(2)}</div>
-            <div>Total Credit: ₹{totalCredit.toFixed(2)}</div>
+        <div className="mt-12 pt-6 flex justify-between text-xs">
+          <div>
+            <p className="font-semibold">I/We hereby confirm the above</p>
           </div>
-          <div className="flex justify-between pt-2">
-            <div className="text-xs">
-              <p>We hereby confirm the above account statement as correct.</p>
-            </div>
-            <div className="text-right">
-              <p className="font-bold">Closing Balance</p>
-              <p className="text-sm font-bold" style={{ color: totalBalance >= 0 ? '#dc2626' : '#16a34a' }}>
-                ₹{totalBalance.toFixed(2)}
-              </p>
-            </div>
+          <div className="text-right">
+            <p className="font-semibold mb-8">Yours faithfully,</p>
+            <p>_________________</p>
+            <p>Manager</p>
+            <p className="mt-2">PAN: {company?.gstin || 'N/A'}</p>
           </div>
         </div>
       </div>
