@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import InvoiceView from './components/InvoiceView';
 import CreateInvoice from './components/CreateInvoice';
+import AllInvoices from './pages/AllInvoices';
 import Inventory from './components/Inventory';
 import Customers from './components/Customers';
 import Settings from './components/Settings';
@@ -289,6 +290,7 @@ const AppContent: React.FC = () => {
       <main className="flex-1 overflow-y-auto h-full relative pb-20 md:pb-0 w-full">
         {currentView === ViewState.DASHBOARD && <Dashboard />}
         {currentView === ViewState.INVOICES && <InvoiceList />}
+        {currentView === ViewState.ALL_INVOICES && <AllInvoices />}
         {currentView === ViewState.DAYBOOK && <Daybook initialDate={selectedDaybookDate} />}
         {currentView === ViewState.INVENTORY && <Inventory />}
         {currentView === ViewState.CUSTOMERS && <Customers onEditInvoice={handleEditInvoice} />}

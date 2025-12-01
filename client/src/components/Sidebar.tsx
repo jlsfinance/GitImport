@@ -16,6 +16,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCloudCon
   const navItems = [
     { id: ViewState.DASHBOARD, label: 'Home', icon: LayoutDashboard },
     { id: ViewState.INVOICES, label: 'Invoices', icon: FileText },
+    { id: ViewState.ALL_INVOICES, label: 'All Invoices', icon: FileText },
     { id: ViewState.CREATE_INVOICE, label: 'Create', icon: PlusCircle },
     { id: ViewState.INVENTORY, label: 'Stock', icon: Package },
     { id: ViewState.CUSTOMERS, label: 'People', icon: Users },
