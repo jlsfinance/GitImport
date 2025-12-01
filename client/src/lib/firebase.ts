@@ -3,12 +3,13 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDOhuszbQuXpMO0WY-FXzkyY8dABjj4MHg",
-  authDomain: "sample-firebase-ai-app-1f72d.firebaseapp.com",
-  projectId: "sample-firebase-ai-app-1f72d",
-  storageBucket: "sample-firebase-ai-app-1f72d.firebasestorage.app",
-  messagingSenderId: "231225025529",
-  appId: "1:231225025529:web:e079fe0aa1be713625d328"
+  apiKey: "AIzaSyDT1yArqU-1NTudFisp1KN8HFLBaBAM0ns",
+  authDomain: "studio-1865737492-158b7.firebaseapp.com",
+  databaseURL: "https://studio-1865737492-158b7-default-rtdb.firebaseio.com",
+  projectId: "studio-1865737492-158b7",
+  storageBucket: "studio-1865737492-158b7.firebasestorage.app",
+  messagingSenderId: "718784992577",
+  appId: "1:718784992577:web:4ef4f575314d4b74d07dc0"
 };
 
 // Initialize only if not already initialized
