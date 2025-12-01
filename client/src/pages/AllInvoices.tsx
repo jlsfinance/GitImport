@@ -1,13 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { getAllInvoices, downloadInvoiceAsPDF } from '@/lib/api'; // Assuming you have these API functions
+import { getAllInvoices, downloadInvoiceAsPDF } from '../lib/api';
+import { Invoice } from '@/types';
 
 const AllInvoicesPage = () => {
-  const [invoices, setInvoices] = useState([]);
-  const [selectedInvoices, setSelectedInvoices] = useState(new Set());
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [selectedInvoices, setSelectedInvoices] = useState(new Set<string>());
 
   useEffect(() => {
     const fetchInvoices = async () => {
@@ -22,7 +22,7 @@ const AllInvoicesPage = () => {
     fetchInvoices();
   }, []);
 
-  const handleSelectInvoice = (invoiceId) => {
+  const handleSelectInvoice = (invoiceId: string) => {
     const newSelectedInvoices = new Set(selectedInvoices);
     if (newSelectedInvoices.has(invoiceId)) {
       newSelectedInvoices.delete(invoiceId);
@@ -32,8 +32,8 @@ const AllInvoicesPage = () => {
     setSelectedInvoices(newSelectedInvoices);
   };
 
-  const handleSelectAll = (event) => {
-    if (event.target.checked) {
+  const handleSelectAll = (checked: boolean | 'indeterminate') => {
+    if (checked === true) {
       const allInvoiceIds = new Set(invoices.map(invoice => invoice.id));
       setSelectedInvoices(allInvoiceIds);
     } else {
@@ -42,12 +42,16 @@ const AllInvoicesPage = () => {
   };
 
   const handleDownloadSelected = async () => {
-    for (const invoiceId of selectedInvoices) {
-      try {
-        await downloadInvoiceAsPDF(invoiceId);
-      } catch (error) {
-        console.error(`Error downloading invoice ${invoiceId}:`, error);
-      }
+    const selectedInvoicesArray = Array.from(selectedInvoices);
+    for (const invoiceId of selectedInvoicesArray) {
+        const invoice = invoices.find(inv => inv.id === invoiceId);
+        if (invoice) {
+            try {
+                await downloadInvoiceAsPDF(invoice);
+            } catch (error) {
+                console.error(`Error downloading invoice ${invoiceId}:`, error);
+            }
+        }
     }
   };
 
@@ -85,11 +89,11 @@ const AllInvoicesPage = () => {
                 />
               </TableCell>
               <TableCell>{invoice.invoiceNumber}</TableCell>
-              <TableCell>{invoice.clientName}</TableCell>
+              <TableCell>{invoice.customerName}</TableCell>
               <TableCell>{new Date(invoice.date).toLocaleDateString()}</TableCell>
-              <TableCell>{invoice.amount}</TableCell>
+              <TableCell>{invoice.total}</TableCell>
               <TableCell>
-                <Button variant="outline" size="sm" onClick={() => downloadInvoiceAsPDF(invoice.id)}>
+                <Button variant="outline" size="sm" onClick={() => downloadInvoiceAsPDF(invoice)}>
                   Download
                 </Button>
               </TableCell>
