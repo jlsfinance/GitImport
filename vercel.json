@@ -6,7 +6,7 @@
   },
   "functions": {
     "api/index.ts": {
-      "runtime": "vercel-nodejs@4.0.0",
+      "runtime": "@vercel/node",
       "memory": 1024,
       "maxDuration": 60
     }
