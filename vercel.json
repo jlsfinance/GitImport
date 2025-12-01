@@ -1,11 +1,11 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "dist/public",
+  "outputDirectory": "dist",
   "env": {
     "NODE_ENV": "production"
   },
   "functions": {
-    "dist/index.js": {
+    "api/index.js": {
       "runtime": "vercel-nodejs@4.0.0",
       "memory": 1024,
       "maxDuration": 60
@@ -14,11 +14,11 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/dist/index.js"
+      "destination": "/api/index.js"
     },
     {
       "source": "/(.*)",
-      "destination": "/dist/index.js"
+      "destination": "/index.html"
     }
   ]
 }
