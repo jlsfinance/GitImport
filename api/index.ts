@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import express, { type Express, type Request } from "express";
 
-import runApp from "./app";
+import runApp from "../server/app";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
