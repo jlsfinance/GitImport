@@ -82,7 +82,76 @@ export const StorageService = {
     
     if (connected && userId) {
         // 3. First fetch user's memberships
-        const memberships = await FirebaseService.fetchCollection<CompanyMembership>(`users/${userId}/memberships`);
+        let memberships = await FirebaseService.fetchCollection<CompanyMembership>(`users/${userId}/memberships`);
+        
+        // 3.1 MIGRATION: Check for old data structure (users/{userId}) and migrate if needed
+        if (memberships.length === 0) {
+            console.log('No memberships found, checking for old data to migrate...');
+            try {
+                // Try to fetch old company data from users/{userId}/company path
+                const oldCompanyArr = await FirebaseService.fetchCollection<CompanyProfile>(`users/${userId}/company`);
+                const oldProducts = await FirebaseService.fetchCollection<Product>(`users/${userId}/products`);
+                const oldCustomers = await FirebaseService.fetchCollection<Customer>(`users/${userId}/customers`);
+                const oldInvoices = await FirebaseService.fetchCollection<Invoice>(`users/${userId}/invoices`);
+                const oldPayments = await FirebaseService.fetchCollection<Payment>(`users/${userId}/payments`);
+                
+                if (oldCompanyArr.length > 0 || oldProducts.length > 0 || oldCustomers.length > 0 || oldInvoices.length > 0) {
+                    console.log('Found old data, migrating to new multi-company structure...');
+                    
+                    // Create a new company ID for migration
+                    const newCompanyId = `migrated_${userId}_${Date.now()}`;
+                    const oldCompany = oldCompanyArr.length > 0 ? oldCompanyArr[0] : DEFAULT_COMPANY;
+                    
+                    // Create company profile in new structure
+                    const companyProfile: CompanyProfile = {
+                        ...oldCompany,
+                        id: 'main'
+                    };
+                    await FirebaseService.saveDocument(`companies/${newCompanyId}/profile`, 'main', companyProfile);
+                    
+                    // Migrate products
+                    for (const product of oldProducts) {
+                        await FirebaseService.saveDocument(`companies/${newCompanyId}/products`, product.id, product);
+                    }
+                    
+                    // Migrate customers
+                    for (const customer of oldCustomers) {
+                        await FirebaseService.saveDocument(`companies/${newCompanyId}/customers`, customer.id, customer);
+                    }
+                    
+                    // Migrate invoices
+                    for (const invoice of oldInvoices) {
+                        await FirebaseService.saveDocument(`companies/${newCompanyId}/invoices`, invoice.id, invoice);
+                    }
+                    
+                    // Migrate payments
+                    for (const payment of oldPayments) {
+                        await FirebaseService.saveDocument(`companies/${newCompanyId}/payments`, payment.id, payment);
+                    }
+                    
+                    // Create owner membership
+                    const ownerMembership: CompanyMembership = {
+                        id: `owner_${newCompanyId}`,
+                        companyId: newCompanyId,
+                        companyName: oldCompany.name || 'My Company',
+                        userId: userId,
+                        userEmail: '',
+                        role: 'OWNER',
+                        status: 'ACTIVE',
+                        joinedAt: new Date().toISOString()
+                    };
+                    
+                    await FirebaseService.saveDocument(`users/${userId}/memberships`, ownerMembership.id, ownerMembership);
+                    await FirebaseService.saveDocument(`companyMembers/${newCompanyId}/members`, ownerMembership.id, ownerMembership);
+                    
+                    memberships = [ownerMembership];
+                    console.log('Migration complete! Old data moved to company:', newCompanyId);
+                }
+            } catch (migrationError) {
+                console.warn('Migration check failed (may not have old data):', migrationError);
+            }
+        }
+        
         cache.memberships = memberships.filter(m => m.status === 'ACTIVE');
         
         // 4. Determine which company to load
