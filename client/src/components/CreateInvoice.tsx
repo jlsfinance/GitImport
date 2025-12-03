@@ -40,7 +40,14 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
   const [newProductPrice, setNewProductPrice] = useState('');
   const [newProductHSN, setNewProductHSN] = useState('');
   const [newProductGST, setNewProductGST] = useState('0');
-  const [pendingProductIndex, setPendingProductIndex] = useState<number | null>(null); 
+  const [pendingProductIndex, setPendingProductIndex] = useState<number | null>(null);
+
+  // Generate invoice number preview
+  const getInvoiceNumberPreview = () => {
+    if (initialInvoice) return initialInvoice.invoiceNumber;
+    if (!selectedCustomerId) return '---';
+    return StorageService.generateInvoiceNumber(selectedCustomerId, date);
+  }; 
 
   useEffect(() => {
     setCustomers(StorageService.getCustomers());
@@ -311,9 +318,17 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto relative">
-      <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-slate-800">
-        {initialInvoice ? 'Edit Invoice' : 'Create New Invoice'}
-      </h2>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-4 md:mb-6">
+        <h2 className="text-xl md:text-2xl font-bold text-slate-800">
+          {initialInvoice ? 'Edit Invoice' : 'Create New Invoice'}
+        </h2>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+          <span className="text-sm text-blue-600 font-medium">Invoice No: </span>
+          <span className="text-lg font-bold text-blue-800" data-testid="text-invoice-number-preview">
+            {getInvoiceNumberPreview()}
+          </span>
+        </div>
+      </div>
       
       <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-4 md:p-6 min-h-[400px]">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">

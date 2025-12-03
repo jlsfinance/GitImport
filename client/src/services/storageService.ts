@@ -363,14 +363,14 @@ export const StorageService = {
 
   generateInvoiceNumber: (customerId: string, invoiceDate: string): string => {
     const customer = cache.customers.find(c => c.id === customerId);
-    if (!customer) return `INV-${Date.now()}`;
+    if (!customer) return `inv-${Date.now()}`;
 
-    // Get first 3 letters of customer name (uppercase)
-    const customerPrefix = customer.name.replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase();
+    // Get first 3 letters of customer name (lowercase)
+    const customerPrefix = customer.name.replace(/[^a-zA-Z]/g, '').substring(0, 3).toLowerCase();
 
-    // Get 3 letter month from invoice date
+    // Get 3 letter month from invoice date (lowercase)
     const date = new Date(invoiceDate);
-    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
     const monthPrefix = months[date.getMonth()];
 
     // Determine financial year (April to March)
