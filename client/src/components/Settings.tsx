@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CompanyProfile, FirebaseConfig } from '../types';
+import { CompanyProfile, FirebaseConfig, CompanyMembership, UserRole } from '../types';
 import { StorageService } from '../services/storageService';
-import { Save, Building2, Phone, Mail, MapPin, Database, Download, Upload, AlertCircle, Cloud, CheckCircle, XCircle, Wand2, ExternalLink, Wifi, WifiOff } from 'lucide-react';
+import { Save, Building2, Phone, Mail, MapPin, Database, Download, Upload, AlertCircle, Cloud, CheckCircle, XCircle, Wand2, ExternalLink, Wifi, WifiOff, Users, UserPlus, Shield, Trash2, Crown, Loader2 } from 'lucide-react';
 import { FirebaseService } from '../services/firebaseService';
 import { useCompany } from '@/contexts/CompanyContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Settings: React.FC = () => {
-  const { company, saveCompany } = useCompany();
+  const { company, saveCompany, memberships, currentRole, createNewCompany, inviteUser, pendingInvites, acceptInvite } = useCompany();
+  const { user } = useAuth();
   
   const [profile, setProfile] = useState<CompanyProfile>({
     name: '',
@@ -30,7 +32,37 @@ const Settings: React.FC = () => {
   const [rawConfigInput, setRawConfigInput] = useState('');
   const [connectionStatus, setConnectionStatus] = useState<{success: boolean, message: string} | null>(null);
   
+  // Company Management States
+  const [showNewCompanyModal, setShowNewCompanyModal] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState('');
+  const [newCompanyAddress, setNewCompanyAddress] = useState('');
+  const [newCompanyPhone, setNewCompanyPhone] = useState('');
+  const [newCompanyEmail, setNewCompanyEmail] = useState('');
+  const [isCreatingCompany, setIsCreatingCompany] = useState(false);
+  
+  // User Invite States
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<UserRole>('STAFF');
+  const [isInviting, setIsInviting] = useState(false);
+  const [companyMembers, setCompanyMembers] = useState<CompanyMembership[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [acceptingInviteId, setAcceptingInviteId] = useState<string | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load company members
+  useEffect(() => {
+    const loadMembers = async () => {
+      if (currentRole === 'OWNER' || currentRole === 'ADMIN') {
+        setLoadingMembers(true);
+        const members = await StorageService.getCompanyMembers();
+        setCompanyMembers(members);
+        setLoadingMembers(false);
+      }
+    };
+    loadMembers();
+  }, [currentRole]);
 
   useEffect(() => {
     // Sync from CompanyContext if available (primary source)
@@ -172,6 +204,100 @@ const Settings: React.FC = () => {
     };
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleCreateCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCompanyName.trim()) return;
+    
+    setIsCreatingCompany(true);
+    try {
+      const companyId = await createNewCompany({
+        name: newCompanyName,
+        address: newCompanyAddress,
+        phone: newCompanyPhone,
+        email: newCompanyEmail,
+        gst_enabled: true
+      });
+      
+      if (companyId) {
+        setShowNewCompanyModal(false);
+        setNewCompanyName('');
+        setNewCompanyAddress('');
+        setNewCompanyPhone('');
+        setNewCompanyEmail('');
+        alert('Company created successfully! Switching to new company...');
+        window.location.reload();
+      } else {
+        alert('Failed to create company. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error creating company:', error);
+      alert('Failed to create company. Please try again.');
+    } finally {
+      setIsCreatingCompany(false);
+    }
+  };
+
+  const handleInviteUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+    
+    setIsInviting(true);
+    try {
+      const success = await inviteUser(inviteEmail, inviteRole);
+      if (success) {
+        setShowInviteModal(false);
+        setInviteEmail('');
+        setInviteRole('STAFF');
+        alert(`Invitation sent to ${inviteEmail}! They will see the company when they sign in.`);
+      } else {
+        alert('Failed to send invitation. You may not have permission to invite users.');
+      }
+    } catch (error) {
+      console.error('Error inviting user:', error);
+      alert('Failed to send invitation. Please try again.');
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
+  const handleRemoveMember = async (membershipId: string, memberEmail: string) => {
+    if (!confirm(`Are you sure you want to remove ${memberEmail} from this company?`)) return;
+    
+    const success = await StorageService.removeUserFromCompany(membershipId);
+    if (success) {
+      setCompanyMembers(members => members.filter(m => m.id !== membershipId));
+      alert('User removed from company.');
+    } else {
+      alert('Failed to remove user. You may not have permission.');
+    }
+  };
+
+  const getRoleBadgeColor = (role: UserRole) => {
+    switch (role) {
+      case 'OWNER': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'ADMIN': return 'bg-blue-100 text-blue-800 border-blue-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const handleAcceptInvite = async (inviteId: string) => {
+    setAcceptingInviteId(inviteId);
+    try {
+      const success = await acceptInvite(inviteId);
+      if (success) {
+        alert('Invitation accepted! You now have access to this company.');
+        window.location.reload();
+      } else {
+        alert('Failed to accept invitation. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error accepting invite:', error);
+      alert('Failed to accept invitation. Please try again.');
+    } finally {
+      setAcceptingInviteId(null);
+    }
   };
 
   return (
@@ -497,7 +623,365 @@ const Settings: React.FC = () => {
            </div>
         </div>
 
+        {/* Company Management Section */}
+        <div className="lg:col-span-2">
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+              <h3 className="text-lg font-medium text-slate-900 flex items-center gap-2">
+                <Users className="w-5 h-5 text-green-600" /> Company Management
+              </h3>
+              {currentRole && (
+                <span className={`text-xs font-bold px-2 py-1 rounded-full border ${getRoleBadgeColor(currentRole)}`}>
+                  {currentRole === 'OWNER' && <Crown className="w-3 h-3 inline mr-1" />}
+                  Your Role: {currentRole}
+                </span>
+              )}
+            </div>
+            <div className="p-6 space-y-6">
+              {/* Pending Invites */}
+              {pendingInvites && pendingInvites.length > 0 && (
+                <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <h4 className="text-sm font-semibold text-orange-800 mb-3 flex items-center gap-2">
+                    <Mail className="w-4 h-4" />
+                    Pending Invitations ({pendingInvites.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {pendingInvites.map((invite) => (
+                      <div 
+                        key={invite.id}
+                        className="flex items-center justify-between p-3 bg-white rounded-lg border border-orange-100"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Building2 className="w-5 h-5 text-orange-500" />
+                          <div>
+                            <div className="font-medium text-slate-800">{invite.companyName}</div>
+                            <div className="text-xs text-slate-500">
+                              Invited as <span className="font-medium">{invite.role}</span> by {invite.invitedBy}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleAcceptInvite(invite.id)}
+                          disabled={acceptingInviteId === invite.id}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
+                        >
+                          {acceptingInviteId === invite.id ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Accepting...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="w-4 h-4" />
+                              Accept
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Your Companies */}
+              <div>
+                <h4 className="text-sm font-semibold text-slate-700 mb-3">Your Companies ({memberships.length})</h4>
+                <div className="space-y-2">
+                  {memberships.map((membership) => (
+                    <div 
+                      key={membership.companyId}
+                      className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Building2 className="w-5 h-5 text-blue-500" />
+                        <div>
+                          <div className="font-medium text-slate-800">{membership.companyName}</div>
+                          <div className="text-xs text-slate-500">
+                            {membership.role === 'OWNER' ? 'You own this company' : `Access as ${membership.role}`}
+                          </div>
+                        </div>
+                      </div>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-full border ${getRoleBadgeColor(membership.role)}`}>
+                        {membership.role}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                
+                <button
+                  onClick={() => setShowNewCompanyModal(true)}
+                  className="mt-4 w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  data-testid="button-create-company"
+                >
+                  <Building2 className="w-5 h-5" />
+                  Create New Company
+                </button>
+              </div>
+
+              {/* Team Members - Only visible to OWNER and ADMIN */}
+              {(currentRole === 'OWNER' || currentRole === 'ADMIN') && (
+                <div className="pt-6 border-t">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-slate-700">Team Members</h4>
+                    <button
+                      onClick={() => setShowInviteModal(true)}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors"
+                      data-testid="button-invite-user"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Invite User
+                    </button>
+                  </div>
+                  
+                  {loadingMembers ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                    </div>
+                  ) : companyMembers.length > 0 ? (
+                    <div className="space-y-2">
+                      {companyMembers.map((member) => (
+                        <div 
+                          key={member.id}
+                          className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                              <span className="text-sm font-medium text-blue-700">
+                                {member.userEmail.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <div className="font-medium text-slate-800">{member.userName || member.userEmail}</div>
+                              <div className="text-xs text-slate-500">{member.userEmail}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-bold px-2 py-1 rounded-full border ${getRoleBadgeColor(member.role)}`}>
+                              {member.role === 'OWNER' && <Crown className="w-3 h-3 inline mr-1" />}
+                              {member.role}
+                            </span>
+                            {currentRole === 'OWNER' && member.role !== 'OWNER' && (
+                              <button
+                                onClick={() => handleRemoveMember(member.id, member.userEmail)}
+                                className="p-1 text-red-500 hover:bg-red-100 rounded transition-colors"
+                                title="Remove user"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-slate-500">
+                      <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No team members yet</p>
+                      <p className="text-xs">Invite users to give them access to this company</p>
+                    </div>
+                  )}
+                  
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <p className="text-xs text-blue-800">
+                      <strong>Roles:</strong><br/>
+                      <span className="text-yellow-700">OWNER</span> - Full control, can manage users and delete company<br/>
+                      <span className="text-blue-700">ADMIN</span> - Can manage users and all data<br/>
+                      <span className="text-gray-700">STAFF</span> - Can view and create invoices, customers, products
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
       </div>
+
+      {/* Create Company Modal */}
+      {showNewCompanyModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-blue-600" /> Create New Company
+                </h3>
+                <p className="text-sm text-slate-500">Set up a new company for your business</p>
+              </div>
+              <button onClick={() => setShowNewCompanyModal(false)}>
+                <XCircle className="w-6 h-6 text-gray-400 hover:text-gray-600" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateCompany} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Company Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newCompanyName}
+                  onChange={(e) => setNewCompanyName(e.target.value)}
+                  placeholder="Enter company name"
+                  className="w-full rounded-md border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
+                <textarea
+                  rows={2}
+                  value={newCompanyAddress}
+                  onChange={(e) => setNewCompanyAddress(e.target.value)}
+                  placeholder="Company address"
+                  className="w-full rounded-md border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                  <input
+                    type="text"
+                    value={newCompanyPhone}
+                    onChange={(e) => setNewCompanyPhone(e.target.value)}
+                    placeholder="Phone number"
+                    className="w-full rounded-md border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={newCompanyEmail}
+                    onChange={(e) => setNewCompanyEmail(e.target.value)}
+                    placeholder="Email address"
+                    className="w-full rounded-md border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowNewCompanyModal(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingCompany}
+                  className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-bold shadow-md flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isCreatingCompany ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Building2 className="w-4 h-4" /> Create Company
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Invite User Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <UserPlus className="w-5 h-5 text-green-600" /> Invite User
+                </h3>
+                <p className="text-sm text-slate-500">Give someone access to {company?.name || 'this company'}</p>
+              </div>
+              <button onClick={() => setShowInviteModal(false)}>
+                <XCircle className="w-6 h-6 text-gray-400 hover:text-gray-600" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleInviteUser} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="user@example.com"
+                  className="w-full rounded-md border border-slate-300 p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                <p className="text-xs text-slate-500 mt-1">The user must sign up with this email to access the company</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Role</label>
+                <div className="space-y-2">
+                  <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${inviteRole === 'ADMIN' ? 'bg-blue-50 border-blue-200' : 'border-slate-200 hover:bg-slate-50'}`}>
+                    <input
+                      type="radio"
+                      name="role"
+                      value="ADMIN"
+                      checked={inviteRole === 'ADMIN'}
+                      onChange={() => setInviteRole('ADMIN')}
+                      className="sr-only"
+                    />
+                    <Shield className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <div className="font-medium text-slate-800">Admin</div>
+                      <div className="text-xs text-slate-500">Can manage users and all company data</div>
+                    </div>
+                  </label>
+                  
+                  <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${inviteRole === 'STAFF' ? 'bg-blue-50 border-blue-200' : 'border-slate-200 hover:bg-slate-50'}`}>
+                    <input
+                      type="radio"
+                      name="role"
+                      value="STAFF"
+                      checked={inviteRole === 'STAFF'}
+                      onChange={() => setInviteRole('STAFF')}
+                      className="sr-only"
+                    />
+                    <Users className="w-5 h-5 text-slate-600" />
+                    <div>
+                      <div className="font-medium text-slate-800">Staff</div>
+                      <div className="text-xs text-slate-500">Can view and create invoices, customers, products</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowInviteModal(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isInviting}
+                  className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-bold shadow-md flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isInviting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Sending...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4" /> Send Invitation
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Auto Fill Modal */}
       {showAutoFill && (

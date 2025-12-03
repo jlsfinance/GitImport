@@ -104,6 +104,7 @@ export interface Invoice {
 }
 
 export interface CompanyProfile {
+  id?: string;
   name: string;
   address: string;
   phone: string;
@@ -113,7 +114,38 @@ export interface CompanyProfile {
   gst?: string;
   gst_enabled?: boolean;
   show_hsn_summary?: boolean;
-  roundUpDefault?: 0 | 10 | 100; // Default round-up for all invoices (0 = no rounding)
+  roundUpDefault?: 0 | 10 | 100;
+  ownerId?: string;
+  ownerEmail?: string;
+  createdAt?: string;
+}
+
+// User roles for company access
+export type UserRole = 'OWNER' | 'ADMIN' | 'STAFF';
+
+// Company membership - links users to companies with roles
+export interface CompanyMembership {
+  id: string;
+  companyId: string;
+  companyName: string;
+  userId: string;
+  userEmail: string;
+  userName?: string;
+  role: UserRole;
+  status: 'ACTIVE' | 'PENDING' | 'REVOKED';
+  invitedBy?: string;
+  invitedAt?: string;
+  acceptedAt?: string;
+}
+
+// User profile with multi-company support
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  phone?: string;
+  memberships: CompanyMembership[];
+  activeCompanyId?: string;
 }
 
 // Mock Data Defaults

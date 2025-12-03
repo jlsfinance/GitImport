@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ViewState } from '../types';
-import { LayoutDashboard, FileText, Users, Package, PlusCircle, Receipt, Settings, Cloud, CloudOff, LogOut, Upload } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, Package, PlusCircle, Receipt, Settings, Cloud, CloudOff, LogOut, Upload, Building2, ChevronDown, Check, UserPlus, Shield } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/contexts/CompanyContext';
 
 interface SidebarProps {
   currentView: ViewState;
@@ -12,6 +13,8 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCloudConnected = false }) => {
   const { signOut } = useAuth();
+  const { company, memberships, currentCompanyId, currentRole, switchCompany, hasMultipleCompanies } = useCompany();
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
 
   const navItems = [
     { id: ViewState.DASHBOARD, label: 'Home', icon: LayoutDashboard },
@@ -25,6 +28,21 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCloudCon
 
   const handleLogout = async () => {
     await signOut();
+  };
+
+  const handleSwitchCompany = async (companyId: string) => {
+    if (companyId !== currentCompanyId) {
+      await switchCompany(companyId);
+    }
+    setShowCompanyDropdown(false);
+  };
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case 'OWNER': return 'bg-yellow-500/20 text-yellow-300';
+      case 'ADMIN': return 'bg-blue-500/20 text-blue-300';
+      default: return 'bg-slate-500/20 text-slate-300';
+    }
   };
 
   return (
@@ -47,6 +65,77 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCloudCon
             </div>
           </div>
         </div>
+
+        {/* Company Switcher */}
+        {memberships.length > 0 && (
+          <div className="px-3 py-3 border-b border-slate-800">
+            <div className="relative">
+              <button
+                onClick={() => setShowCompanyDropdown(!showCompanyDropdown)}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors"
+                data-testid="button-company-switcher"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Building2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                  <span className="text-sm font-medium truncate">{company?.name || 'Select Company'}</span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {currentRole && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${getRoleBadgeColor(currentRole)}`}>
+                      {currentRole}
+                    </span>
+                  )}
+                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showCompanyDropdown ? 'rotate-180' : ''}`} />
+                </div>
+              </button>
+              
+              {showCompanyDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 rounded-lg shadow-xl border border-slate-700 z-50 overflow-hidden">
+                  <div className="max-h-48 overflow-y-auto">
+                    {memberships.map((membership) => (
+                      <button
+                        key={membership.companyId}
+                        onClick={() => handleSwitchCompany(membership.companyId)}
+                        className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-slate-700 transition-colors ${
+                          membership.companyId === currentCompanyId ? 'bg-blue-600/20' : ''
+                        }`}
+                        data-testid={`button-switch-company-${membership.companyId}`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Building2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                          <span className="text-sm truncate">{membership.companyName}</span>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded ${getRoleBadgeColor(membership.role)}`}>
+                            {membership.role}
+                          </span>
+                          {membership.companyId === currentCompanyId && (
+                            <Check className="w-4 h-4 text-blue-400" />
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* Add New Company Button - Only for users who can create */}
+                  <div className="border-t border-slate-700 p-2">
+                    <button
+                      onClick={() => {
+                        setShowCompanyDropdown(false);
+                        onChangeView(ViewState.SETTINGS);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-400 hover:bg-slate-700 rounded-lg transition-colors"
+                      data-testid="button-add-company"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      Add New Company
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <nav className="flex-1 py-6 px-3 space-y-1">
           {navItems.map((item) => (

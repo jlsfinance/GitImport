@@ -1,5 +1,5 @@
 
-import { Customer, Invoice, Product, DEFAULT_COMPANY, CompanyProfile, CustomerNotification, FirebaseConfig, Payment } from '../types';
+import { Customer, Invoice, Product, DEFAULT_COMPANY, CompanyProfile, CustomerNotification, FirebaseConfig, Payment, CompanyMembership, UserRole } from '../types';
 import { FirebaseService } from './firebaseService';
 
 const KEYS = {
@@ -8,7 +8,9 @@ const KEYS = {
   INVOICES: 'app_invoices',
   PAYMENTS: 'app_payments',
   COMPANY: 'app_company',
-  FIREBASE_CONFIG: 'app_firebase_config'
+  FIREBASE_CONFIG: 'app_firebase_config',
+  ACTIVE_COMPANY: 'app_active_company',
+  MEMBERSHIPS: 'app_memberships'
 };
 
 // YOUR FIREBASE CONFIGURATION (Hardcoded as requested)
@@ -48,18 +50,24 @@ let cache = {
     payments: [] as Payment[],
     company: DEFAULT_COMPANY,
     isLoaded: false,
-    currentUserId: null as string | null
+    currentUserId: null as string | null,
+    currentCompanyId: null as string | null,
+    memberships: [] as CompanyMembership[]
 };
 
 export const StorageService = {
   
   // --- Initialization ---
-  init: async (userId: string | null = null): Promise<void> => {
+  init: async (userId: string | null = null, companyId: string | null = null): Promise<void> => {
     
-    if (cache.currentUserId !== userId) {
+    // Reset cache if user or company changes
+    if (cache.currentUserId !== userId || cache.currentCompanyId !== companyId) {
         cache = {
             products: [], customers: [], invoices: [], payments: [],
-            company: DEFAULT_COMPANY, isLoaded: false, currentUserId: userId
+            company: DEFAULT_COMPANY, isLoaded: false, 
+            currentUserId: userId,
+            currentCompanyId: companyId,
+            memberships: []
         };
     }
 
@@ -67,34 +75,64 @@ export const StorageService = {
 
     // 1. Always use the Hardcoded Config
     const config = DEFAULT_FIREBASE_CONFIG;
-    // We also save it to local storage just to keep the settings UI in sync if visited
     localStorage.setItem(KEYS.FIREBASE_CONFIG, JSON.stringify(config));
 
     // 2. Init Firebase
     const connected = FirebaseService.init(config);
     
     if (connected && userId) {
-        // 3. Fetch Data from Firebase
-        const userPath = `users/${userId}`;
+        // 3. First fetch user's memberships
+        const memberships = await FirebaseService.fetchCollection<CompanyMembership>(`users/${userId}/memberships`);
+        cache.memberships = memberships.filter(m => m.status === 'ACTIVE');
         
-        const [fbProducts, fbCustomers, fbInvoices, fbPayments, fbCompany] = await Promise.all([
-            FirebaseService.fetchCollection<Product>(`${userPath}/products`),
-            FirebaseService.fetchCollection<Customer>(`${userPath}/customers`),
-            FirebaseService.fetchCollection<Invoice>(`${userPath}/invoices`),
-            FirebaseService.fetchCollection<Payment>(`${userPath}/payments`),
-            FirebaseService.fetchCollection<CompanyProfile>(`${userPath}/company`)
-        ]);
+        // 4. Determine which company to load
+        let activeCompanyId = companyId;
+        if (!activeCompanyId && cache.memberships.length > 0) {
+            // Try to get from localStorage first
+            const savedActiveCompany = localStorage.getItem(KEYS.ACTIVE_COMPANY);
+            if (savedActiveCompany && cache.memberships.some(m => m.companyId === savedActiveCompany)) {
+                activeCompanyId = savedActiveCompany;
+            } else {
+                activeCompanyId = cache.memberships[0].companyId;
+            }
+        }
+        
+        cache.currentCompanyId = activeCompanyId;
+        if (activeCompanyId) {
+            localStorage.setItem(KEYS.ACTIVE_COMPANY, activeCompanyId);
+        }
 
-        cache.products = fbProducts;
-        cache.customers = fbCustomers;
-        cache.invoices = fbInvoices;
-        cache.payments = fbPayments;
-        cache.company = fbCompany.length > 0 ? fbCompany[0] : DEFAULT_COMPANY;
+        // 5. Fetch company data if we have an active company
+        if (activeCompanyId) {
+            const companyPath = `companies/${activeCompanyId}`;
+            
+            const [fbProducts, fbCustomers, fbInvoices, fbPayments, fbCompanyArr] = await Promise.all([
+                FirebaseService.fetchCollection<Product>(`${companyPath}/products`),
+                FirebaseService.fetchCollection<Customer>(`${companyPath}/customers`),
+                FirebaseService.fetchCollection<Invoice>(`${companyPath}/invoices`),
+                FirebaseService.fetchCollection<Payment>(`${companyPath}/payments`),
+                FirebaseService.fetchCollection<CompanyProfile>(`${companyPath}/profile`)
+            ]);
+
+            cache.products = fbProducts;
+            cache.customers = fbCustomers;
+            cache.invoices = fbInvoices;
+            cache.payments = fbPayments;
+            cache.company = fbCompanyArr.length > 0 ? fbCompanyArr[0] : DEFAULT_COMPANY;
+        } else {
+            // No company yet - might need to create one
+            cache.products = [];
+            cache.customers = [];
+            cache.invoices = [];
+            cache.payments = [];
+            cache.company = DEFAULT_COMPANY;
+        }
+        
         cache.isLoaded = true;
         return;
     }
 
-    // 4. Fallback to LocalStorage (Guest Mode)
+    // 6. Fallback to LocalStorage (Guest Mode)
     if (!userId) {
         const lsProducts = localStorage.getItem(KEYS.PRODUCTS);
         cache.products = lsProducts ? JSON.parse(lsProducts) : SEED_PRODUCTS;
@@ -113,7 +151,6 @@ export const StorageService = {
         
         cache.isLoaded = true;
     } else {
-        // User logged in but no data found -> Init empty
         cache.products = [];
         cache.customers = [];
         cache.invoices = [];
@@ -123,7 +160,215 @@ export const StorageService = {
     }
   },
 
+  // Get current company ID
+  getCurrentCompanyId: (): string | null => cache.currentCompanyId,
+  
+  // Get all memberships for current user
+  getMemberships: (): CompanyMembership[] => cache.memberships,
+  
+  // Get current user's role in active company
+  getCurrentRole: (): UserRole | null => {
+    if (!cache.currentCompanyId) return null;
+    const membership = cache.memberships.find(m => m.companyId === cache.currentCompanyId);
+    return membership?.role || null;
+  },
+
+  // Switch to a different company
+  switchCompany: async (companyId: string): Promise<boolean> => {
+    const membership = cache.memberships.find(m => m.companyId === companyId && m.status === 'ACTIVE');
+    if (!membership) return false;
+    
+    cache.isLoaded = false;
+    localStorage.setItem(KEYS.ACTIVE_COMPANY, companyId);
+    await StorageService.init(cache.currentUserId, companyId);
+    return true;
+  },
+
+  // Create a new company and set user as owner
+  createCompany: async (profile: CompanyProfile, userId: string, userEmail: string, userName?: string): Promise<string | null> => {
+    if (!FirebaseService.isReady()) return null;
+    
+    const companyId = crypto.randomUUID();
+    const companyData: CompanyProfile = {
+      ...profile,
+      id: companyId,
+      ownerId: userId,
+      ownerEmail: userEmail,
+      createdAt: new Date().toISOString()
+    };
+
+    // Save company profile
+    await FirebaseService.saveDocument(`companies/${companyId}/profile`, 'main', companyData);
+    
+    // Create membership for owner
+    const membership: CompanyMembership = {
+      id: crypto.randomUUID(),
+      companyId: companyId,
+      companyName: profile.name,
+      userId: userId,
+      userEmail: userEmail,
+      userName: userName || userEmail.split('@')[0],
+      role: 'OWNER',
+      status: 'ACTIVE',
+      acceptedAt: new Date().toISOString()
+    };
+    
+    // Save to user's memberships
+    await FirebaseService.saveDocument(`users/${userId}/memberships`, membership.id, membership);
+    
+    // Also save to company members (so it shows up in the member list)
+    await FirebaseService.saveDocument(`companyMembers/${companyId}/members`, membership.id, membership);
+    
+    // Add to cache
+    cache.memberships.push(membership);
+    
+    return companyId;
+  },
+
+  // Invite a user to company
+  inviteUserToCompany: async (email: string, role: UserRole, inviterEmail: string): Promise<boolean> => {
+    if (!FirebaseService.isReady() || !cache.currentCompanyId || !cache.currentUserId) return false;
+    
+    // Check if current user has permission to invite
+    const currentRole = StorageService.getCurrentRole();
+    if (currentRole !== 'OWNER' && currentRole !== 'ADMIN') return false;
+    
+    // Create pending membership
+    const membership: CompanyMembership = {
+      id: crypto.randomUUID(),
+      companyId: cache.currentCompanyId,
+      companyName: cache.company.name,
+      userId: '', // Will be filled when user accepts
+      userEmail: email.toLowerCase(),
+      userName: '',
+      role: role,
+      status: 'PENDING',
+      invitedBy: inviterEmail,
+      invitedAt: new Date().toISOString()
+    };
+    
+    // Save to both:
+    // 1. Company members collection (so inviter can see pending members)
+    await FirebaseService.saveDocument(`companyMembers/${cache.currentCompanyId}/members`, membership.id, membership);
+    
+    // 2. Pending invites collection (so invitee can find their invites)
+    await FirebaseService.saveDocument(`pendingInvites`, membership.id, membership);
+    
+    return true;
+  },
+
+  // Get all members of current company
+  getCompanyMembers: async (): Promise<CompanyMembership[]> => {
+    if (!FirebaseService.isReady() || !cache.currentCompanyId) return [];
+    
+    try {
+      // Fetch all memberships for this company
+      const allMemberships = await FirebaseService.fetchCollection<CompanyMembership>(`companyMembers/${cache.currentCompanyId}/members`);
+      return allMemberships;
+    } catch (error: any) {
+      console.warn('Could not fetch company members (may need Firestore rules update):', error.code);
+      return [];
+    }
+  },
+
+  // Accept a pending invite
+  acceptInvite: async (inviteId: string, userId: string, userEmail: string): Promise<boolean> => {
+    if (!FirebaseService.isReady()) return false;
+    
+    // Fetch the invite
+    const invites = await FirebaseService.fetchCollection<CompanyMembership>('pendingInvites');
+    const invite = invites.find(i => i.id === inviteId && i.userEmail === userEmail && i.status === 'PENDING');
+    
+    if (!invite) return false;
+    
+    // Update invite with user info and activate
+    const updatedMembership: CompanyMembership = {
+      ...invite,
+      userId: userId,
+      status: 'ACTIVE',
+      acceptedAt: new Date().toISOString()
+    };
+    
+    // Save to user's memberships
+    await FirebaseService.saveDocument(`users/${userId}/memberships`, updatedMembership.id, updatedMembership);
+    
+    // Save to company members
+    await FirebaseService.saveDocument(`companyMembers/${invite.companyId}/members`, updatedMembership.id, updatedMembership);
+    
+    // Remove from pending
+    await FirebaseService.deleteDocument('pendingInvites', inviteId);
+    
+    // Add to cache
+    cache.memberships.push(updatedMembership);
+    
+    return true;
+  },
+
+  // Check for pending invites for a user
+  getPendingInvites: async (userEmail: string): Promise<CompanyMembership[]> => {
+    if (!FirebaseService.isReady()) return [];
+    
+    try {
+      const allInvites = await FirebaseService.fetchCollection<CompanyMembership>('pendingInvites');
+      return allInvites.filter(i => i.userEmail.toLowerCase() === userEmail.toLowerCase() && i.status === 'PENDING');
+    } catch (error: any) {
+      // Permission errors are expected if Firestore rules aren't configured for pendingInvites
+      console.warn('Could not fetch pending invites (may need Firestore rules update):', error.code);
+      return [];
+    }
+  },
+
+  // Remove user from company
+  removeUserFromCompany: async (membershipId: string): Promise<boolean> => {
+    if (!FirebaseService.isReady() || !cache.currentCompanyId) return false;
+    
+    const currentRole = StorageService.getCurrentRole();
+    if (currentRole !== 'OWNER' && currentRole !== 'ADMIN') return false;
+    
+    // Get the membership to find the user
+    const members = await StorageService.getCompanyMembers();
+    const member = members.find(m => m.id === membershipId);
+    
+    if (!member || member.role === 'OWNER') return false; // Can't remove owner
+    
+    // Delete from company members
+    await FirebaseService.deleteDocument(`companyMembers/${cache.currentCompanyId}/members`, membershipId);
+    
+    // Delete from user's memberships
+    if (member.userId) {
+      await FirebaseService.deleteDocument(`users/${member.userId}/memberships`, membershipId);
+    }
+    
+    return true;
+  },
+
+  // Update user role in company
+  updateUserRole: async (membershipId: string, newRole: UserRole): Promise<boolean> => {
+    if (!FirebaseService.isReady() || !cache.currentCompanyId) return false;
+    
+    const currentRole = StorageService.getCurrentRole();
+    if (currentRole !== 'OWNER') return false; // Only owner can change roles
+    
+    const members = await StorageService.getCompanyMembers();
+    const member = members.find(m => m.id === membershipId);
+    
+    if (!member || member.role === 'OWNER') return false;
+    
+    const updatedMember = { ...member, role: newRole };
+    
+    await FirebaseService.saveDocument(`companyMembers/${cache.currentCompanyId}/members`, membershipId, updatedMember);
+    
+    if (member.userId) {
+      await FirebaseService.saveDocument(`users/${member.userId}/memberships`, membershipId, updatedMember);
+    }
+    
+    return true;
+  },
+
   getCollectionPath: (col: string) => {
+      // Use company-scoped path if we have an active company
+      if (cache.currentCompanyId) return `companies/${cache.currentCompanyId}/${col}`;
+      // Fallback to user path for backwards compatibility
       if (cache.currentUserId) return `users/${cache.currentUserId}/${col}`;
       return col; 
   },
