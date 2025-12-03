@@ -284,7 +284,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     
     const invoiceData: Invoice = {
       id: initialInvoice ? initialInvoice.id : crypto.randomUUID(),
-      invoiceNumber: initialInvoice ? initialInvoice.invoiceNumber : `INV-2025-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
+      invoiceNumber: initialInvoice ? initialInvoice.invoiceNumber : StorageService.generateInvoiceNumber(customer.id, date),
       customerId: customer.id,
       customerName: customer.company || customer.name,
       customerAddress: customer.address || '',

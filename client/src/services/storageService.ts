@@ -343,6 +343,57 @@ export const StorageService = {
     return null;
   },
 
+  updateCustomer: (customer: Customer) => {
+    const index = cache.customers.findIndex(c => c.id === customer.id);
+    if (index >= 0) {
+      cache.customers[index] = customer;
+      StorageService.persistToLocalStorage();
+      if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), customer.id, customer);
+    }
+  },
+
+  deleteCustomer: (customerId: string) => {
+    const index = cache.customers.findIndex(c => c.id === customerId);
+    if (index >= 0) {
+      cache.customers.splice(index, 1);
+      StorageService.persistToLocalStorage();
+      if (FirebaseService.isReady()) FirebaseService.deleteDocument(StorageService.getCollectionPath('customers'), customerId);
+    }
+  },
+
+  generateInvoiceNumber: (customerId: string, invoiceDate: string): string => {
+    const customer = cache.customers.find(c => c.id === customerId);
+    if (!customer) return `INV-${Date.now()}`;
+
+    // Get first 3 letters of customer name (uppercase)
+    const customerPrefix = customer.name.replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase();
+
+    // Get 3 letter month from invoice date
+    const date = new Date(invoiceDate);
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const monthPrefix = months[date.getMonth()];
+
+    // Determine financial year (April to March)
+    const fyStartMonth = 3; // April is month 3 (0-indexed)
+    let fyStartYear = date.getFullYear();
+    if (date.getMonth() < fyStartMonth) {
+      fyStartYear -= 1;
+    }
+    const fyStart = new Date(fyStartYear, fyStartMonth, 1);
+    const fyEnd = new Date(fyStartYear + 1, fyStartMonth, 0);
+
+    // Count existing invoices for this customer in current FY
+    const customerInvoicesInFY = cache.invoices.filter(inv => {
+      if (inv.customerId !== customerId) return false;
+      const invDate = new Date(inv.date);
+      return invDate >= fyStart && invDate <= fyEnd;
+    });
+
+    const sequenceNumber = (customerInvoicesInFY.length + 1).toString().padStart(3, '0');
+
+    return `${customerPrefix}${monthPrefix}${sequenceNumber}`;
+  },
+
   exportAllData: (): string => {
     const data = {
       products: JSON.stringify(cache.products),

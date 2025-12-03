@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Customer, Invoice, Payment } from '../types';
 import { StorageService } from '../services/storageService';
 import { WhatsAppService } from '../services/whatsappService';
-import { UserPlus, Phone, Mail, MapPin, ArrowLeft, FileText, Calendar, Bell, Send, Download, TrendingUp, AlertCircle, Eye, Plus, X, Banknote, CreditCard, MessageCircle } from 'lucide-react';
+import { UserPlus, Phone, Mail, MapPin, ArrowLeft, FileText, Calendar, Bell, Send, Download, TrendingUp, AlertCircle, Eye, Plus, X, Banknote, CreditCard, MessageCircle, Edit, Trash2 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import InvoiceView from './InvoiceView';
 
@@ -53,6 +53,10 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice }) => {
     state: '',
     gstin: ''
   });
+
+  // Edit Customer Modal State
+  const [showEditCustomer, setShowEditCustomer] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
 
   useEffect(() => {
     setCustomers(StorageService.getCustomers());
@@ -588,6 +592,36 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice }) => {
     alert("Customer added successfully!");
   };
 
+  const handleEditCustomer = (customer: Customer) => {
+    setEditingCustomer({ ...customer });
+    setShowEditCustomer(true);
+  };
+
+  const handleSaveEditCustomer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCustomer) return;
+    if (!editingCustomer.name || !editingCustomer.company || !editingCustomer.email) {
+      alert("Please fill name, company, and email");
+      return;
+    }
+    
+    StorageService.updateCustomer(editingCustomer);
+    setCustomers(StorageService.getCustomers());
+    setShowEditCustomer(false);
+    setEditingCustomer(null);
+    alert("Customer updated successfully!");
+  };
+
+  const handleDeleteCustomer = (customerId: string) => {
+    if (!confirm("Are you sure you want to delete this customer? This will also affect all their invoices and payments.")) {
+      return;
+    }
+    StorageService.deleteCustomer(customerId);
+    setCustomers(StorageService.getCustomers());
+    setShowEditCustomer(false);
+    setEditingCustomer(null);
+  };
+
   // Get GST status from company - fetch fresh when modal is about to open
   const getCurrentGstEnabled = () => {
     const company = StorageService.getCompanyProfile();
@@ -597,6 +631,125 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice }) => {
 
   return (
     <div className="p-4 md:p-6">
+      {/* Edit Customer Modal */}
+      {showEditCustomer && editingCustomer && (() => {
+        const gstEnabled = getCurrentGstEnabled();
+        return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4 sticky top-0 bg-white">
+              <h3 className="text-lg font-bold text-slate-900">Edit Customer</h3>
+              <button onClick={() => { setShowEditCustomer(false); setEditingCustomer(null); }} className="p-1"><X className="w-5 h-5 text-gray-400 hover:text-gray-600" /></button>
+            </div>
+            <form onSubmit={handleSaveEditCustomer} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name *</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={editingCustomer.name}
+                  onChange={(e) => setEditingCustomer({...editingCustomer, name: e.target.value})}
+                  className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                  placeholder="Full name"
+                  data-testid="input-edit-customer-name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={editingCustomer.company}
+                  onChange={(e) => setEditingCustomer({...editingCustomer, company: e.target.value})}
+                  className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                  placeholder="Company name"
+                  data-testid="input-edit-company-name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                <input 
+                  type="email" 
+                  required 
+                  value={editingCustomer.email}
+                  onChange={(e) => setEditingCustomer({...editingCustomer, email: e.target.value})}
+                  className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                  placeholder="email@example.com"
+                  data-testid="input-edit-email"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <input 
+                  type="tel" 
+                  value={editingCustomer.phone}
+                  onChange={(e) => setEditingCustomer({...editingCustomer, phone: e.target.value})}
+                  className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                  placeholder="10-digit number"
+                  data-testid="input-edit-phone"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <textarea 
+                  value={editingCustomer.address}
+                  onChange={(e) => setEditingCustomer({...editingCustomer, address: e.target.value})}
+                  rows={2}
+                  className="w-full border border-slate-300 rounded-md p-2 text-sm resize-none"
+                  placeholder="Billing address"
+                  data-testid="textarea-edit-address"
+                />
+              </div>
+              {gstEnabled && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                    <input 
+                      type="text" 
+                      value={editingCustomer.state || ''}
+                      onChange={(e) => setEditingCustomer({...editingCustomer, state: e.target.value})}
+                      className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                      placeholder="State name"
+                      data-testid="input-edit-state"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">GST Number (Optional)</label>
+                    <input 
+                      type="text" 
+                      value={editingCustomer.gstin || ''}
+                      onChange={(e) => setEditingCustomer({...editingCustomer, gstin: e.target.value})}
+                      className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                      placeholder="15-digit GSTIN"
+                      maxLength={15}
+                      data-testid="input-edit-gstin"
+                    />
+                  </div>
+                </>
+              )}
+              <div className="flex gap-3">
+                <button 
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700"
+                  data-testid="button-save-customer"
+                >
+                  Save Changes
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => handleDeleteCustomer(editingCustomer.id)}
+                  className="px-4 bg-red-50 text-red-600 py-2 rounded-lg font-bold hover:bg-red-100 flex items-center gap-2"
+                  data-testid="button-delete-customer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+        );
+      })()}
+
       {/* Add Customer Modal */}
       {showAddCustomer && (() => {
         const gstEnabled = getCurrentGstEnabled();
@@ -725,8 +878,18 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice }) => {
                 <h3 className="text-lg font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{customer.company}</h3>
                 <p className="text-sm text-slate-500">{customer.name}</p>
               </div>
-              <div className={`px-3 py-1 rounded-full text-xs font-semibold ${customer.balance > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                {customer.balance > 0 ? 'Due' : 'Clear'}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleEditCustomer(customer); }}
+                  className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                  title="Edit Customer"
+                  data-testid={`button-edit-customer-${customer.id}`}
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+                <div className={`px-3 py-1 rounded-full text-xs font-semibold ${customer.balance > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                  {customer.balance > 0 ? 'Due' : 'Clear'}
+                </div>
               </div>
             </div>
             
