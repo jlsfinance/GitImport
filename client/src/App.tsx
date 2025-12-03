@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import InvoiceView from './components/InvoiceView';
 import CreateInvoice from './components/CreateInvoice';
@@ -16,12 +16,13 @@ import { FirebaseService } from './services/firebaseService';
 import { WhatsAppService } from './services/whatsappService';
 import { ArrowRight, DollarSign, Package, Users, Edit, Loader2, MessageCircle } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { CompanyProvider, useCompany } from '@/contexts/CompanyContext';
+import { CompanyProvider, useCompany, CompanyData } from '@/contexts/CompanyContext';
 import { CompanyForm } from '@/components/CompanyForm';
+import { MultiCompanyModal } from '@/components/MultiCompanyModal';
 import Auth from '@/components/Auth';
 import { PermissionErrorModal } from '@/components/PermissionErrorModal';
 
-const AppContent: React.FC = () => {
+const AppContent = () => {
   const { user, loading: authLoading } = useAuth();
   const { company, loading: companyLoading, permissionError } = useCompany();
   
@@ -34,6 +35,11 @@ const AppContent: React.FC = () => {
   const [isCloudConnected, setIsCloudConnected] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [selectedDaybookDate, setSelectedDaybookDate] = useState<string | null>(null);
+  
+  // Multicompany modal states
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const [showCompanyForm, setShowCompanyForm] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<CompanyData | null>(null);
 
   useEffect(() => {
     const initApp = async () => {
@@ -283,7 +289,8 @@ const AppContent: React.FC = () => {
             setCurrentView(view);
           }
         }}
-        isCloudConnected={isCloudConnected || !!user} // Show cloud connected if logged in
+        isCloudConnected={isCloudConnected || !!user}
+        onOpenCompanyModal={() => setShowCompanyModal(true)}
       />
       
       {/* Added padding bottom (pb-20) for mobile to account for fixed navbar */}
@@ -337,11 +344,39 @@ const AppContent: React.FC = () => {
           }}
         />
       )}
+
+      {/* Multicompany Modal */}
+      <MultiCompanyModal
+        open={showCompanyModal}
+        onClose={() => setShowCompanyModal(false)}
+        onAddCompany={() => {
+          setShowCompanyModal(false);
+          setEditingCompany(null);
+          setShowCompanyForm(true);
+        }}
+        onEditCompany={(company) => {
+          setShowCompanyModal(false);
+          setEditingCompany(company);
+          setShowCompanyForm(true);
+        }}
+      />
+
+      {/* Company Form Modal */}
+      {showCompanyForm && (
+        <CompanyForm
+          editCompany={editingCompany}
+          isModal={true}
+          onClose={() => {
+            setShowCompanyForm(false);
+            setEditingCompany(null);
+          }}
+        />
+      )}
     </div>
   );
 };
 
-const App: React.FC = () => {
+const App = () => {
   return (
     <AuthProvider>
       <CompanyProvider>

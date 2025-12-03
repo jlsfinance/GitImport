@@ -1,16 +1,16 @@
-
-import React from 'react';
 import { ViewState } from '../types';
 import { LayoutDashboard, FileText, Users, Package, PlusCircle, Receipt, Settings, Cloud, CloudOff, LogOut, Upload } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { CompanySelector } from './MultiCompanyModal';
 
 interface SidebarProps {
   currentView: ViewState;
   onChangeView: (view: ViewState) => void;
   isCloudConnected?: boolean;
+  onOpenCompanyModal: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCloudConnected = false }) => {
+const Sidebar = ({ currentView, onChangeView, isCloudConnected = false, onOpenCompanyModal }: SidebarProps) => {
   const { signOut } = useAuth();
 
   const navItems = [
@@ -46,6 +46,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCloudCon
               )}
             </div>
           </div>
+        </div>
+
+        {/* Company Selector */}
+        <div className="px-3 py-4 border-b border-slate-800">
+          <CompanySelector onOpenModal={onOpenCompanyModal} />
         </div>
 
         <nav className="flex-1 py-6 px-3 space-y-1">
