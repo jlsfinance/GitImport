@@ -1,411 +1,222 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { Invoice, Customer } from '../types';
+
+import React, { useState, useMemo } from 'react';
+import { Invoice, Payment, Customer } from '../types';
 import { StorageService } from '../services/storageService';
-import { useCompany } from '@/contexts/CompanyContext';
-import { ArrowLeft, Download } from 'lucide-react';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
+import { Calendar, Search, Download, ArrowLeft, Filter, FileText, IndianRupee } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import jsPDF from 'jspdf';
 
 interface CustomerLedgerProps {
   customerId: string;
   onBack: () => void;
 }
 
-const formatCurrency = (amount: number): string => {
-  return amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
-
-const formatDate = (dateStr: string): string => {
-  const date = new Date(dateStr + 'T00:00:00');
-  const day = date.getDate().toString().padStart(2, '0');
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const year = date.getFullYear().toString().slice(-2);
-  return `${day}/${month}/${year}`;
-};
-
 const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack }) => {
-  const { company } = useCompany();
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const ledgerRef = useRef<HTMLDivElement>(null);
-  
   const customer = StorageService.getCustomers().find(c => c.id === customerId);
-  const allInvoices = StorageService.getInvoices();
-  const allPayments = StorageService.getPayments();
-  
-  const { debitEntries, creditEntries, totalDebit, totalCredit, balance } = useMemo(() => {
-    let debits: any[] = [];
-    let credits: any[] = [];
-    
-    // Add invoices (Debit)
-    allInvoices.forEach(inv => {
-      if (inv.customerId === customerId) {
-        if (!startDate || inv.date >= startDate) {
-          if (!endDate || inv.date <= endDate) {
-            debits.push({
-              date: inv.date,
-              ref: inv.invoiceNumber,
-              narration: `Sale - ${inv.invoiceNumber}`,
-              amount: inv.total
-            });
-          }
-        }
-      }
-    });
-    
-    // Add payments (Credit)
-    allPayments.forEach(payment => {
-      if (payment.customerId === customerId) {
-        if (!startDate || payment.date >= startDate) {
-          if (!endDate || payment.date <= endDate) {
-            credits.push({
-              date: payment.date,
-              ref: payment.reference || 'Payment',
-              narration: `${payment.mode} Payment Received`,
-              amount: payment.amount
-            });
-          }
-        }
-      }
-    });
-    
-    debits.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    credits.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    
-    const td = debits.reduce((sum, d) => sum + d.amount, 0);
-    const tc = credits.reduce((sum, c) => sum + c.amount, 0);
-    
-    return {
-      debitEntries: debits,
-      creditEntries: credits,
-      totalDebit: td,
-      totalCredit: tc,
-      balance: td - tc
-    };
-  }, [customerId, startDate, endDate, allInvoices, allPayments]);
+  const invoices = StorageService.getInvoices().filter(i => i.customerId === customerId);
+  const payments = StorageService.getPayments().filter(p => p.customerId === customerId);
 
-  const downloadPDF = () => {
+  const [dateRange, setDateRange] = useState({
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    to: new Date().toISOString().split('T')[0]
+  });
+
+  const transactions = useMemo(() => {
+    const combined = [
+      ...invoices.map(inv => ({
+        id: inv.id,
+        date: inv.date,
+        type: 'INVOICE',
+        reference: inv.invoiceNumber,
+        debit: inv.total,
+        credit: 0,
+        description: 'Sales Invoice'
+      })),
+      ...payments.map(pay => ({
+        id: pay.id,
+        date: pay.date,
+        type: 'PAYMENT',
+        reference: pay.mode,
+        debit: 0,
+        credit: pay.amount,
+        description: `Payment Received (${pay.mode})`
+      }))
+    ];
+
+    return combined
+      .filter(t => t.date >= dateRange.from && t.date <= dateRange.to)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [invoices, payments, dateRange]);
+
+  const stats = useMemo(() => {
+    const totalSales = transactions.reduce((sum, t) => sum + t.debit, 0);
+    const totalPaid = transactions.reduce((sum, t) => sum + t.credit, 0);
+    return { totalSales, totalPaid, balance: totalSales - totalPaid };
+  }, [transactions]);
+
+  const handleExportPDF = () => {
     if (!customer) return;
-    
+    const doc = new jsPDF();
+    const margin = 15;
+    let y = 20;
+
+    doc.setFontSize(18);
+    doc.text("Customer Ledger Report", 105, y, { align: 'center' });
+    y += 10;
+    doc.setFontSize(12);
+    doc.text(`${customer.company || customer.name}`, 105, y, { align: 'center' });
+    y += 10;
+    doc.setFontSize(10);
+    doc.text(`Period: ${dateRange.from} to ${dateRange.to}`, 105, y, { align: 'center' });
+    y += 15;
+
+    // Table Header
+    doc.setFont("helvetica", "bold");
+    doc.text("Date", margin, y);
+    doc.text("Particulars", margin + 30, y);
+    doc.text("Ref", margin + 90, y);
+    doc.text("Debit", margin + 130, y, { align: 'right' });
+    doc.text("Credit", margin + 155, y, { align: 'right' });
+    doc.text("Balance", margin + 180, y, { align: 'right' });
+    y += 5;
+    doc.line(margin, y, 210 - margin, y);
+    y += 7;
+
+    let runningBalance = 0;
+    doc.setFont("helvetica", "normal");
+    transactions.forEach(t => {
+      runningBalance += (t.debit - t.credit);
+      doc.text(t.date, margin, y);
+      doc.text(t.description, margin + 30, y);
+      doc.text(t.reference, margin + 90, y);
+      doc.text(t.debit > 0 ? t.debit.toFixed(2) : "-", margin + 130, y, { align: 'right' });
+      doc.text(t.credit > 0 ? t.credit.toFixed(2) : "-", margin + 155, y, { align: 'right' });
+      doc.text(runningBalance.toFixed(2), margin + 180, y, { align: 'right' });
+      y += 7;
+
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+    });
+
     try {
-      const doc = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      let yPos = 15;
-      const leftMargin = 10;
-      const lineHeight = 5;
-      const smallFont = 10;
-      const normalFont = 11;
-      const largeFont = 14;
-
-      // CENTER-ALIGNED HEADER
-      doc.setFontSize(largeFont);
-      doc.setFont('helvetica', 'bold');
-      doc.text(company?.name || 'Company', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 6;
-      
-      doc.setFontSize(normalFont);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Ledger Report of ${customer.name}`, pageWidth / 2, yPos, { align: 'center' });
-      yPos += 5;
-      
-      const periodStart = startDate ? formatDate(startDate) : '1-Apr';
-      const periodEnd = endDate ? formatDate(endDate) : 'Today';
-      doc.text(`Period: ${periodStart} to ${periodEnd}`, pageWidth / 2, yPos, { align: 'center' });
-      yPos += 8;
-
-      // Separator line
-      doc.line(leftMargin, yPos, pageWidth - leftMargin, yPos);
-      yPos += 8;
-
-      // Bold Ledger Report Line - Larger
-      doc.setFontSize(13);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Ledger Report of ${customer.name}`, pageWidth / 2, yPos, { align: 'center' });
-      yPos += 10;
-
-      // Check if we need new page
-      if (yPos > pageHeight - 40) {
-        doc.addPage();
-        yPos = 15;
-      }
-
-      // Two-column layout
-      const colWidth = (pageWidth - 30) / 2;
-      const startY = yPos;
-      const rightMargin = pageWidth / 2 + 5;
-
-      // LEFT COLUMN - DEBIT
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('DEBIT SIDE', leftMargin, yPos);
-      yPos += lineHeight + 2;
-
-      doc.setFontSize(smallFont);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Date', leftMargin + 2, yPos);
-      doc.text('Particulars', leftMargin + 16, yPos);
-      doc.text('Amount', leftMargin + colWidth - 18, yPos);
-      yPos += lineHeight + 1;
-      doc.line(leftMargin, yPos, leftMargin + colWidth - 2, yPos);
-      yPos += lineHeight;
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(smallFont);
-      debitEntries.forEach((entry) => {
-        if (yPos > pageHeight - 15) {
-          doc.addPage();
-          yPos = 15;
+      doc.save(`${customer.name}-ledger.pdf`);
+    } catch (e) {
+      console.warn("Standard save failed, trying fallback:", e);
+      try {
+        const pdfData = doc.output('datauristring');
+        const win = window.open();
+        if (win) {
+          win.document.write(`<iframe src="${pdfData}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+        } else {
+          alert("Please allow popups to view/save the PDF.");
         }
-        doc.text(formatDate(entry.date), leftMargin + 2, yPos);
-        const narrationLines = doc.splitTextToSize(entry.narration, 35);
-        doc.text(narrationLines[0] || '', leftMargin + 16, yPos);
-        doc.text(formatCurrency(entry.amount), leftMargin + colWidth - 18, yPos, { align: 'right' });
-        yPos += lineHeight;
-      });
-
-      if (yPos > pageHeight - 15) {
-        doc.addPage();
-        yPos = 15;
+      } catch (fallbackError) {
+        alert("Failed to save PDF. Error: FAILED TO SAVE.");
       }
-      doc.line(leftMargin, yPos, leftMargin + colWidth - 2, yPos);
-      yPos += lineHeight;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(smallFont);
-      doc.text(formatCurrency(totalDebit), leftMargin + colWidth - 18, yPos, { align: 'right' });
-
-      // RIGHT COLUMN - CREDIT
-      yPos = startY;
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('CREDIT SIDE', pageWidth / 2 + 5, yPos);
-      yPos += lineHeight + 2;
-
-      doc.setFontSize(smallFont);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Date', rightMargin + 2, yPos);
-      doc.text('Particulars', rightMargin + 16, yPos);
-      doc.text('Amount', pageWidth - leftMargin - 10, yPos, { align: 'right' });
-      yPos += lineHeight + 1;
-      doc.line(rightMargin, yPos, pageWidth - leftMargin, yPos);
-      yPos += lineHeight;
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(smallFont);
-      creditEntries.forEach((entry) => {
-        if (yPos > pageHeight - 15) {
-          doc.addPage();
-          yPos = 15;
-        }
-        doc.text(formatDate(entry.date), rightMargin + 2, yPos);
-        const narrationLines = doc.splitTextToSize(entry.narration, 35);
-        doc.text(narrationLines[0] || '', rightMargin + 16, yPos);
-        doc.text(formatCurrency(entry.amount), pageWidth - leftMargin - 10, yPos, { align: 'right' });
-        yPos += lineHeight;
-      });
-
-      if (yPos > pageHeight - 15) {
-        doc.addPage();
-        yPos = 15;
-      }
-      doc.line(rightMargin, yPos, pageWidth - leftMargin, yPos);
-      yPos += lineHeight;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(smallFont + 1);
-      doc.text('Closing Balance', rightMargin + 2, yPos);
-      doc.text(formatCurrency(balance), pageWidth - leftMargin - 10, yPos, { align: 'right' });
-
-      // Footer - Aakpa Balance and Signature
-      yPos = pageHeight - 35;
-      
-      // Aakpa Balance - Centered with Larger Font
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      const balanceStatus = balance < 0 ? 'jama hai' : balance > 0 ? 'baaki h' : 'balance';
-      doc.text(`Aakpa Balance ${balanceStatus} Rs ${Math.abs(balance).toFixed(2)}`, pageWidth / 2, yPos, { align: 'center' });
-      
-      // Signature and Company Name on Right
-      yPos = pageHeight - 20;
-      doc.setFontSize(smallFont - 1);
-      doc.setFont('helvetica', 'normal');
-      doc.line(pageWidth - leftMargin - 30, yPos, pageWidth - leftMargin, yPos);
-      yPos += 7;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(smallFont);
-      doc.text(company?.name || 'Company', pageWidth - leftMargin - 15, yPos, { align: 'center' });
-
-      const fileName = `${customer?.name || 'Customer'}-confirmation-accounts.pdf`;
-      doc.save(fileName);
-    } catch (error) {
-      console.error('PDF generation error:', error);
-      alert('Failed to download PDF. Please try again.');
     }
   };
 
-  if (!customer) {
-    return <div className="p-6 text-center text-slate-500">Customer not found</div>;
-  }
-
-  const periodStart = startDate ? formatDate(startDate) : '1-Apr';
-  const periodEnd = endDate ? formatDate(endDate) : 'Today';
+  if (!customer) return null;
 
   return (
-    <div className="p-4 md:p-6">
-      {/* Navigation */}
-      <div className="flex items-center gap-4 mb-6">
-        <button onClick={onBack} className="flex items-center gap-2 px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">
-          <ArrowLeft className="w-5 h-5" />
-          Back
-        </button>
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">Confirmation of Accounts</h2>
-          <p className="text-sm text-slate-500">{customer.name}</p>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4 md:p-6 mb-6">
-        <div className="flex flex-col md:flex-row gap-4 md:items-end md:justify-between">
-          <div className="flex flex-col md:flex-row gap-4 flex-1">
+    <div className="bg-slate-50 dark:bg-slate-900 min-h-screen pb-24">
+      <div className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 p-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+              <ArrowLeft className="w-6 h-6" />
+            </button>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">From Date</label>
-              <input 
-                type="date" 
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">To Date</label>
-              <input 
-                type="date" 
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <h1 className="text-xl font-bold">Ledger Report</h1>
+              <p className="text-sm text-slate-500">{customer.company || customer.name}</p>
             </div>
           </div>
-          <button 
-            onClick={downloadPDF}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700"
-            data-testid="button-download-ledger-pdf"
+          <button
+            onClick={handleExportPDF}
+            className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-blue-200 active:scale-95 transition-transform"
           >
-            <Download className="w-4 h-4" />
-            Download PDF
+            <Download className="w-5 h-5" /> Export
           </button>
         </div>
       </div>
 
-      {/* Ledger Report - Tally Style */}
-      <div className="bg-white rounded-lg shadow p-8 font-mono text-xs leading-relaxed" ref={ledgerRef} style={{ fontFamily: 'Courier New, monospace' }}>
-        
-        {/* CENTER-ALIGNED HEADER */}
-        <div className="text-center mb-8 pb-6 border-b-2 border-slate-400">
-          <div className="font-bold text-lg mb-2">{company?.name}</div>
-          <div className="font-semibold text-sm mb-1">Ledger Report of {customer?.name}</div>
-          <div className="text-xs text-slate-600">
-            Period: {periodStart} to {periodEnd}
+      <div className="max-w-4xl mx-auto p-4 space-y-6">
+        {/* Filters */}
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase ml-2 mb-1 block">From Date</label>
+            <input
+              type="date"
+              className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl p-3 text-sm font-bold"
+              value={dateRange.from}
+              onChange={e => setDateRange({ ...dateRange, from: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase ml-2 mb-1 block">To Date</label>
+            <input
+              type="date"
+              className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl p-3 text-sm font-bold"
+              value={dateRange.to}
+              onChange={e => setDateRange({ ...dateRange, to: e.target.value })}
+            />
           </div>
         </div>
 
-        {/* Bold Ledger Report Line */}
-        <div className="text-center font-bold text-lg mb-6">
-          Ledger Report of {customer?.name}
+        {/* Totals Summary */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-[24px] border border-slate-100 shadow-sm">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Sales</p>
+            <p className="text-lg font-black text-slate-800 dark:text-slate-100">₹{stats.totalSales.toLocaleString()}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-[24px] border border-slate-100 shadow-sm text-emerald-600">
+            <p className="text-[10px] font-bold opacity-60 uppercase tracking-wider">Payments</p>
+            <p className="text-lg font-black">₹{stats.totalPaid.toLocaleString()}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-[24px] border border-slate-100 shadow-sm text-red-600">
+            <p className="text-[10px] font-bold opacity-60 uppercase tracking-wider">Balance</p>
+            <p className="text-lg font-black">₹{stats.balance.toLocaleString()}</p>
+          </div>
         </div>
 
-        {/* Two-Column Ledger Layout */}
-        <div className="mb-8">
-          <table className="w-full border-collapse mb-4">
-            <tbody>
+        {/* Ledger Table */}
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 dark:bg-slate-900/50">
               <tr>
-                {/* LEFT COLUMN - DEBIT */}
-                <td className="w-1/2 pr-8 align-top border-r border-slate-300">
-                  <div className="font-bold text-sm mb-4">
-                    <div className="text-center underline">DEBIT SIDE</div>
-                  </div>
-                  <table className="w-full text-sm mb-4">
-                    <thead>
-                      <tr className="border-b border-slate-400">
-                        <th className="text-left py-1 px-1 font-bold w-14">Date</th>
-                        <th className="text-left py-1 px-1 font-bold flex-1">Particulars</th>
-                        <th className="text-right py-1 px-1 font-bold w-24">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {debitEntries.map((entry, idx) => (
-                        <tr key={`debit-${idx}`} className="border-b border-slate-200">
-                          <td className="py-2 px-1 text-left">{formatDate(entry.date)}</td>
-                          <td className="py-2 px-1 text-left whitespace-pre-wrap break-words">{entry.narration}</td>
-                          <td className="py-2 px-1 text-right font-semibold">{formatCurrency(entry.amount)}</td>
-                        </tr>
-                      ))}
-                      {debitEntries.length === 0 && (
-                        <tr>
-                          <td colSpan={3} className="py-4 text-center text-slate-400">No debit entries</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                  <div className="text-sm border-t-2 border-slate-400 pt-2">
-                    <div className="flex justify-between font-bold">
-                      <span></span>
-                      <span className="text-right">{formatCurrency(totalDebit)}</span>
-                    </div>
-                  </div>
-                </td>
-
-                {/* RIGHT COLUMN - CREDIT */}
-                <td className="w-1/2 pl-8 align-top">
-                  <div className="font-bold text-sm mb-4">
-                    <div className="text-center underline">CREDIT SIDE</div>
-                  </div>
-                  <table className="w-full text-sm mb-4">
-                    <thead>
-                      <tr className="border-b border-slate-400">
-                        <th className="text-left py-1 px-1 font-bold w-14">Date</th>
-                        <th className="text-left py-1 px-1 font-bold flex-1">Particulars</th>
-                        <th className="text-right py-1 px-1 font-bold w-24">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {creditEntries.map((entry, idx) => (
-                        <tr key={`credit-${idx}`} className="border-b border-slate-200">
-                          <td className="py-2 px-1 text-left">{formatDate(entry.date)}</td>
-                          <td className="py-2 px-1 text-left whitespace-pre-wrap break-words">{entry.narration}</td>
-                          <td className="py-2 px-1 text-right font-semibold">{formatCurrency(entry.amount)}</td>
-                        </tr>
-                      ))}
-                      {creditEntries.length === 0 && (
-                        <tr>
-                          <td colSpan={3} className="py-4 text-center text-slate-400">No credit entries</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                  <div className="text-sm border-t-2 border-slate-400 pt-2">
-                    <div className="flex justify-between font-bold">
-                      <span>Closing Balance</span>
-                      <span className="text-right">{formatCurrency(balance)}</span>
-                    </div>
-                  </div>
-                </td>
+                <th className="px-4 py-4 font-bold text-slate-500 uppercase text-[10px]">Date</th>
+                <th className="px-4 py-4 font-bold text-slate-500 uppercase text-[10px]">Description</th>
+                <th className="px-4 py-4 font-bold text-slate-500 uppercase text-[10px] text-right">Debit</th>
+                <th className="px-4 py-4 font-bold text-slate-500 uppercase text-[10px] text-right">Credit</th>
               </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+              {transactions.map(t => (
+                <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                  <td className="px-4 py-4 font-medium">{t.date}</td>
+                  <td className="px-4 py-4">
+                    <div className="font-bold">{t.description}</div>
+                    <div className="text-[10px] text-slate-400">Ref: {t.reference}</div>
+                  </td>
+                  <td className="px-4 py-4 text-right font-bold text-slate-800 dark:text-slate-200">
+                    {t.debit > 0 ? `₹${t.debit.toLocaleString()}` : '-'}
+                  </td>
+                  <td className="px-4 py-4 text-right font-bold text-emerald-600">
+                    {t.credit > 0 ? `₹${t.credit.toLocaleString()}` : '-'}
+                  </td>
+                </tr>
+              ))}
+              {transactions.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-4 py-12 text-center text-slate-400 font-medium">
+                    No transactions found for these dates.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
-        </div>
-
-        {/* Footer with Aakpa Balance and Signature */}
-        <div className="mt-20 pt-8 flex justify-between items-end">
-          <div className="text-center flex-1">
-            <div className="font-bold text-2xl mb-16">
-              Aakpa Balance {balance < 0 ? 'jama hai' : balance > 0 ? 'baaki h' : 'balance'} Rs {Math.abs(balance).toFixed(2)}
-            </div>
-          </div>
-          <div className="text-right text-xs">
-            <p className="mb-12">_________________</p>
-            <p className="font-semibold">{company?.name}</p>
-          </div>
         </div>
       </div>
     </div>

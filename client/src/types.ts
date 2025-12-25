@@ -12,7 +12,20 @@ export enum ViewState {
   SETTINGS = 'SETTINGS',
   DAYBOOK = 'DAYBOOK',
   IMPORT = 'IMPORT',
+  EXPENSES = 'EXPENSES',
+  REPORTS = 'REPORTS',
+  PAYMENTS = 'PAYMENTS',
 }
+
+export interface Expense {
+  id: string;
+  category: string; // e.g., 'Rent', 'Electricity', 'Salary', 'Tea/Snacks'
+  description?: string;
+  amount: number;
+  date: string;
+  paymentMode: 'CASH' | 'UPI' | 'BANK_TRANSFER';
+}
+
 
 export interface FirebaseConfig {
   apiKey: string;
@@ -53,6 +66,8 @@ export interface Customer {
   gstin?: string;
   balance: number;
   notifications: CustomerNotification[];
+  behaviorScore?: number; // 0-100
+  followUpHistory?: { date: string, note: string }[];
 }
 
 export interface Payment {
@@ -101,6 +116,8 @@ export interface Invoice {
   roundUpAmount?: number; // Amount added by rounding (calculated, not user set)
   total: number;
   status: 'PAID' | 'PENDING' | 'OVERDUE';
+  notes?: string;
+  terms?: string;
 }
 
 export interface CompanyProfile {
@@ -114,6 +131,7 @@ export interface CompanyProfile {
   gst_enabled?: boolean;
   show_hsn_summary?: boolean;
   roundUpDefault?: 0 | 10 | 100; // Default round-up for all invoices (0 = no rounding)
+  upiId?: string; // e.g., merchant@upi
 }
 
 // Mock Data Defaults

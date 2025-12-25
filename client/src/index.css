@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -8,6 +9,8 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-heading: 'Outfit', sans-serif;
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
   --color-card: hsl(var(--card));
@@ -64,214 +67,120 @@
 
 }
 
-/* LIGHT MODE */
+/* MODER MATERIAL 3 THEME - ADVANCED REFINEMENT */
 :root {
-  --button-outline: rgba(0,0,0, .10);
-  --badge-outline: rgba(0,0,0, .05);
+  /* LIGHT MODE - Material 3 Blue Baseline Refined */
+  --background: 210 33% 99%;
+  /* #F8FAFD */
+  --foreground: 220 20% 10%;
+  /* #171A1C */
 
-  /* Automatic computation of border around primary / danger buttons */
-  --opaque-button-border-intensity: -8; /* In terms of percentages */
+  --card: 0 0% 100%;
+  --card-foreground: 220 20% 10%;
 
-  /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 20% 10%;
 
-  --background: red; /*replace with H S L */
+  --primary: 215 100% 45%;
+  /* #0056D2 - More vibrant Google Blue */
+  --primary-foreground: 210 40% 98%;
 
-  --foreground: red; /*replace with H S L */
+  --secondary: 217 19% 27%;
+  /* Professional Slate */
+  --secondary-foreground: 210 40% 98%;
 
-  --border: red; /*replace with H S L */
+  --muted: 214 32% 91%;
+  --muted-foreground: 215 16% 47%;
 
-  --card: red; /*replace with H S L */
+  --accent: 215 100% 94%;
+  /* Primary Container Light */
+  --accent-foreground: 215 100% 15%;
 
-  --card-foreground: red; /*replace with H S L */
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
 
-  --card-border: red; /*replace with H S L */
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 215 100% 45%;
 
-  --sidebar: red; /*replace with H S L */
+  --radius: 1.5rem;
+  /* 24px - M3 Standard for cards */
 
-  --sidebar-foreground: red; /*replace with H S L */
+  --surface-container: 0 0% 100%;
+  --surface-container-low: 210 33% 97%;
+  --surface-container-high: 210 33% 94%;
 
-  --sidebar-border: red; /*replace with H S L */
+  --sidebar: 210 33% 99%;
+  --sidebar-foreground: 220 20% 10%;
+  --sidebar-primary: 215 100% 45%;
+  --sidebar-primary-foreground: 210 40% 98%;
+  --sidebar-accent: 215 100% 94%;
+  --sidebar-accent-foreground: 215 100% 15%;
+  --sidebar-border: 214 32% 91%;
+  --sidebar-ring: 215 100% 45%;
 
-  --sidebar-primary: red; /*replace with H S L */
-
-  --sidebar-primary-foreground: red; /*replace with H S L */
-
-  --sidebar-accent: red; /*replace with H S L */
-
-  --sidebar-accent-foreground: red; /*replace with H S L */
-
-  --sidebar-ring: red; /*replace with H S L */
-
-  --popover: red; /*replace with H S L */
-
-  --popover-foreground: red; /*replace with H S L */
-
-  --popover-border: red; /*replace with H S L */
-
-  --primary: red; /*replace with H S L */
-
-  --primary-foreground: red; /*replace with H S L */
-
-  --secondary: red; /*replace with H S L */
-
-  --secondary-foreground: red; /*replace with H S L */
-
-  --muted: red; /*replace with H S L */
-
-  --muted-foreground: red; /*replace with H S L */
-
-  --accent: red; /*replace with H S L */
-
-  --accent-foreground: red; /*replace with H S L */
-
-  --destructive: red; /*replace with H S L */
-
-  --destructive-foreground: red; /*replace with H S L */
-
-  --input: red; /*replace with H S L */
-  --ring: red; /*replace with H S L */
-  --chart-1: red; /*replace with H S L */
-  --chart-2: red; /*replace with H S L */
-  --chart-3: red; /*replace with H S L */
-  --chart-4: red; /*replace with H S L */
-  --chart-5: red; /*replace with H S L */
-
-  --font-sans: 'Inter', sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: Menlo, monospace;
-  --radius: .5rem; /* 8px */
-  --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00); /*replace with H S L */
-  --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00); /*replace with H S L */
-  --shadow-sm: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 2px 4px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 4px 6px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 8px 10px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --tracking-normal: 0em;
-  --spacing: 0.25rem;
-
-  /* Automatically computed borders - intensity can be controlled by the user by the --opaque-button-border-intensity setting */
-
-  /* Fallback for older browsers */
-  --sidebar-primary-border: hsl(var(--sidebar-primary));
-  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
-  --sidebar-accent-border: hsl(var(--sidebar-accent));
-  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
-  --primary-border: hsl(var(--primary));
-  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
-  --secondary-border: hsl(var(--secondary));
-  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
-  --muted-border: hsl(var(--muted));
-  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
-  --accent-border: hsl(var(--accent));
-  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
-  --destructive-border: hsl(var(--destructive));
-  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --elevate-1: rgba(0, 0, 0, 0.04);
+  --elevate-2: rgba(0, 0, 0, 0.08);
 }
 
 .dark {
-  --button-outline: rgba(255,255,255, .10);
-  --badge-outline: rgba(255,255,255, .05);
+  /* DARK MODE - Deep Material 3 Midnight - REFINED */
+  --background: 222 25% 6%;
+  /* #090B0D - Deep Slate */
+  --foreground: 210 20% 98%;
 
-  --opaque-button-border-intensity: 9;  /* In terms of percentages */
+  --card: 222 20% 9%;
+  /* #121417 */
+  --card-foreground: 210 20% 98%;
 
-  /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
+  --popover: 222 20% 11%;
+  --popover-foreground: 210 20% 98%;
 
-  --background: red; /*replace with H S L */
+  --primary: 215 100% 75%;
+  /* Pastal Google Blue */
+  --primary-foreground: 215 100% 10%;
 
-  --foreground: red; /*replace with H S L */
+  --secondary: 222 15% 20%;
+  --secondary-foreground: 210 20% 98%;
 
-  --border: red; /*replace with H S L */
+  --muted: 222 20% 12%;
+  /* Surface container */
+  --muted-foreground: 215 12% 60%;
 
-  --card: red; /*replace with H S L */
+  --accent: 215 100% 18%;
+  /* Deep Container Overlay */
+  --accent-foreground: 215 100% 90%;
 
-  --card-foreground: red; /*replace with H S L */
+  --destructive: 0 70% 45%;
+  --destructive-foreground: 210 40% 98%;
 
-  --card-border: red; /*replace with H S L */
+  --border: 222 15% 15%;
+  /* Softer, more subtle borders */
+  --input: 222 15% 15%;
+  --ring: 215 100% 75%;
 
-  --sidebar: red; /*replace with H S L */
+  --surface-container: 222 20% 8%;
+  --surface-container-low: 222 20% 7%;
+  --surface-container-high: 222 20% 14%;
 
-  --sidebar-foreground: red; /*replace with H S L */
+  --sidebar: 222 25% 6%;
+  --sidebar-foreground: 210 20% 98%;
+  --sidebar-primary: 215 100% 75%;
+  --sidebar-primary-foreground: 215 100% 10%;
+  --sidebar-accent: 215 100% 15%;
+  --sidebar-accent-foreground: 223 10% 90%;
+  --sidebar-border: 222 15% 12%;
+  --sidebar-ring: 215 100% 75%;
 
-  --sidebar-border: red; /*replace with H S L */
-
-  --sidebar-primary: red; /*replace with H S L */
-
-  --sidebar-primary-foreground: red; /*replace with H S L */
-
-  --sidebar-accent: red; /*replace with H S L */
-
-  --sidebar-accent-foreground: red; /*replace with H S L */
-
-  --sidebar-ring: red; /*replace with H S L */
-
-  --popover: red; /*replace with H S L */
-
-  --popover-foreground: red; /*replace with H S L */
-
-  --popover-border: red; /*replace with H S L */
-
-  --primary: red; /*replace with H S L */
-
-  --primary-foreground: red; /*replace with H S L */
-
-  --secondary: red; /*replace with H S L */
-
-  --secondary-foreground: red; /*replace with H S L */
-
-  --muted: red; /*replace with H S L */
-
-  --muted-foreground: red; /*replace with H S L */
-
-  --accent: red; /*replace with H S L */
-
-  --accent-foreground: red; /*replace with H S L */
-
-  --destructive: red; /*replace with H S L */
-
-  --destructive-foreground: red; /*replace with H S L */
-
-  /* Used as the border around inputs. Dark mode: Should be a border that is light enough to have high contrast when rendered on a --card background. More contrast than standard --border */
-  --input: red; /*replace with H S L */
-  --ring: red; /*replace with H S L */
-  --chart-1: red; /*replace with H S L */
-  --chart-2: red; /*replace with H S L */
-  --chart-3: red; /*replace with H S L */
-  --chart-4: red; /*replace with H S L */
-  --chart-5: red; /*replace with H S L */
-
-  --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 2px 4px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 4px 6px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 8px 10px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
-
+  --elevate-1: rgba(255, 255, 255, 0.02);
+  --elevate-2: rgba(255, 255, 255, 0.05);
 }
 
 @layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
@@ -311,12 +220,9 @@
     pointer-events: none;
   }
 
-  /* .no-default-hover-elevate/no-default-active-elevate is an escape hatch so consumers of
-   * buttons/badges can remove the automatic brightness adjustment on interactions
-   * and program their own. */
-  .no-default-hover-elevate {}
+  /* .no-default-hover-elevate/no-default-active-elevate are marker classes used in selectors below. 
+     They don't need a body. Removing empty definitions to satisfy linter. */
 
-  .no-default-active-elevate {}
 
 
   /**

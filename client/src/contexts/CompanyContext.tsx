@@ -12,6 +12,7 @@ interface CompanyData {
   email?: string;
   show_hsn_summary?: boolean;
   roundUpDefault?: 0 | 10 | 100;
+  upiId?: string;
 }
 
 interface CompanyContextType {
@@ -62,7 +63,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
 
   const saveCompany = async (data: CompanyData) => {
     if (!user) return;
-    
+
     try {
       await setDoc(doc(db, 'companies', user.uid), {
         ...data,
@@ -70,10 +71,10 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
         owner_email: user.email,
         updated_at: serverTimestamp()
       }, { merge: true });
-      
+
       await fetchCompany();
     } catch (error: any) {
-       if (error.code === 'permission-denied') {
+      if (error.code === 'permission-denied') {
         setPermissionError(true);
         throw new Error("Permission denied. Please check Firestore Rules.");
       }

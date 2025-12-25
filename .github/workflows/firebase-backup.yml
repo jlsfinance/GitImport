@@ -1,0 +1,39 @@
+name: Firebase Daily Backup
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # Daily 2 AM
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Auth Firebase
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > key.json
+          export GOOGLE_APPLICATION_CREDENTIALS=key.json
+
+      - name: Firestore Backup
+        run: |
+          mkdir -p backup/firestore
+          firebase firestore:export backup/firestore --project sample-firebase-ai-app-1f72d
+
+      - name: Realtime DB Backup
+        run: |
+          # Only if Realtime DB is used. Skipping if not needed, or use a dummy command.
+          # firebase database:get / --project sample-firebase-ai-app-1f72d > backup/realtime.json || echo "No Database"
+
+      - name: Commit Backup
+        run: |
+          git config user.name "backup-bot"
+          git config user.email "backup@bot.com"
+          git add .
+          git commit -m "Daily backup $(date)" || echo "No changes"
+          git push

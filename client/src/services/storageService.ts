@@ -1,5 +1,5 @@
 
-import { Customer, Invoice, Product, DEFAULT_COMPANY, CompanyProfile, CustomerNotification, FirebaseConfig, Payment } from '../types';
+import { Customer, Invoice, Product, DEFAULT_COMPANY, CompanyProfile, CustomerNotification, FirebaseConfig, Payment, Expense } from '../types';
 import { FirebaseService } from './firebaseService';
 
 const KEYS = {
@@ -7,6 +7,7 @@ const KEYS = {
   CUSTOMERS: 'app_customers',
   INVOICES: 'app_invoices',
   PAYMENTS: 'app_payments',
+  EXPENSES: 'app_expenses',
   COMPANY: 'app_company',
   FIREBASE_CONFIG: 'app_firebase_config'
 };
@@ -28,13 +29,13 @@ const SEED_PRODUCTS: Product[] = [
 ];
 
 const SEED_CUSTOMERS: Customer[] = [
-  { 
-    id: 'c1', 
-    name: 'John Doe', 
-    company: 'XYZ Enterprises', 
-    email: 'john@xyz.com', 
-    phone: '9123456789', 
-    address: '456, Business Park, Mumbai', 
+  {
+    id: 'c1',
+    name: 'John Doe',
+    company: 'XYZ Enterprises',
+    email: 'john@xyz.com',
+    phone: '9123456789',
+    address: '456, Business Park, Mumbai',
     balance: 0,
     notifications: []
   },
@@ -42,25 +43,26 @@ const SEED_CUSTOMERS: Customer[] = [
 
 // In-Memory Cache
 let cache = {
-    products: [] as Product[],
-    customers: [] as Customer[],
-    invoices: [] as Invoice[],
-    payments: [] as Payment[],
-    company: DEFAULT_COMPANY,
-    isLoaded: false,
-    currentUserId: null as string | null
+  products: [] as Product[],
+  customers: [] as Customer[],
+  invoices: [] as Invoice[],
+  payments: [] as Payment[],
+  expenses: [] as Expense[],
+  company: DEFAULT_COMPANY,
+  isLoaded: false,
+  currentUserId: null as string | null
 };
 
 export const StorageService = {
-  
+
   // --- Initialization ---
   init: async (userId: string | null = null): Promise<void> => {
-    
+
     if (cache.currentUserId !== userId) {
-        cache = {
-            products: [], customers: [], invoices: [], payments: [],
-            company: DEFAULT_COMPANY, isLoaded: false, currentUserId: userId
-        };
+      cache = {
+        products: [], customers: [], invoices: [], payments: [], expenses: [],
+        company: DEFAULT_COMPANY, isLoaded: false, currentUserId: userId
+      };
     }
 
     if (cache.isLoaded) return;
@@ -72,69 +74,76 @@ export const StorageService = {
 
     // 2. Init Firebase
     const connected = FirebaseService.init(config);
-    
-    if (connected && userId) {
-        // 3. Fetch Data from Firebase
-        const userPath = `users/${userId}`;
-        
-        const [fbProducts, fbCustomers, fbInvoices, fbPayments, fbCompany] = await Promise.all([
-            FirebaseService.fetchCollection<Product>(`${userPath}/products`),
-            FirebaseService.fetchCollection<Customer>(`${userPath}/customers`),
-            FirebaseService.fetchCollection<Invoice>(`${userPath}/invoices`),
-            FirebaseService.fetchCollection<Payment>(`${userPath}/payments`),
-            FirebaseService.fetchCollection<CompanyProfile>(`${userPath}/company`)
-        ]);
 
-        cache.products = fbProducts;
-        cache.customers = fbCustomers;
-        cache.invoices = fbInvoices;
-        cache.payments = fbPayments;
-        cache.company = fbCompany.length > 0 ? fbCompany[0] : DEFAULT_COMPANY;
-        cache.isLoaded = true;
-        return;
+    if (connected && userId) {
+      // 3. Fetch Data from Firebase
+      const userPath = `users/${userId}`;
+
+      const [fbProducts, fbCustomers, fbInvoices, fbPayments, fbExpenses, fbCompany] = await Promise.all([
+        FirebaseService.fetchCollection<Product>(`${userPath}/products`),
+        FirebaseService.fetchCollection<Customer>(`${userPath}/customers`),
+        FirebaseService.fetchCollection<Invoice>(`${userPath}/invoices`),
+        FirebaseService.fetchCollection<Payment>(`${userPath}/payments`),
+        FirebaseService.fetchCollection<Expense>(`${userPath}/expenses`),
+        FirebaseService.fetchCollection<CompanyProfile>(`${userPath}/company`)
+      ]);
+
+      cache.products = fbProducts;
+      cache.customers = fbCustomers;
+      cache.invoices = fbInvoices;
+      cache.payments = fbPayments;
+      cache.expenses = fbExpenses;
+      cache.company = fbCompany.length > 0 ? fbCompany[0] : DEFAULT_COMPANY;
+      cache.isLoaded = true;
+      return;
     }
 
     // 4. Fallback to LocalStorage (Guest Mode)
     if (!userId) {
-        const lsProducts = localStorage.getItem(KEYS.PRODUCTS);
-        cache.products = lsProducts ? JSON.parse(lsProducts) : SEED_PRODUCTS;
+      const lsProducts = localStorage.getItem(KEYS.PRODUCTS);
+      cache.products = lsProducts ? JSON.parse(lsProducts) : SEED_PRODUCTS;
 
-        const lsCustomers = localStorage.getItem(KEYS.CUSTOMERS);
-        cache.customers = lsCustomers ? JSON.parse(lsCustomers) : SEED_CUSTOMERS;
+      const lsCustomers = localStorage.getItem(KEYS.CUSTOMERS);
+      cache.customers = lsCustomers ? JSON.parse(lsCustomers) : SEED_CUSTOMERS;
 
-        const lsInvoices = localStorage.getItem(KEYS.INVOICES);
-        cache.invoices = lsInvoices ? JSON.parse(lsInvoices) : [];
+      const lsInvoices = localStorage.getItem(KEYS.INVOICES);
+      cache.invoices = lsInvoices ? JSON.parse(lsInvoices) : [];
 
-        const lsPayments = localStorage.getItem(KEYS.PAYMENTS);
-        cache.payments = lsPayments ? JSON.parse(lsPayments) : [];
+      const lsPayments = localStorage.getItem(KEYS.PAYMENTS);
+      cache.payments = lsPayments ? JSON.parse(lsPayments) : [];
 
-        const lsCompany = localStorage.getItem(KEYS.COMPANY);
-        cache.company = lsCompany ? JSON.parse(lsCompany) : DEFAULT_COMPANY;
-        
-        cache.isLoaded = true;
+      const lsExpenses = localStorage.getItem(KEYS.EXPENSES);
+      cache.expenses = lsExpenses ? JSON.parse(lsExpenses) : [];
+
+      const lsCompany = localStorage.getItem(KEYS.COMPANY);
+      cache.company = lsCompany ? JSON.parse(lsCompany) : DEFAULT_COMPANY;
+
+      cache.isLoaded = true;
     } else {
-        // User logged in but no data found -> Init empty
-        cache.products = [];
-        cache.customers = [];
-        cache.invoices = [];
-        cache.payments = [];
-        cache.company = DEFAULT_COMPANY;
-        cache.isLoaded = true;
+      // User logged in but no data found -> Init empty
+      cache.products = [];
+      cache.customers = [];
+      cache.invoices = [];
+      cache.payments = [];
+      cache.expenses = [];
+      cache.company = DEFAULT_COMPANY;
+      cache.isLoaded = true;
     }
   },
 
   getCollectionPath: (col: string) => {
-      if (cache.currentUserId) return `users/${cache.currentUserId}/${col}`;
-      return col; 
+    if (cache.currentUserId) return `users/${cache.currentUserId}/${col}`;
+    return col;
   },
 
   persistToLocalStorage: () => {
     if (!cache.currentUserId) {
-        localStorage.setItem(KEYS.PRODUCTS, JSON.stringify(cache.products));
-        localStorage.setItem(KEYS.CUSTOMERS, JSON.stringify(cache.customers));
-        localStorage.setItem(KEYS.INVOICES, JSON.stringify(cache.invoices));
-        localStorage.setItem(KEYS.PAYMENTS, JSON.stringify(cache.payments));
-        localStorage.setItem(KEYS.COMPANY, JSON.stringify(cache.company));
+      localStorage.setItem(KEYS.PRODUCTS, JSON.stringify(cache.products));
+      localStorage.setItem(KEYS.CUSTOMERS, JSON.stringify(cache.customers));
+      localStorage.setItem(KEYS.INVOICES, JSON.stringify(cache.invoices));
+      localStorage.setItem(KEYS.PAYMENTS, JSON.stringify(cache.payments));
+      localStorage.setItem(KEYS.EXPENSES, JSON.stringify(cache.expenses));
+      localStorage.setItem(KEYS.COMPANY, JSON.stringify(cache.company));
     }
   },
 
@@ -143,16 +152,17 @@ export const StorageService = {
   getCustomers: (): Customer[] => cache.customers,
   getInvoices: (): Invoice[] => cache.invoices,
   getPayments: (): Payment[] => cache.payments,
+  getExpenses: (): Expense[] => cache.expenses,
   getCompanyProfile: (): CompanyProfile => cache.company,
-  
+
   getFirebaseConfig: (): FirebaseConfig | null => {
-      return DEFAULT_FIREBASE_CONFIG;
+    return DEFAULT_FIREBASE_CONFIG;
   },
 
   // --- Setters ---
   saveFirebaseConfig: (config: FirebaseConfig) => {
-      // No-op since we use hardcoded config, but keep for interface compatibility
-      localStorage.setItem(KEYS.FIREBASE_CONFIG, JSON.stringify(config));
+    // No-op since we use hardcoded config, but keep for interface compatibility
+    localStorage.setItem(KEYS.FIREBASE_CONFIG, JSON.stringify(config));
   },
 
   saveProduct: (product: Product) => {
@@ -162,6 +172,12 @@ export const StorageService = {
 
     StorageService.persistToLocalStorage();
     if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('products'), product.id, product);
+  },
+
+  deleteProduct: (id: string) => {
+    cache.products = cache.products.filter(p => p.id !== id);
+    StorageService.persistToLocalStorage();
+    if (FirebaseService.isReady()) FirebaseService.deleteDocument(StorageService.getCollectionPath('products'), id);
   },
 
   saveCustomer: (customer: Customer) => {
@@ -183,7 +199,7 @@ export const StorageService = {
       };
       if (!cache.customers[index].notifications) cache.customers[index].notifications = [];
       cache.customers[index].notifications.unshift(newNotification);
-      
+
       StorageService.persistToLocalStorage();
       if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), customerId, cache.customers[index]);
     }
@@ -201,13 +217,13 @@ export const StorageService = {
 
     const cIndex = cache.customers.findIndex(c => c.id === invoice.customerId);
     if (cIndex >= 0 && invoice.status === 'PENDING') {
-        const customer = cache.customers[cIndex];
-        customer.balance += invoice.total;
-        if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), customer.id, customer);
+      const customer = cache.customers[cIndex];
+      customer.balance += invoice.total;
+      if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), customer.id, customer);
     }
 
     cache.invoices.unshift(invoice);
-    
+
     StorageService.persistToLocalStorage();
     if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('invoices'), invoice.id, invoice);
 
@@ -224,20 +240,56 @@ export const StorageService = {
 
     const cIndex = cache.customers.findIndex(c => c.id === payment.customerId);
     if (cIndex >= 0) {
-        const customer = cache.customers[cIndex];
-        customer.balance -= payment.amount;
-        if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), customer.id, customer);
+      const customer = cache.customers[cIndex];
+      customer.balance -= payment.amount;
+      if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), customer.id, customer);
     }
 
     StorageService.persistToLocalStorage();
     if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('payments'), payment.id, payment);
 
     StorageService.addNotification(payment.customerId, {
-        type: 'PAYMENT',
-        title: 'Payment Received',
-        message: `Payment of ₹${payment.amount} received via ${payment.mode}.`,
-        date: payment.date
+      type: 'PAYMENT',
+      title: 'Payment Received',
+      message: `Payment of ₹${payment.amount} received via ${payment.mode}.`,
+      date: payment.date
     });
+  },
+
+  updatePayment: (updatedPayment: Payment) => {
+    const index = cache.payments.findIndex(p => p.id === updatedPayment.id);
+    if (index === -1) return;
+
+    const oldPayment = cache.payments[index];
+    const customer = cache.customers.find(c => c.id === updatedPayment.customerId);
+
+    if (customer) {
+      // Revert old amount, add new
+      customer.balance += oldPayment.amount;
+      customer.balance -= updatedPayment.amount;
+      if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), customer.id, customer);
+    }
+
+    cache.payments[index] = updatedPayment;
+    StorageService.persistToLocalStorage();
+    if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('payments'), updatedPayment.id, updatedPayment);
+  },
+
+  deletePayment: (paymentId: string) => {
+    const index = cache.payments.findIndex(p => p.id === paymentId);
+    if (index === -1) return;
+
+    const payment = cache.payments[index];
+    const customer = cache.customers.find(c => c.id === payment.customerId);
+
+    if (customer) {
+      customer.balance += payment.amount;
+      if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), customer.id, customer);
+    }
+
+    cache.payments.splice(index, 1);
+    StorageService.persistToLocalStorage();
+    if (FirebaseService.isReady()) FirebaseService.deleteDocument(StorageService.getCollectionPath('payments'), paymentId);
   },
 
   deleteInvoice: (invoiceId: string) => {
@@ -275,14 +327,14 @@ export const StorageService = {
     oldInvoice.items.forEach(item => {
       const pIndex = cache.products.findIndex(p => p.id === item.productId);
       if (pIndex >= 0 && cache.products[pIndex].category !== 'Services') {
-         cache.products[pIndex].stock += item.quantity;
-         modifiedProductIds.add(cache.products[pIndex].id);
+        cache.products[pIndex].stock += item.quantity;
+        modifiedProductIds.add(cache.products[pIndex].id);
       }
     });
 
     const oldCIndex = cache.customers.findIndex(c => c.id === oldInvoice.customerId);
     if (oldCIndex >= 0 && oldInvoice.status === 'PENDING') {
-        cache.customers[oldCIndex].balance -= oldInvoice.total;
+      cache.customers[oldCIndex].balance -= oldInvoice.total;
     }
 
     updatedInvoice.items.forEach(item => {
@@ -295,31 +347,31 @@ export const StorageService = {
 
     const newCIndex = cache.customers.findIndex(c => c.id === updatedInvoice.customerId);
     if (newCIndex >= 0 && updatedInvoice.status === 'PENDING') {
-        cache.customers[newCIndex].balance += updatedInvoice.total;
+      cache.customers[newCIndex].balance += updatedInvoice.total;
     }
 
     if (FirebaseService.isReady()) {
-       modifiedProductIds.forEach(pid => {
-           const product = cache.products.find(p => p.id === pid);
-           if(product) FirebaseService.saveDocument(StorageService.getCollectionPath('products'), product.id, product);
-       });
-       
-       const oldC = cache.customers[oldCIndex];
-       if(oldC) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), oldC.id, oldC);
-       
-       if (oldCIndex !== newCIndex) {
-           const newC = cache.customers[newCIndex];
-           if(newC) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), newC.id, newC);
-       }
+      modifiedProductIds.forEach(pid => {
+        const product = cache.products.find(p => p.id === pid);
+        if (product) FirebaseService.saveDocument(StorageService.getCollectionPath('products'), product.id, product);
+      });
+
+      const oldC = cache.customers[oldCIndex];
+      if (oldC) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), oldC.id, oldC);
+
+      if (oldCIndex !== newCIndex) {
+        const newC = cache.customers[newCIndex];
+        if (newC) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), newC.id, newC);
+      }
     }
 
     cache.invoices[oldInvoiceIndex] = updatedInvoice;
-    
+
     StorageService.persistToLocalStorage();
     if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('invoices'), updatedInvoice.id, updatedInvoice);
 
     if (oldInvoice.total !== updatedInvoice.total) {
-       StorageService.addNotification(updatedInvoice.customerId, {
+      StorageService.addNotification(updatedInvoice.customerId, {
         type: 'INVOICE',
         title: 'Invoice Updated',
         message: `Invoice #${updatedInvoice.invoiceNumber} has been updated to ₹${updatedInvoice.total}.`,
@@ -343,6 +395,47 @@ export const StorageService = {
     return null;
   },
 
+  getCustomerBehaviorScore: (customerId: string): number => {
+    const invoices = cache.invoices.filter(i => i.customerId === customerId);
+    if (invoices.length === 0) return 100;
+
+    const totalInvoiced = invoices.reduce((sum, i) => sum + i.total, 0);
+    const totalPaid = cache.payments
+      .filter(p => p.customerId === customerId)
+      .reduce((sum, p) => sum + p.amount, 0) +
+      invoices.filter(i => i.status === 'PAID').reduce((sum, i) => sum + i.total, 0);
+
+    if (totalInvoiced === 0) return 100;
+    const score = (totalPaid / totalInvoiced) * 100;
+    return Math.min(Math.round(score), 100);
+  },
+
+  predictNextItem: (customerId: string): Product | null => {
+    if (!customerId) return null;
+    const customerInvoices = cache.invoices.filter(inv => inv.customerId === customerId);
+    if (customerInvoices.length === 0) {
+      // Return most popular product overall
+      const productCounts: Record<string, number> = {};
+      cache.invoices.forEach(inv => {
+        inv.items.forEach(item => {
+          productCounts[item.productId] = (productCounts[item.productId] || 0) + 1;
+        });
+      });
+      const topProductId = Object.keys(productCounts).sort((a, b) => productCounts[b] - productCounts[a])[0];
+      return topProductId ? cache.products.find(p => p.id === topProductId) || null : null;
+    }
+
+    const counts: Record<string, number> = {};
+    customerInvoices.forEach(inv => {
+      inv.items.forEach(item => {
+        counts[item.productId] = (counts[item.productId] || 0) + 1;
+      });
+    });
+
+    const bestId = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+    return bestId ? cache.products.find(p => p.id === bestId) || null : null;
+  },
+
   updateCustomer: (customer: Customer) => {
     const index = cache.customers.findIndex(c => c.id === customer.id);
     if (index >= 0) {
@@ -358,6 +451,24 @@ export const StorageService = {
       cache.customers.splice(index, 1);
       StorageService.persistToLocalStorage();
       if (FirebaseService.isReady()) FirebaseService.deleteDocument(StorageService.getCollectionPath('customers'), customerId);
+    }
+  },
+
+  saveExpense: (expense: Expense) => {
+    const index = cache.expenses.findIndex(e => e.id === expense.id);
+    if (index >= 0) cache.expenses[index] = expense;
+    else cache.expenses.unshift(expense);
+
+    StorageService.persistToLocalStorage();
+    if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('expenses'), expense.id, expense);
+  },
+
+  deleteExpense: (expenseId: string) => {
+    const index = cache.expenses.findIndex(e => e.id === expenseId);
+    if (index >= 0) {
+      cache.expenses.splice(index, 1);
+      StorageService.persistToLocalStorage();
+      if (FirebaseService.isReady()) FirebaseService.deleteDocument(StorageService.getCollectionPath('expenses'), expenseId);
     }
   },
 
@@ -400,6 +511,7 @@ export const StorageService = {
       customers: JSON.stringify(cache.customers),
       invoices: JSON.stringify(cache.invoices),
       payments: JSON.stringify(cache.payments),
+      expenses: JSON.stringify(cache.expenses),
       company: JSON.stringify(cache.company),
       timestamp: new Date().toISOString()
     };
@@ -414,10 +526,10 @@ export const StorageService = {
       if (data.invoices) cache.invoices = JSON.parse(data.invoices);
       if (data.payments) cache.payments = JSON.parse(data.payments);
       if (data.company) cache.company = JSON.parse(data.company);
-      
+
       StorageService.persistToLocalStorage();
       if (FirebaseService.isReady()) {
-         StorageService.init(cache.currentUserId);
+        StorageService.init(cache.currentUserId);
       }
       return true;
     } catch (e) {

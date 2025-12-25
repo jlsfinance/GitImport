@@ -13,17 +13,17 @@ interface ImportProps {
 const Import: React.FC<ImportProps> = ({ onClose, onImportComplete }) => {
   const { company } = useCompany();
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<{type: 'idle' | 'success' | 'error', message: string}>({type: 'idle', message: ''});
-  const [importStats, setImportStats] = useState({products: 0, customers: 0});
+  const [status, setStatus] = useState<{ type: 'idle' | 'success' | 'error', message: string }>({ type: 'idle', message: '' });
+  const [importStats, setImportStats] = useState({ products: 0, customers: 0 });
 
-  const parseExcelFile = async (file: File) => {
+  const parseExcelFile = async (file: File): Promise<{ products: Product[], customers: Customer[] }> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, {type: 'array'});
-          const result = {products: [] as Product[], customers: [] as Customer[]};
+          const workbook = XLSX.read(data, { type: 'array' });
+          const result = { products: [] as Product[], customers: [] as Customer[] };
 
           // Parse Products sheet
           if (workbook.SheetNames.includes('Products')) {
@@ -67,8 +67,8 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete }) => {
   };
 
   const parseTallyXML = (content: string) => {
-    const result = {products: [] as Product[], customers: [] as Customer[]};
-    
+    const result = { products: [] as Product[], customers: [] as Customer[] };
+
     try {
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(content, 'text/xml');
@@ -136,10 +136,10 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete }) => {
     if (!file) return;
 
     setLoading(true);
-    setStatus({type: 'idle', message: ''});
+    setStatus({ type: 'idle', message: '' });
 
     try {
-      let importData: {products: Product[], customers: Customer[]};
+      let importData: { products: Product[], customers: Customer[] };
 
       if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
         importData = await parseExcelFile(file);
@@ -192,7 +192,7 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
         <h2 className="text-xl font-bold text-slate-900 mb-4">Import Data</h2>
-        
+
         <div className="space-y-4">
           {/* File Upload Area */}
           <div className="border-2 border-dashed border-blue-200 rounded-lg p-6 text-center hover:bg-blue-50 transition-colors">
@@ -245,11 +245,11 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete }) => {
           {/* Info Box */}
           <div className={`rounded-lg p-3 ${company?.gst_enabled ? 'bg-blue-50 border border-blue-200' : 'bg-amber-50 border border-amber-200'}`}>
             <p className={`text-xs ${company?.gst_enabled ? 'text-blue-900' : 'text-amber-900'}`}>
-              <span className="font-medium">Supported formats:</span><br/>
-              • Excel: Products sheet with Name, Price, Stock{company?.gst_enabled ? ', HSN, GST Rate' : ''}<br/>
-              • Excel: Customers sheet with Name, Email, Phone, Address{company?.gst_enabled ? ', State, GSTIN' : ''}<br/>
+              <span className="font-medium">Supported formats:</span><br />
+              • Excel: Products sheet with Name, Price, Stock{company?.gst_enabled ? ', HSN, GST Rate' : ''}<br />
+              • Excel: Customers sheet with Name, Email, Phone, Address{company?.gst_enabled ? ', State, GSTIN' : ''}<br />
               • Tally XML: Extract ITEM and LEDGER masters
-              {!company?.gst_enabled && <><br/><br/><span className="font-medium">⚠️ GST is currently disabled</span> - GST fields will be ignored</>}
+              {!company?.gst_enabled && <><br /><br /><span className="font-medium">⚠️ GST is currently disabled</span> - GST fields will be ignored</>}
             </p>
           </div>
         </div>

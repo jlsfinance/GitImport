@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
+import MobileBottomNav from './components/MobileBottomNav';
 import InvoiceView from './components/InvoiceView';
 import CreateInvoice from './components/CreateInvoice';
 import AllInvoices from './pages/AllInvoices';
@@ -8,15 +9,21 @@ import Inventory from './components/Inventory';
 import Customers from './components/Customers';
 import Settings from './components/Settings';
 import Daybook from './components/Daybook';
+import Expenses from './components/Expenses';
+import Payments from './components/Payments';
 import Import from './components/Import';
 import CustomerLedger from './components/CustomerLedger';
+import Dashboard from './components/Dashboard';
+import Reports from './components/Reports';
 import { ViewState, Invoice } from './types';
 import { StorageService } from './services/storageService';
 import { FirebaseService } from './services/firebaseService';
 import { WhatsAppService } from './services/whatsappService';
-import { ArrowRight, DollarSign, Package, Users, Edit, Loader2, MessageCircle } from 'lucide-react';
+import { Loader2, Menu as SidebarIcon, Sun, Moon } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { CompanyProvider, useCompany } from '@/contexts/CompanyContext';
+import { useTheme } from 'next-themes';
+import { HapticService } from '@/services/hapticService';
 import { CompanyForm } from '@/components/CompanyForm';
 import Auth from '@/components/Auth';
 import { PermissionErrorModal } from '@/components/PermissionErrorModal';
@@ -24,7 +31,8 @@ import { PermissionErrorModal } from '@/components/PermissionErrorModal';
 const AppContent: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const { company, loading: companyLoading, permissionError } = useCompany();
-  
+  const { theme, setTheme } = useTheme();
+
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
@@ -37,22 +45,22 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     const initApp = async () => {
-        await StorageService.init(user?.uid || null);
-        setInvoices(StorageService.getInvoices());
-        
-        // Check cloud status
-        const hasConfig = !!StorageService.getFirebaseConfig();
-        const isReady = FirebaseService.isReady();
-        setIsCloudConnected(hasConfig && isReady);
-        
-        setIsInitializing(false);
+      await StorageService.init(user?.uid || null);
+      setInvoices(StorageService.getInvoices());
+
+      // Check cloud status
+      const hasConfig = !!StorageService.getFirebaseConfig();
+      const isReady = FirebaseService.isReady();
+      setIsCloudConnected(hasConfig && isReady);
+
+      setIsInitializing(false);
     };
     initApp();
   }, [user]);
 
   useEffect(() => {
     if (!isInitializing) {
-        setInvoices(StorageService.getInvoices());
+      setInvoices(StorageService.getInvoices());
     }
   }, [currentView, isInitializing]);
 
@@ -84,9 +92,9 @@ const AppContent: React.FC = () => {
   };
 
   const handleQuickShare = (invoice: Invoice) => {
-      const customer = StorageService.getCustomers().find(c => c.id === invoice.customerId);
-      const company = StorageService.getCompanyProfile();
-      WhatsAppService.shareInvoice(invoice, customer, company);
+    const customer = StorageService.getCustomers().find(c => c.id === invoice.customerId);
+    const company = StorageService.getCompanyProfile();
+    WhatsAppService.shareInvoice(invoice, customer, company);
   };
 
   const handleViewDaybook = (date: string) => {
@@ -94,155 +102,12 @@ const AppContent: React.FC = () => {
     setCurrentView(ViewState.DAYBOOK);
   };
 
-  // --- DASHBOARD COMPONENT ---
-  const Dashboard = () => {
-    const totalRevenue = invoices.reduce((acc, inv) => acc + inv.total, 0);
-    const pendingInvoices = invoices.filter(i => i.status === 'PENDING').length;
-    
-    return (
-        <div className="p-4 md:p-6">
-            <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-slate-800">Business Overview</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
-                <div className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-blue-500">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <p className="text-sm text-gray-500">Total Revenue</p>
-                            <p className="text-2xl font-bold text-slate-800">₹{totalRevenue.toLocaleString()}</p>
-                        </div>
-                        <div className="p-3 bg-blue-50 rounded-full"><DollarSign className="w-6 h-6 text-blue-500"/></div>
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-orange-500">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <p className="text-sm text-gray-500">Pending Invoices</p>
-                            <p className="text-2xl font-bold text-slate-800">{pendingInvoices}</p>
-                        </div>
-                        <div className="p-3 bg-orange-50 rounded-full"><Users className="w-6 h-6 text-orange-500"/></div>
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-green-500">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <p className="text-sm text-gray-500">Products Active</p>
-                            <p className="text-2xl font-bold text-slate-800">{StorageService.getProducts().length}</p>
-                        </div>
-                        <div className="p-3 bg-green-50 rounded-full"><Package className="w-6 h-6 text-green-500"/></div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-4 md:p-6">
-                <h3 className="font-bold text-lg mb-4 text-slate-800">Recent Invoices</h3>
-                <div className="overflow-x-auto">
-                    <table className="w-full min-w-[600px]">
-                        <thead>
-                            <tr className="text-left text-xs font-medium text-gray-500 uppercase border-b">
-                                <th className="pb-3">Invoice #</th>
-                                <th className="pb-3">Customer</th>
-                                <th className="pb-3">Date</th>
-                                <th className="pb-3 text-right">Amount</th>
-                                <th className="pb-3 text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                            {invoices.slice(0, 5).map(inv => (
-                                <tr key={inv.id} className="text-sm hover:bg-gray-50">
-                                    <td className="py-3 font-medium text-blue-600 cursor-pointer hover:underline" onClick={() => handleViewInvoice(inv)}>{inv.invoiceNumber}</td>
-                                    <td className="py-3 cursor-pointer hover:text-blue-600 hover:underline" onClick={() => handleViewCustomerLedger(inv.customerId)}>{inv.customerName}</td>
-                                    <td className="py-3 text-gray-500 cursor-pointer hover:text-blue-600 hover:underline" onClick={() => handleViewDaybook(inv.date)}>{inv.date}</td>
-                                    <td className="py-3 text-right font-medium">₹{inv.total.toFixed(2)}</td>
-                                    <td className="py-3 text-center flex justify-center gap-3">
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); handleQuickShare(inv); }} 
-                                            className="text-green-500 hover:text-green-700"
-                                            title="Share on WhatsApp"
-                                        >
-                                            <MessageCircle className="w-4 h-4" />
-                                        </button>
-                                        <button onClick={() => handleViewInvoice(inv)} className="text-gray-400 hover:text-blue-600">
-                                            <ArrowRight className="w-4 h-4" />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    );
-  };
-
-  // --- INVOICE LIST COMPONENT ---
-  const InvoiceList = () => (
-    <div className="p-4 md:p-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-4">
-            <h2 className="text-xl md:text-2xl font-bold text-slate-800">All Invoices</h2>
-            <button onClick={() => { setInvoiceToEdit(null); setCurrentView(ViewState.CREATE_INVOICE); }} className="w-full md:w-auto bg-blue-600 text-white px-4 py-2 rounded-md shadow hover:bg-blue-700">Create New</button>
-        </div>
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
-                <table className="w-full min-w-[800px]">
-                    <thead className="bg-slate-50 border-b">
-                        <tr className="text-left text-xs font-medium text-slate-500 uppercase">
-                            <th className="px-6 py-4">Invoice #</th>
-                            <th className="px-6 py-4">Customer</th>
-                            <th className="px-6 py-4">Date</th>
-                            <th className="px-6 py-4">Due Date</th>
-                            <th className="px-6 py-4 text-right">Amount</th>
-                            <th className="px-6 py-4 text-center">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {invoices.map(inv => (
-                            <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
-                                <td className="px-6 py-4 font-medium text-blue-600 cursor-pointer" onClick={() => handleViewInvoice(inv)}>{inv.invoiceNumber}</td>
-                                <td className="px-6 py-4 cursor-pointer" onClick={() => handleViewInvoice(inv)}>{inv.customerName}</td>
-                                <td className="px-6 py-4 text-slate-500 cursor-pointer" onClick={() => handleViewInvoice(inv)}>{inv.date}</td>
-                                <td className="px-6 py-4 text-slate-500 cursor-pointer" onClick={() => handleViewInvoice(inv)}>{inv.dueDate}</td>
-                                <td className="px-6 py-4 text-right font-bold text-slate-800 cursor-pointer" onClick={() => handleViewInvoice(inv)}>₹{inv.total.toFixed(2)}</td>
-                                <td className="px-6 py-4 text-center flex justify-center gap-3">
-                                    <button 
-                                      onClick={(e) => { e.stopPropagation(); handleQuickShare(inv); }} 
-                                      className="text-green-500 hover:text-green-700 text-sm font-medium flex items-center gap-1"
-                                      title="Share"
-                                    >
-                                      <MessageCircle className="w-4 h-4" />
-                                    </button>
-                                    <button 
-                                      onClick={() => handleViewInvoice(inv)} 
-                                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                                    >
-                                      View
-                                    </button>
-                                    <button 
-                                      onClick={(e) => { e.stopPropagation(); handleEditInvoice(inv); }} 
-                                      className="text-orange-500 hover:text-orange-700 text-sm font-medium flex items-center gap-1"
-                                    >
-                                      <Edit className="w-3 h-3" /> Edit
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                        {invoices.length === 0 && (
-                            <tr>
-                                <td colSpan={6} className="px-6 py-8 text-center text-slate-400">No invoices found. Create one to get started.</td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-  );
-
   // Auth & Loading States
   if (authLoading || (user && companyLoading)) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-slate-50 flex-col gap-4">
-          <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-          <p className="text-slate-500 font-medium">Loading...</p>
+        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+        <p className="text-slate-500 font-medium">Loading...</p>
       </div>
     );
   }
@@ -260,76 +125,178 @@ const AppContent: React.FC = () => {
   }
 
   if (isInitializing) {
-      return (
-          <div className="flex h-screen w-full items-center justify-center bg-slate-50 flex-col gap-4">
-              <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-              <p className="text-slate-500 font-medium">Loading Data...</p>
-          </div>
-      )
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-slate-50 flex-col gap-4">
+        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+        <p className="text-slate-500 font-medium">Loading Data...</p>
+      </div>
+    )
   }
+
+  // View Handler Logic
+  const handleCreateNew = () => {
+    setInvoiceToEdit(null);
+    setCurrentView(ViewState.CREATE_INVOICE);
+  };
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // --- MAIN RENDER ---
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans flex-col md:flex-row">
-      <Sidebar 
-        currentView={currentView} 
-        onChangeView={(view) => {
-          if (view === ViewState.CREATE_INVOICE) setInvoiceToEdit(null);
-          if (view === ViewState.IMPORT) {
-            setShowImport(true);
-          } else if (view === ViewState.DASHBOARD) {
-            setCurrentView(view);
-          } else {
-            setCurrentView(view);
-          }
-        }}
-        isCloudConnected={isCloudConnected || !!user} // Show cloud connected if logged in
-      />
-      
-      {/* Added padding bottom (pb-20) for mobile to account for fixed navbar */}
-      <main className="flex-1 overflow-y-auto h-full relative pb-20 md:pb-0 w-full">
-        {currentView === ViewState.DASHBOARD && <Dashboard />}
-        {currentView === ViewState.INVOICES && <InvoiceList />}
-        {currentView === ViewState.ALL_INVOICES && <AllInvoices />}
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden font-sans flex-col md:flex-row">
+      {/* Sidebar - Desktop (Static) & Mobile (Drawer) */}
+      <div className={`
+        fixed inset-0 z-[100] md:relative md:z-auto md:block
+        ${isSidebarOpen ? 'block' : 'hidden'}
+      `}>
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+        <div className="relative h-full w-72 md:w-auto">
+          <Sidebar
+            currentView={currentView}
+            onChangeView={(view) => {
+              if (view === ViewState.CREATE_INVOICE) setInvoiceToEdit(null);
+              if (view === ViewState.IMPORT) {
+                setShowImport(true);
+              } else {
+                setCurrentView(view);
+              }
+              setIsSidebarOpen(false);
+            }}
+            isCloudConnected={isCloudConnected || !!user}
+          />
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-y-auto h-full relative w-full scroll-smooth">
+        {/* Mobile Header with Hamburger (Visible only on mobile and when not in a detailed view) */}
+        {!['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE'].includes(currentView) && (
+          <div className="md:hidden sticky top-0 z-30 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md px-4 h-14 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 -ml-2 rounded-xl text-slate-600 dark:text-slate-400 active:bg-slate-100 dark:active:bg-slate-800"
+            >
+              <SidebarIcon className="w-6 h-6" />
+            </button>
+            <div className="flex-1 text-center font-bold text-slate-800 dark:text-slate-100">
+              {currentView.replace('_', ' ')}
+            </div>
+            <button
+              onClick={() => {
+                setTheme(theme === 'dark' ? 'light' : 'dark');
+                HapticService.medium();
+              }}
+              className="p-2 -mr-2 rounded-xl text-slate-600 dark:text-slate-400 active:bg-slate-100 dark:active:bg-slate-800"
+            >
+              {theme === 'dark' ? <Sun className="w-6 h-6 text-yellow-500" /> : <Moon className="w-6 h-6 text-blue-600" />}
+            </button>
+          </div>
+        )}
+
+        {currentView === ViewState.DASHBOARD && (
+          <Dashboard
+            invoices={invoices}
+            onViewInvoice={handleViewInvoice}
+            onViewCustomerLedger={handleViewCustomerLedger}
+            onViewDaybook={handleViewDaybook}
+            onQuickShare={handleQuickShare}
+            onCreateInvoice={handleCreateNew}
+            onOpenReports={() => setCurrentView(ViewState.REPORTS)}
+            onAddCustomer={() => setCurrentView(ViewState.CUSTOMERS)}
+          />
+        )}
+        {currentView === ViewState.INVOICES && (
+          <AllInvoices
+            invoices={invoices}
+            onView={handleViewInvoice}
+            onEdit={handleEditInvoice}
+            onViewLedger={handleViewCustomerLedger}
+            onDelete={(inv) => {
+              StorageService.deleteInvoice(inv.id);
+              setInvoices(StorageService.getInvoices());
+            }}
+          />
+        )}
+
+        {currentView === ViewState.ALL_INVOICES && (
+          <AllInvoices
+            invoices={invoices}
+            onView={handleViewInvoice}
+            onEdit={handleEditInvoice}
+            onViewLedger={handleViewCustomerLedger}
+            onDelete={(inv) => {
+              StorageService.deleteInvoice(inv.id);
+              setInvoices(StorageService.getInvoices());
+            }}
+          />
+        )}
         {currentView === ViewState.DAYBOOK && <Daybook initialDate={selectedDaybookDate} />}
         {currentView === ViewState.INVENTORY && <Inventory />}
-        {currentView === ViewState.CUSTOMERS && <Customers onEditInvoice={handleEditInvoice} />}
+        {currentView === ViewState.EXPENSES && <Expenses onBack={() => setCurrentView(ViewState.DASHBOARD)} />}
+        {currentView === ViewState.PAYMENTS && <Payments onBack={() => setCurrentView(ViewState.DASHBOARD)} />}
+        {currentView === ViewState.REPORTS && (
+          <Reports
+            onBack={() => setCurrentView(ViewState.DASHBOARD)}
+            onViewLedger={handleViewCustomerLedger}
+          />
+        )}
+        {currentView === ViewState.CUSTOMERS && <Customers onEditInvoice={handleEditInvoice} onBack={() => setCurrentView(ViewState.DASHBOARD)} />}
         {currentView === ViewState.SETTINGS && <Settings />}
-        
+        {currentView === ViewState.IMPORT && <Import onClose={() => setCurrentView(ViewState.DASHBOARD)} onImportComplete={() => { }} />}
+
         {currentView === ViewState.CUSTOMER_LEDGER && selectedCustomerId && (
-          <CustomerLedger 
+          <CustomerLedger
             customerId={selectedCustomerId}
             onBack={() => setCurrentView(ViewState.DASHBOARD)}
           />
         )}
-        
+
         {currentView === ViewState.CREATE_INVOICE && (
-          <CreateInvoice 
-            onSave={handleSaveInvoice} 
-            onCancel={() => setCurrentView(ViewState.INVOICES)} 
+          <CreateInvoice
+            onSave={handleSaveInvoice}
+            onCancel={() => setCurrentView(ViewState.INVOICES)}
           />
         )}
-        
+
         {currentView === ViewState.EDIT_INVOICE && invoiceToEdit && (
-           <CreateInvoice
-             onSave={handleSaveInvoice}
-             onCancel={() => setCurrentView(ViewState.INVOICES)}
-             initialInvoice={invoiceToEdit}
-           />
+          <CreateInvoice
+            onSave={handleSaveInvoice}
+            onCancel={() => setCurrentView(ViewState.INVOICES)}
+            initialInvoice={invoiceToEdit}
+          />
         )}
-        
+
         {currentView === ViewState.VIEW_INVOICE && selectedInvoice && (
-          <InvoiceView 
-            invoice={selectedInvoice} 
+          <InvoiceView
+            invoice={selectedInvoice}
             onBack={() => setCurrentView(ViewState.INVOICES)}
             onEdit={handleEditInvoice}
           />
         )}
       </main>
 
+      {/* Mobile Bottom Navigation - Visible only on Mobile */}
+      <div className="md:hidden">
+        <MobileBottomNav
+          currentView={currentView}
+          onChangeView={(view) => {
+            if (view === ViewState.CREATE_INVOICE) setInvoiceToEdit(null);
+            if (view === ViewState.IMPORT) {
+              setShowImport(true); // Or navigate to import view
+            } else {
+              setCurrentView(view);
+            }
+          }}
+        />
+      </div>
+
       {/* Import Modal */}
-      {showImport && (
-        <Import 
+      {showImport && currentView !== ViewState.IMPORT && (
+        <Import
           onClose={() => setShowImport(false)}
           onImportComplete={() => {
             setInvoices(StorageService.getInvoices());
