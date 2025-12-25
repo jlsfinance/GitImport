@@ -5,6 +5,7 @@ import { LayoutDashboard, FileText, Users, Package, PlusCircle, Receipt, Setting
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from 'next-themes';
 import { HapticService } from '@/services/hapticService';
+import { motion } from 'framer-motion';
 
 interface SidebarProps {
   currentView: ViewState;
@@ -35,81 +36,111 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCloudCon
 
   return (
     <>
-      {/* Sidebar Content */}
-      <div className="flex w-72 md:w-64 bg-slate-900 text-slate-100 h-full flex-col flex-shrink-0 transition-all duration-300">
-        <div className="p-6 flex items-center justify-between border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="bg-white/10 p-1.5 rounded-xl backdrop-blur-md border border-white/20">
-              <img src="/logo.png" alt="BillBook Logo" className="w-10 h-10 object-contain rounded-lg shadow-lg" />
-            </div>
-            <div>
-              <h1 className="text-xl font-black tracking-tighter bg-gradient-to-r from-white to-blue-400 bg-clip-text text-transparent italic">BillBook</h1>
-              <p className="text-xs text-blue-300 font-semibold">by Lavneet Rathi</p>
-              <div className="flex items-center gap-1 text-[10px] font-medium mt-0.5">
-                {isCloudConnected ? (
-                  <span className="text-green-400 flex items-center gap-1"><Cloud className="w-3 h-3" /> Cloud Sync</span>
-                ) : (
-                  <span className="text-slate-500 flex items-center gap-1"><CloudOff className="w-3 h-3" /> Local Mode</span>
-                )}
+      {/* Material 3 Expressive Navigation Drawer */}
+      <div className="flex w-72 md:w-80 bg-surface-container-low border-r border-border h-full flex-col flex-shrink-0 transition-all duration-300">
+        {/* Drawer Header */}
+        <div className="p-8 pb-6">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-[20px] bg-white dark:bg-slate-800 p-2 shadow-google border border-border">
+                <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-black font-heading tracking-tight text-foreground leading-none">BillBook</h1>
+                <p className="text-[10px] font-bold text-google-blue uppercase tracking-[0.2em] mt-1">Premium Edition</p>
               </div>
             </div>
+
+            <button
+              onClick={onClose}
+              className="p-2 md:hidden text-muted-foreground hover:bg-surface-container-high rounded-full transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
           </div>
 
-          {/* Mobile Close Button */}
-          <button
-            onClick={onClose}
-            className="p-2 md:hidden text-slate-400 hover:text-white"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          {/* Cloud Status Card - Expressive */}
+          <div className={`p-4 rounded-[24px] border flex items-center gap-3 transition-all ${isCloudConnected
+              ? 'bg-google-green/5 border-google-green/10 text-google-green'
+              : 'bg-surface-container-high border-border text-muted-foreground'
+            }`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isCloudConnected ? 'bg-google-green/10' : 'bg-surface-container'
+              }`}>
+              {isCloudConnected ? <Cloud className="w-5 h-5" /> : <CloudOff className="w-5 h-5" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-widest leading-none mb-1">Status</p>
+              <p className="text-xs font-bold truncate">{isCloudConnected ? 'Cloud Synchronized' : 'Offline Mode'}</p>
+            </div>
+            {isCloudConnected && <span className="w-2 h-2 rounded-full bg-google-green animate-pulse" />}
+          </div>
         </div>
 
-        <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto scroll-smooth">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                onChangeView(item.id);
-                HapticService.light();
-              }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${currentView === item.id
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                }`}
-            >
-              <item.icon className="w-5 h-5" />
-              {item.label === 'Home' ? 'Dashboard' : item.label === 'People' ? 'Customers' : item.label === 'Create' ? 'New Invoice' : item.label}
-            </button>
-          ))}
+        {/* Navigation Items */}
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto no-scrollbar">
+          {navItems.map((item) => {
+            const isActive = currentView === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  onChangeView(item.id);
+                  HapticService.light();
+                }}
+                className={`w-full group relative flex items-center gap-4 px-6 py-4 rounded-full text-sm font-bold transition-all ${isActive
+                    ? 'bg-google-blue text-white shadow-google scale-[1.02]'
+                    : 'text-muted-foreground hover:bg-surface-container-high hover:text-foreground'
+                  }`}
+              >
+                <item.icon className={`w-6 h-6 transition-transform group-hover:scale-110 ${isActive ? 'text-white' : 'text-muted-foreground group-hover:text-google-blue'}`} />
+                <span className="flex-1 text-left tracking-tight">
+                  {item.label === 'Home' ? 'Dashboard' : item.label === 'People' ? 'Customers' : item.label === 'Create' ? 'New Invoice' : item.label}
+                </span>
+                {isActive && (
+                  <motion.div
+                    layoutId="nav-pill-active"
+                    className="absolute inset-0 bg-google-blue rounded-full -z-10"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+              </button>
+            );
+          })}
 
+          <div className="h-4" />
+
+          {/* Theme Toggle Button */}
           <button
             onClick={() => {
               setTheme(theme === 'dark' ? 'light' : 'dark');
               HapticService.medium();
             }}
-            className="w-full mt-4 flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            className="w-full flex items-center gap-4 px-6 py-4 rounded-full text-sm font-bold text-muted-foreground hover:bg-surface-container-high hover:text-foreground transition-all group"
           >
-            {theme === 'dark' ? <Sun className="w-5 h-5 text-yellow-500" /> : <Moon className="w-5 h-5 text-blue-400" />}
-            {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${theme === 'dark' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-500'
+              }`}>
+              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </div>
+            <span className="flex-1 text-left tracking-tight">Appearance</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest opacity-40">{theme === 'dark' ? 'Dark' : 'Light'}</span>
           </button>
         </nav>
 
-        <div className="p-4 border-t border-slate-800 space-y-3">
+        {/* Footer Actions */}
+        <div className="p-6 border-t border-border">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-red-400 transition-colors"
-            data-testid="button-logout"
+            className="w-full flex items-center gap-4 px-6 py-4 rounded-[24px] bg-google-red/5 text-google-red hover:bg-google-red hover:text-white transition-all font-bold text-sm group"
           >
-            <LogOut className="w-4 h-4" />
-            Logout
+            <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+            <span>Sign Out</span>
           </button>
-          <div className="text-xs text-slate-500 text-center">
-            © 2025 BillFlow<br />by Lavneet Rathi
+
+          <div className="mt-6 text-center">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em]">© 2025 JLS SUITE</p>
           </div>
         </div>
       </div>
-
-      {/* Mobile Bottom Navbar Removed - Handled by MobileBottomNav component */}
     </>
   );
 };

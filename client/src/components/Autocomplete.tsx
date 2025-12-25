@@ -163,12 +163,12 @@ const Autocomplete: React.FC<AutocompleteProps> = ({
   return (
     <div ref={wrapperRef} className={`relative ${className}`}>
       <div className="relative group">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors">
+        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-google-blue transition-colors">
           {type === 'customer' ? <User className="w-5 h-5" /> : <Package className="w-5 h-5" />}
         </div>
         <input
           type="text"
-          className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-transparent focus:border-blue-500 rounded-[20px] py-4 pl-12 pr-4 text-base font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 outline-none transition-all shadow-sm group-focus-within:shadow-md"
+          className="w-full bg-surface-container-high border-2 border-transparent focus:border-google-blue/50 rounded-[28px] py-4 pl-14 pr-12 text-sm font-bold text-foreground placeholder:text-muted-foreground outline-none transition-all shadow-sm group-focus-within:shadow-google focus:ring-4 focus:ring-google-blue/10"
           placeholder={placeholder}
           value={query}
           onChange={(e) => {
@@ -181,71 +181,72 @@ const Autocomplete: React.FC<AutocompleteProps> = ({
           ref={inputRef}
           autoFocus={autoFocus}
         />
-        <div className="absolute right-4 top-1/2 -translate-y-1/2">
-          <Search className="w-4 h-4 text-slate-300" />
+        <div className="absolute right-5 top-1/2 -translate-y-1/2">
+          <Search className="w-5 h-5 text-muted-foreground group-focus-within:text-google-blue transition-colors" />
         </div>
       </div>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="absolute z-[110] left-0 right-0 mt-2 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-[24px] shadow-2xl overflow-hidden"
+            exit={{ opacity: 0, scale: 0.98, y: 12 }}
+            className="absolute z-[110] left-0 right-0 mt-3 bg-surface-container-highest backdrop-blur-2xl border border-border rounded-[32px] shadow-google-lg overflow-hidden p-2"
           >
-            <div className="max-h-[300px] overflow-y-auto p-2 space-y-1">
+            <div className="max-h-[320px] overflow-y-auto space-y-1 no-scrollbar">
               {filteredOptions.length > 0 ? (
                 filteredOptions.map((option, idx) => (
                   <button
-                    key={option.id}
+                    key={idx}
                     type="button"
                     onClick={() => handleSelect(option.id)}
-                    className={`w-full text-left p-3 rounded-xl flex items-center gap-3 transition-all ${activeIndex === idx || value === option.id
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-[1.02]'
-                      : 'hover:bg-slate-100 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200'
+                    className={`w-full text-left p-4 rounded-[24px] flex items-center gap-4 transition-all relative group/item ${activeIndex === idx || value === option.id
+                        ? 'bg-google-blue text-white shadow-google'
+                        : 'hover:bg-surface-container-high text-foreground'
                       }`}
                   >
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${activeIndex === idx || value === option.id
-                      ? 'bg-white/20'
-                      : 'bg-slate-100 dark:bg-slate-700'
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-colors ${activeIndex === idx || value === option.id
+                        ? 'bg-white/20'
+                        : 'bg-surface-container-highest border border-border'
                       }`}>
-                      {type === 'customer' ? <User className="w-5 h-5" /> : <Package className="w-5 h-5" />}
+                      {type === 'customer' ? <User className="w-6 h-6" /> : <Package className="w-6 h-6" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold truncate text-sm">{option.label}</div>
+                      <div className="font-bold truncate text-sm tracking-tight">{option.label}</div>
                       {option.subLabel && (
-                        <div className={`text-[10px] font-bold uppercase tracking-wider ${activeIndex === idx || value === option.id ? 'opacity-70' : 'text-slate-400'
+                        <div className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${activeIndex === idx || value === option.id ? 'opacity-70' : 'text-muted-foreground'
                           }`}>
                           {option.subLabel}
                         </div>
                       )}
                     </div>
-                    <ChevronRight className={`w-4 h-4 opacity-30 ${activeIndex === idx || value === option.id ? 'opacity-70' : ''}`} />
+                    <ChevronRight className={`w-5 h-5 transition-transform group-hover/item:translate-x-1 ${activeIndex === idx || value === option.id ? 'opacity-70' : 'text-muted-foreground/30'
+                      }`} />
                   </button>
                 ))
               ) : (
-                <div className="p-4 text-center">
-                  <p className="text-sm font-bold text-slate-400 italic">No matches found</p>
+                <div className="p-8 text-center">
+                  <p className="text-sm font-bold text-muted-foreground italic">No matches found</p>
                 </div>
               )}
 
               {query && onCreate && !options.some(o => o.label.toLowerCase() === query.trim().toLowerCase()) && (
-                <div className="border-t border-slate-100 dark:border-slate-700/50 mt-1 pt-1">
+                <div className="mt-1 pt-1">
                   <button
                     type="button"
                     onClick={() => {
                       onCreate(query);
                       setIsOpen(false);
                     }}
-                    className="w-full text-left p-3 rounded-xl flex items-center gap-3 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all group"
+                    className="w-full text-left p-4 rounded-[24px] flex items-center gap-4 text-google-blue bg-google-blue/10 hover:bg-google-blue/20 transition-all group/create border border-google-blue/10"
                   >
-                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Plus className="w-5 h-5" />
+                    <div className="w-12 h-12 rounded-full bg-google-blue/20 flex items-center justify-center group-hover/create:scale-110 transition-transform">
+                      <Plus className="w-6 h-6" />
                     </div>
                     <div>
-                      <div className="font-black text-sm uppercase">Create New</div>
-                      <div className="text-xs font-bold opacity-70">"{query}"</div>
+                      <div className="font-bold text-xs uppercase tracking-widest">Create New</div>
+                      <div className="text-sm font-bold text-foreground">"{query}"</div>
                     </div>
                   </button>
                 </div>

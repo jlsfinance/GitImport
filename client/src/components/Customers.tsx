@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Customer, Invoice, Payment } from '../types';
 import { StorageService } from '../services/storageService';
 import { WhatsAppService } from '../services/whatsappService';
@@ -262,353 +263,433 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack }) => {
 
   if (selectedCustomer) {
     return (
-      <div className="p-4 md:p-6 bg-slate-50 min-h-full relative">
+      <div className="bg-surface-container-low min-h-screen font-sans">
         {/* Overlay for viewing invoice */}
-        {viewingInvoice && (
-          <div className="fixed inset-0 z-50 bg-slate-100 overflow-y-auto">
-            <InvoiceView
-              invoice={viewingInvoice}
-              onBack={() => setViewingInvoice(null)}
-              onEdit={(inv) => {
-                setViewingInvoice(null);
-                if (onEditInvoice) onEditInvoice(inv);
-              }}
-            />
-          </div>
-        )}
-
-        {/* Top Bar */}
-        <div className="flex justify-between items-center mb-6">
-          <button
-            onClick={() => setSelectedCustomer(null)}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back to Customers
-          </button>
-        </div>
-
-        {/* Profile Card */}
-        <div className="bg-white dark:bg-slate-800 rounded-[28px] shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-6">
-          <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-1">
-                <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{selectedCustomer.company}</h2>
-                <div
-                  title="Payment Behavior Score"
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${(StorageService.getCustomerBehaviorScore(selectedCustomer.id)) > 80 ? 'bg-green-100 text-green-700' :
-                    (StorageService.getCustomerBehaviorScore(selectedCustomer.id)) > 50 ? 'bg-orange-100 text-orange-700' :
-                      'bg-red-100 text-red-700'
-                    }`}
-                >
-                  Score: {StorageService.getCustomerBehaviorScore(selectedCustomer.id)}%
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-4 text-slate-600 dark:text-slate-400 mt-2">
-                <div className="flex items-center gap-2 text-sm"><Mail className="w-4 h-4" /> {selectedCustomer.email}</div>
-                <div className="flex items-center gap-2 text-sm"><Phone className="w-4 h-4" /> {selectedCustomer.phone}</div>
-                <div className="flex items-center gap-2 text-sm"><MapPin className="w-4 h-4" /> {selectedCustomer.address}</div>
-              </div>
-            </div>
-            <div className="flex flex-col items-end gap-3 w-full md:w-auto">
-              <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-[20px] text-center min-w-[150px] border border-red-100 dark:border-red-900/30 w-full md:w-auto">
-                <div className="text-xs text-red-600 dark:text-red-400 uppercase font-bold tracking-wider mb-1">Total Outstanding</div>
-                <div className="text-3xl font-black text-red-600 dark:text-red-400">₹{selectedCustomer.balance.toLocaleString()}</div>
-              </div>
-              <div className="flex gap-2 w-full md:w-auto">
-                <button
-                  onClick={() => {
-                    const note = prompt("Enter follow-up note (e.g., 'Called for payment', 'Agreed to pay by Monday')");
-                    if (note) {
-                      const updated = { ...selectedCustomer };
-                      if (!updated.followUpHistory) updated.followUpHistory = [];
-                      updated.followUpHistory.unshift({ date: new Date().toISOString().split('T')[0], note });
-                      StorageService.updateCustomer(updated);
-                      setSelectedCustomer(updated);
-                      HapticService.light();
-                    }
-                  }}
-                  className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-xl font-bold hover:bg-slate-200 transition-colors"
-                >
-                  <MessageCircle className="w-4 h-4" /> Follow-up
-                </button>
-                <button
-                  onClick={() => setShowPaymentModal(true)}
-                  className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-xl shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-colors font-bold"
-                >
-                  <Banknote className="w-4 h-4" /> Receive Payment
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-4 border-b border-gray-200 mb-6 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('HISTORY')}
-            className={`pb-2 px-2 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'HISTORY' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            Transaction History
-          </button>
-          <button
-            onClick={() => setActiveTab('STATEMENT')}
-            className={`pb-2 px-2 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'STATEMENT' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            Account Statement
-          </button>
-          <button
-            onClick={() => setActiveTab('NOTIFICATIONS')}
-            className={`pb-2 px-2 text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'NOTIFICATIONS' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            Notifications & Logs
-            {selectedCustomer.notifications && selectedCustomer.notifications.length > 0 && (
-              <span className="bg-red-500 text-white text-[10px] px-1.5 rounded-full">
-                {selectedCustomer.notifications.length}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* Tab Content */}
-        <div className="bg-white rounded-lg shadow border border-gray-200">
-
-          {/* HISTORY TAB */}
-          {activeTab === 'HISTORY' && (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px]">
-                <thead className="bg-slate-50 border-b">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Type / Ref</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Debit (Out)</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Credit (In)</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Mode</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {transactions.map((tx) => (
-                    <tr key={tx.id} className={`hover:bg-slate-50 transition-colors ${tx.type === 'PAYMENT' ? 'bg-green-50/30' : ''}`}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-3 h-3" /> {tx.date}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-700">
-                        <div className="flex flex-col">
-                          <span className={tx.type === 'INVOICE' ? 'text-blue-600' : 'text-green-600'}>
-                            {tx.type === 'INVOICE' ? `Inv #${tx.reference}` : `Pay: ${tx.mode}`}
-                          </span>
-                          <span className="text-xs text-gray-400">{tx.data.id.slice(0, 8)}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-900">
-                        {tx.type === 'INVOICE' ? `₹${tx.amount.toFixed(2)}` : '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-green-600">
-                        {tx.type === 'PAYMENT' ? `₹${tx.amount.toFixed(2)}` : '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center text-xs">
-                        <span className={`px-2 py-1 rounded-full ${tx.type === 'INVOICE' ? getStatusColor(tx.status!) : 'bg-green-100 text-green-800'}`}>
-                          {tx.mode}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center flex justify-center gap-2">
-                        <button
-                          onClick={() => handleShare(tx)}
-                          className="text-green-500 hover:text-green-700"
-                          title="Share on WhatsApp"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                        </button>
-                        {tx.type === 'INVOICE' && (
-                          <button
-                            onClick={() => setViewingInvoice(tx.data as Invoice)}
-                            className="text-slate-400 hover:text-blue-600"
-                            title="View Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {transactions.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
-                        <div className="flex flex-col items-center justify-center">
-                          <FileText className="w-12 h-12 text-gray-300 mb-2" />
-                          <p>No transactions found.</p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+        <AnimatePresence>
+          {viewingInvoice && (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className="fixed inset-0 z-[60] bg-surface overflow-y-auto"
+            >
+              <InvoiceView
+                invoice={viewingInvoice}
+                onBack={() => setViewingInvoice(null)}
+                onEdit={(inv) => {
+                  setViewingInvoice(null);
+                  if (onEditInvoice) onEditInvoice(inv);
+                }}
+              />
+            </motion.div>
           )}
+        </AnimatePresence>
 
-          {/* STATEMENT TAB */}
-          {activeTab === 'STATEMENT' && (
-            <div className="p-8">
-              <div className="max-w-2xl mx-auto">
-                <div className="text-center mb-8">
-                  <TrendingUp className="w-12 h-12 text-blue-500 mx-auto mb-3" />
-                  <h3 className="text-lg font-bold text-slate-800">Generate Account Statement</h3>
-                  <p className="text-slate-500">Select a date range to download a PDF statement of all transactions.</p>
-                </div>
+        <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
+          {/* Top Navigation */}
+          <div className="flex items-center gap-4 pt-4">
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setSelectedCustomer(null)}
+              className="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-foreground hover:bg-surface-container-highest transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </motion.button>
+            <h2 className="text-xl font-bold text-foreground">Client Profile</h2>
+          </div>
 
-                <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Start Date</label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full border border-slate-300 rounded-md p-2"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">End Date</label>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full border border-slate-300 rounded-md p-2"
-                    />
-                  </div>
-                </div>
+          {/* Expressive Profile Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-surface rounded-[40px] shadow-sm border border-border p-8 relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-64 h-64 bg-surface-container-high/50 rounded-full -mr-20 -mt-20 blur-3xl pointer-events-none" />
 
-                <button
-                  onClick={handleDownloadStatement}
-                  className="w-full flex items-center justify-center gap-2 bg-slate-800 text-white py-3 rounded-lg hover:bg-slate-900 transition-all"
-                >
-                  <Download className="w-5 h-5" /> Download PDF Statement
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* NOTIFICATIONS TAB */}
-          {activeTab === 'NOTIFICATIONS' && (
-            <div className="p-4 md:p-6">
-              <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Follow-up History</h3>
-              <div className="space-y-3 mb-8">
-                {(selectedCustomer.followUpHistory || []).map((follow, idx) => (
-                  <div key={idx} className="p-3 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-bold text-blue-700 dark:text-blue-400">{follow.note}</span>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">{follow.date}</span>
-                    </div>
-                  </div>
-                ))}
-                {(!selectedCustomer.followUpHistory || selectedCustomer.followUpHistory.length === 0) && (
-                  <p className="text-xs text-slate-400 italic">No follow-up notes logged yet.</p>
-                )}
-              </div>
-
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Activity Log & Notifications</h3>
-                <button
-                  onClick={handleSendReminder}
-                  className="flex items-center gap-2 text-sm bg-indigo-50 text-indigo-600 px-3 py-2 rounded hover:bg-indigo-100"
-                >
-                  <Send className="w-4 h-4" /> Send Payment Reminder
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {(selectedCustomer.notifications || []).map((notif) => (
-                  <div key={notif.id} className="flex gap-4 p-4 bg-slate-50 rounded-lg border border-slate-100">
-                    <div className={`p-2 rounded-full h-fit ${notif.type === 'INVOICE' ? 'bg-blue-100 text-blue-600' :
-                      notif.type === 'REMINDER' ? 'bg-orange-100 text-orange-600' :
-                        notif.type === 'PAYMENT' ? 'bg-green-100 text-green-600' :
-                          'bg-gray-200 text-gray-600'
-                      }`}>
-                      {notif.type === 'INVOICE' ? <FileText className="w-5 h-5" /> :
-                        notif.type === 'REMINDER' ? <AlertCircle className="w-5 h-5" /> :
-                          notif.type === 'PAYMENT' ? <Banknote className="w-5 h-5" /> :
-                            <Bell className="w-5 h-5" />}
+            <div className="flex flex-col lg:flex-row justify-between items-start gap-8 relative">
+              <div className="flex-1 space-y-6">
+                <div>
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="w-16 h-16 rounded-[24px] bg-google-blue/10 flex items-center justify-center text-google-blue font-black text-3xl shadow-inner">
+                      {selectedCustomer.company.charAt(0)}
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-800 text-sm">{notif.title}</h4>
-                      <p className="text-sm text-slate-600 mb-1">{notif.message}</p>
-                      <span className="text-xs text-slate-400">{notif.date}</span>
+                      <h1 className="text-3xl md:text-4xl font-black font-heading text-foreground tracking-tight leading-none">{selectedCustomer.company}</h1>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="text-sm font-bold text-muted-foreground">{selectedCustomer.name}</span>
+                        <span className="w-1 h-1 rounded-full bg-border" />
+                        <div
+                          className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${(StorageService.getCustomerBehaviorScore(selectedCustomer.id)) > 80 ? 'bg-google-green/10 text-google-green' :
+                            (StorageService.getCustomerBehaviorScore(selectedCustomer.id)) > 50 ? 'bg-orange-100 text-orange-700' : 'bg-google-red/10 text-google-red'
+                            }`}
+                        >
+                          Trust Score: {StorageService.getCustomerBehaviorScore(selectedCustomer.id)}%
+                        </div>
+                      </div>
                     </div>
                   </div>
-                ))}
-                {(!selectedCustomer.notifications || selectedCustomer.notifications.length === 0) && (
-                  <div className="text-center py-10 text-gray-400">No notifications yet.</div>
-                )}
+                </div>
+
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-center gap-3 px-4 py-2 bg-surface-container-high rounded-full border border-border">
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-xs font-bold text-foreground">{selectedCustomer.email}</span>
+                  </div>
+                  <div className="flex items-center gap-3 px-4 py-2 bg-surface-container-high rounded-full border border-border">
+                    <Phone className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-xs font-bold text-foreground">{selectedCustomer.phone}</span>
+                  </div>
+                  <div className="flex items-center gap-3 px-4 py-2 bg-surface-container-high rounded-full border border-border">
+                    <MapPin className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-xs font-bold text-foreground line-clamp-1 max-w-[200px]">{selectedCustomer.address}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-end gap-6 w-full lg:w-auto">
+                <div className="bg-surface-container-high/50 p-6 rounded-[32px] text-right min-w-[220px] border border-border">
+                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-1">Outstanding Balance</p>
+                  <p className={`text-4xl font-black tracking-tighter ${selectedCustomer.balance > 0 ? 'text-google-red' : 'text-google-green'}`}>
+                    ₹{selectedCustomer.balance.toLocaleString()}
+                  </p>
+                </div>
+
+                <div className="flex gap-3 w-full justify-end">
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      const note = prompt("Enter follow-up note (e.g., 'Called for payment', 'Agreed to pay by Monday')");
+                      if (note) {
+                        const updated = { ...selectedCustomer };
+                        if (!updated.followUpHistory) updated.followUpHistory = [];
+                        updated.followUpHistory.unshift({ date: new Date().toISOString().split('T')[0], note });
+                        StorageService.updateCustomer(updated);
+                        setSelectedCustomer(updated);
+                        HapticService.light();
+                      }
+                    }}
+                    className="px-6 py-3 bg-surface-container-highest rounded-full text-foreground text-sm font-bold flex items-center gap-2 hover:bg-surface-container-high transition-colors"
+                  >
+                    <MessageCircle className="w-4 h-4" /> Log Call
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowPaymentModal(true)}
+                    className="px-8 py-3 bg-google-blue text-white rounded-full text-sm font-black uppercase tracking-wide shadow-lg shadow-google-blue/20 flex items-center gap-2"
+                  >
+                    <Banknote className="w-4 h-4" /> Receive Payment
+                  </motion.button>
+                </div>
               </div>
             </div>
-          )}
+          </motion.div>
 
+          {/* Expressive Tabs */}
+          <div className="flex gap-2 mb-6 bg-surface-container-high/50 p-1.5 rounded-full w-fit border border-border">
+            {['HISTORY', 'STATEMENT', 'NOTIFICATIONS'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab as any)}
+                className={`px-6 py-3 rounded-full text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab
+                  ? 'bg-google-blue text-white shadow-md'
+                  : 'text-muted-foreground hover:bg-surface-container-highest hover:text-foreground'
+                  }`}
+              >
+                {tab === 'HISTORY' ? 'History' : tab === 'STATEMENT' ? 'Statement' : 'Activity'}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab Content Area */}
+          <div className="bg-surface rounded-[40px] shadow-sm border border-border overflow-hidden min-h-[400px]">
+            <AnimatePresence mode="wait">
+              {activeTab === 'HISTORY' && (
+                <motion.div
+                  key="history"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className="overflow-x-auto"
+                >
+                  <table className="w-full min-w-[800px]">
+                    <thead className="bg-surface-container-high/50 border-b border-border">
+                      <tr>
+                        <th className="px-8 py-6 text-left text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Date</th>
+                        <th className="px-8 py-6 text-left text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Reference</th>
+                        <th className="px-8 py-6 text-right text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Debit</th>
+                        <th className="px-8 py-6 text-right text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Credit</th>
+                        <th className="px-8 py-6 text-center text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Status</th>
+                        <th className="px-8 py-6 text-center text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {transactions.map((tx, idx) => (
+                        <tr key={tx.id} className="hover:bg-surface-container-high/30 transition-colors group">
+                          <td className="px-8 py-6 text-sm font-bold text-muted-foreground">{tx.date}</td>
+                          <td className="px-8 py-6">
+                            <div className="flex flex-col">
+                              <span className={`text-sm font-black tracking-tight ${tx.type === 'INVOICE' ? 'text-foreground' : 'text-google-green'}`}>
+                                {tx.type === 'INVOICE' ? `Invoice #${tx.reference}` : `Payment: ${tx.mode}`}
+                              </span>
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-0.5">ID: {tx.data.id.slice(0, 6)}</span>
+                            </div>
+                          </td>
+                          <td className="px-8 py-6 text-right">
+                            {tx.type === 'INVOICE' ? (
+                              <span className="text-sm font-black text-foreground">₹{tx.amount.toFixed(2)}</span>
+                            ) : (
+                              <span className="text-sm font-bold text-muted-foreground/30">-</span>
+                            )}
+                          </td>
+                          <td className="px-8 py-6 text-right">
+                            {tx.type === 'PAYMENT' ? (
+                              <span className="text-sm font-black text-google-green">₹{tx.amount.toFixed(2)}</span>
+                            ) : (
+                              <span className="text-sm font-bold text-muted-foreground/30">-</span>
+                            )}
+                          </td>
+                          <td className="px-8 py-6 text-center">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${tx.type === 'INVOICE'
+                              ? tx.status === 'PAID' ? 'bg-green-100 border-green-200 text-green-700' : 'bg-amber-50 border-amber-200 text-amber-700'
+                              : 'bg-green-50 border-green-200 text-green-700'
+                              }`}>
+                              {tx.type === 'INVOICE' ? tx.status : 'RECEIVED'}
+                            </span>
+                          </td>
+                          <td className="px-8 py-6">
+                            <div className="flex items-center justify-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => handleShare(tx)}
+                                className="w-8 h-8 flex items-center justify-center rounded-full bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+                                title="Share"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </button>
+                              {tx.type === 'INVOICE' && (
+                                <button
+                                  onClick={() => setViewingInvoice(tx.data as Invoice)}
+                                  className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                                  title="View"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {transactions.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="py-20 text-center">
+                            <div className="flex flex-col items-center gap-4 opacity-50">
+                              <FileText className="w-12 h-12 text-muted-foreground" />
+                              <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">No transaction records found</p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </motion.div>
+              )}
+
+              {activeTab === 'STATEMENT' && (
+                <motion.div
+                  key="statement"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className="p-12 flex flex-col items-center justify-center text-center max-w-2xl mx-auto"
+                >
+                  <div className="w-20 h-20 bg-google-blue/10 rounded-3xl flex items-center justify-center text-google-blue mb-6">
+                    <TrendingUp className="w-10 h-10" />
+                  </div>
+                  <h3 className="text-2xl font-black font-heading text-foreground mb-2">Statement Generator</h3>
+                  <p className="text-muted-foreground font-medium mb-10">Select a date range to generate a professional PDF account statement.</p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mb-8">
+                    <div className="space-y-2 text-left">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">From Date</label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-sm font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all"
+                      />
+                    </div>
+                    <div className="space-y-2 text-left">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">To Date</label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-sm font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleDownloadStatement}
+                    className="w-full bg-foreground text-surface py-5 rounded-full font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 shadow-lg hover:bg-foreground/90 transition-all"
+                  >
+                    <Download className="w-5 h-5" /> Download Statement
+                  </motion.button>
+                </motion.div>
+              )}
+
+              {activeTab === 'NOTIFICATIONS' && (
+                <motion.div
+                  key="notifications"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-12"
+                >
+                  <div>
+                    <h3 className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                      Follow-up Notes <span className="bg-surface-container-highest px-2 py-0.5 rounded-full text-[9px] text-foreground">Internal</span>
+                    </h3>
+                    <div className="space-y-4">
+                      {(selectedCustomer.followUpHistory || []).map((follow, idx) => (
+                        <div key={idx} className="p-4 bg-surface-container-high/30 border border-border rounded-[24px]">
+                          <p className="text-sm font-bold text-foreground mb-2">"{follow.note}"</p>
+                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{follow.date}</p>
+                        </div>
+                      ))}
+                      {(!selectedCustomer.followUpHistory || selectedCustomer.followUpHistory.length === 0) && (
+                        <p className="text-sm text-muted-foreground italic pl-2">No internal notes added yet.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em]">Activity Log</h3>
+                      <button
+                        onClick={handleSendReminder}
+                        className="text-[10px] font-black uppercase tracking-widest text-google-blue hover:underline decoration-2 underline-offset-4"
+                      >
+                        Send Reminder Now
+                      </button>
+                    </div>
+
+                    <div className="relative border-l-2 border-surface-container-highest ml-3 space-y-8 pl-8 py-2">
+                      {(selectedCustomer.notifications || []).map((notif) => (
+                        <div key={notif.id} className="relative">
+                          <div className={`absolute -left-[41px] top-0 w-6 h-6 rounded-full border-4 border-surface flex items-center justify-center ${notif.type === 'INVOICE' ? 'bg-google-blue' :
+                            notif.type === 'PAYMENT' ? 'bg-google-green' : 'bg-orange-400'
+                            }`} />
+                          <h4 className="text-sm font-bold text-foreground">{notif.title}</h4>
+                          <p className="text-xs text-muted-foreground mt-1 mb-1">{notif.message}</p>
+                          <span className="text-[10px] font-black text-muted-foreground/50 uppercase tracking-widest">{notif.date}</span>
+                        </div>
+                      ))}
+                      {(!selectedCustomer.notifications || selectedCustomer.notifications.length === 0) && (
+                        <p className="text-sm text-muted-foreground italic">No activity recorded yet.</p>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
-        {/* Payment Modal */}
-        {showPaymentModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-slate-900">Receive Payment</h3>
-                <button onClick={() => setShowPaymentModal(false)}><X className="w-5 h-5 text-gray-400 hover:text-gray-600" /></button>
-              </div>
-              <form onSubmit={handleSavePayment} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
-                  <input
-                    type="number"
-                    required
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(e.target.value)}
-                    className="w-full border border-slate-300 rounded-md p-2 text-lg font-bold"
-                    placeholder="0.00"
-                  />
+        {/* M3 Payment Modal */}
+        <AnimatePresence>
+          {showPaymentModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowPaymentModal(false)}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative bg-surface w-full max-w-md rounded-[40px] shadow-google-lg overflow-hidden border border-border"
+              >
+                <div className="p-8 border-b border-border bg-surface-container-high/30 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-2xl font-black font-heading text-foreground">Receive Payment</h3>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">Record transaction</p>
+                  </div>
+                  <button onClick={() => setShowPaymentModal(false)} className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center hover:bg-surface-container-highest transition-colors">
+                    <X className="w-5 h-5 text-muted-foreground" />
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                  <input
-                    type="date"
-                    required
-                    value={paymentDate}
-                    onChange={(e) => setPaymentDate(e.target.value)}
-                    className="w-full border border-slate-300 rounded-md p-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Mode</label>
-                  <select
-                    value={paymentMode}
-                    onChange={(e) => setPaymentMode(e.target.value as any)}
-                    className="w-full border border-slate-300 rounded-md p-2"
+
+                <form onSubmit={handleSavePayment} className="p-8 space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Amount Received</label>
+                    <div className="relative">
+                      <span className="absolute left-6 top-1/2 -translate-y-1/2 text-xl font-black text-foreground">₹</span>
+                      <input
+                        type="number"
+                        required
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                        className="w-full p-6 pl-12 bg-surface-container-high border-2 border-transparent focus:border-google-green/30 rounded-[24px] text-3xl font-black text-foreground focus:ring-4 focus:ring-google-green/5 outline-none transition-all placeholder:text-muted-foreground/20"
+                        placeholder="0.00"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Date</label>
+                      <input
+                        type="date"
+                        required
+                        value={paymentDate}
+                        onChange={(e) => setPaymentDate(e.target.value)}
+                        className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-sm font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Mode</label>
+                      <select
+                        value={paymentMode}
+                        onChange={(e) => setPaymentMode(e.target.value as any)}
+                        className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-sm font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all appearance-none"
+                      >
+                        <option value="CASH">Cash</option>
+                        <option value="UPI">UPI / Online</option>
+                        <option value="BANK_TRANSFER">Bank Transfer</option>
+                        <option value="CHEQUE">Cheque</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Reference Note</label>
+                    <input
+                      type="text"
+                      value={paymentNote}
+                      onChange={(e) => setPaymentNote(e.target.value)}
+                      className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-sm font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all"
+                      placeholder="Optional details..."
+                    />
+                  </div>
+
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    type="submit"
+                    className="w-full bg-google-green text-white py-5 rounded-full font-black uppercase tracking-widest text-sm shadow-xl shadow-google-green/20 hover:shadow-google-lg mt-2"
                   >
-                    <option value="CASH">Cash</option>
-                    <option value="UPI">UPI / Online</option>
-                    <option value="BANK_TRANSFER">Bank Transfer</option>
-                    <option value="CHEQUE">Cheque</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Note / Reference</label>
-                  <input
-                    type="text"
-                    value={paymentNote}
-                    onChange={(e) => setPaymentNote(e.target.value)}
-                    className="w-full border border-slate-300 rounded-md p-2"
-                    placeholder="Optional"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 mt-2"
-                >
-                  Save Payment
-                </button>
-              </form>
+                    Process Payment
+                  </motion.button>
+                </form>
+              </motion.div>
             </div>
-          </div>
-        )}
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -677,342 +758,428 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack }) => {
   };
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="bg-surface-container-low min-h-screen font-sans">
       {/* Edit Customer Modal */}
-      {showEditCustomer && editingCustomer && (() => {
-        const gstEnabled = getCurrentGstEnabled();
-        return (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-4 sticky top-0 bg-white">
-                <h3 className="text-lg font-bold text-slate-900">Edit Customer</h3>
-                <button onClick={() => { setShowEditCustomer(false); setEditingCustomer(null); }} className="p-1"><X className="w-5 h-5 text-gray-400 hover:text-gray-600" /></button>
-              </div>
-              <form onSubmit={handleSaveEditCustomer} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingCustomer.name}
-                    onChange={(e) => setEditingCustomer({ ...editingCustomer, name: e.target.value })}
-                    className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                    placeholder="Full name"
-                    data-testid="input-edit-customer-name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingCustomer.company}
-                    onChange={(e) => setEditingCustomer({ ...editingCustomer, company: e.target.value })}
-                    className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                    placeholder="Company name"
-                    data-testid="input-edit-company-name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                  <input
-                    type="email"
-                    required
-                    value={editingCustomer.email}
-                    onChange={(e) => setEditingCustomer({ ...editingCustomer, email: e.target.value })}
-                    className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                    placeholder="email@example.com"
-                    data-testid="input-edit-email"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <input
-                    type="tel"
-                    value={editingCustomer.phone}
-                    onChange={(e) => setEditingCustomer({ ...editingCustomer, phone: e.target.value })}
-                    className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                    placeholder="10-digit number"
-                    data-testid="input-edit-phone"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                  <textarea
-                    value={editingCustomer.address}
-                    onChange={(e) => setEditingCustomer({ ...editingCustomer, address: e.target.value })}
-                    rows={2}
-                    className="w-full border border-slate-300 rounded-md p-2 text-sm resize-none"
-                    placeholder="Billing address"
-                    data-testid="textarea-edit-address"
-                  />
-                </div>
-                {gstEnabled && (
-                  <>
+      <AnimatePresence>
+        {showEditCustomer && editingCustomer && (() => {
+          const gstEnabled = getCurrentGstEnabled();
+          return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => { setShowEditCustomer(false); setEditingCustomer(null); }}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                className="relative bg-surface rounded-[40px] shadow-google-lg w-full max-w-lg overflow-hidden border border-border"
+              >
+                <div className="p-8 border-b border-border bg-surface-container-high/30">
+                  <div className="flex justify-between items-center">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                      <h3 className="text-2xl font-black font-heading text-foreground">Edit Customer</h3>
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">Update details</p>
+                    </div>
+                    <button onClick={() => { setShowEditCustomer(false); setEditingCustomer(null); }} className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center hover:bg-surface-container-highest transition-colors">
+                      <X className="w-5 h-5 text-muted-foreground" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-8 max-h-[70vh] overflow-y-auto">
+                  <form onSubmit={handleSaveEditCustomer} className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Customer Name</label>
                       <input
                         type="text"
-                        value={editingCustomer.state || ''}
-                        onChange={(e) => setEditingCustomer({ ...editingCustomer, state: e.target.value })}
-                        className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                        placeholder="State name"
-                        data-testid="input-edit-state"
+                        required
+                        value={editingCustomer.name}
+                        onChange={(e) => setEditingCustomer({ ...editingCustomer, name: e.target.value })}
+                        className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-base font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all"
+                        placeholder="Full name"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">GST Number (Optional)</label>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Company Name</label>
                       <input
                         type="text"
-                        value={editingCustomer.gstin || ''}
-                        onChange={(e) => setEditingCustomer({ ...editingCustomer, gstin: e.target.value })}
-                        className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                        placeholder="15-digit GSTIN"
-                        maxLength={15}
-                        data-testid="input-edit-gstin"
+                        required
+                        value={editingCustomer.company}
+                        onChange={(e) => setEditingCustomer({ ...editingCustomer, company: e.target.value })}
+                        className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-base font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all"
+                        placeholder="Company Name"
                       />
                     </div>
-                  </>
-                )}
-                <div className="flex gap-3">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700"
-                    data-testid="button-save-customer"
-                  >
-                    Save Changes
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteCustomer(editingCustomer.id)}
-                    className="px-4 bg-red-50 text-red-600 py-2 rounded-lg font-bold hover:bg-red-100 flex items-center gap-2"
-                    data-testid="button-delete-customer"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Email</label>
+                        <input
+                          type="email"
+                          required
+                          value={editingCustomer.email}
+                          onChange={(e) => setEditingCustomer({ ...editingCustomer, email: e.target.value })}
+                          className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-sm font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Phone</label>
+                        <input
+                          type="tel"
+                          value={editingCustomer.phone}
+                          onChange={(e) => setEditingCustomer({ ...editingCustomer, phone: e.target.value })}
+                          className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-sm font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Address</label>
+                      <textarea
+                        value={editingCustomer.address}
+                        onChange={(e) => setEditingCustomer({ ...editingCustomer, address: e.target.value })}
+                        rows={2}
+                        className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-sm font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all resize-none"
+                      />
+                    </div>
+
+                    {gstEnabled && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">State</label>
+                          <input
+                            type="text"
+                            value={editingCustomer.state || ''}
+                            onChange={(e) => setEditingCustomer({ ...editingCustomer, state: e.target.value })}
+                            className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-sm font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">GSTIN</label>
+                          <input
+                            type="text"
+                            value={editingCustomer.gstin || ''}
+                            onChange={(e) => setEditingCustomer({ ...editingCustomer, gstin: e.target.value })}
+                            className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-sm font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex gap-4 pt-4">
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        type="submit"
+                        className="flex-1 bg-google-blue text-white py-4 rounded-full font-black uppercase tracking-widest text-xs shadow-lg shadow-google-blue/20"
+                      >
+                        Save Changes
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        type="button"
+                        onClick={() => handleDeleteCustomer(editingCustomer.id)}
+                        className="px-6 bg-google-red/10 text-google-red py-4 rounded-full font-black hover:bg-google-red/20 flex items-center gap-2 transition-colors"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </motion.button>
+                    </div>
+                  </form>
                 </div>
-              </form>
+              </motion.div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
+      </AnimatePresence>
 
-      {/* Add Customer Modal */}
-      {showAddCustomer && (() => {
-        const gstEnabled = getCurrentGstEnabled();
-        return (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-4 sticky top-0 bg-white">
-                <h3 className="text-lg font-bold text-slate-900">Add New Customer</h3>
-                <button onClick={() => setShowAddCustomer(false)} className="p-1"><X className="w-5 h-5 text-gray-400 hover:text-gray-600" /></button>
-              </div>
-              <form onSubmit={handleAddCustomer} className="space-y-4">
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newCustomer.name}
-                    onChange={async (e) => {
-                      const val = e.target.value;
-                      setNewCustomer({ ...newCustomer, name: val });
-                      if (val.length >= 2) {
-                        const results = await ContactService.getCombinedContacts(val);
-                        setSuggestions(results);
-                        setShowSuggestions(true);
-                      } else {
-                        setShowSuggestions(false);
-                      }
-                    }}
-                    onFocus={() => { if (newCustomer.name.length >= 2) setShowSuggestions(true); }}
-                    className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                    placeholder="Full name"
-                    data-testid="input-customer-name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newCustomer.company}
-                    onChange={(e) => setNewCustomer({ ...newCustomer, company: e.target.value })}
-                    className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                    placeholder="Company name"
-                    data-testid="input-company-name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                  <input
-                    type="email"
-                    required
-                    value={newCustomer.email}
-                    onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
-                    className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                    placeholder="email@example.com"
-                    data-testid="input-email"
-                  />
-                </div>
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <input
-                    type="tel"
-                    value={newCustomer.phone}
-                    onChange={async (e) => {
-                      const val = e.target.value;
-                      setNewCustomer({ ...newCustomer, phone: val });
-
-                      const res = await ContactService.resolveName(val);
-                      if (res.name && !newCustomer.name) {
-                        setNewCustomer(prev => ({ ...prev, name: res.name, phone: val }));
-                      }
-
-                      if (val.length >= 2) {
-                        const results = await ContactService.getCombinedContacts(val);
-                        setSuggestions(results);
-                        setShowSuggestions(true);
-                      } else {
-                        setShowSuggestions(false);
-                      }
-                    }}
-                    onFocus={() => { if (newCustomer.phone.length >= 2) setShowSuggestions(true); }}
-                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                    className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                    placeholder="10-digit number"
-                    data-testid="input-phone"
-                  />
-
-                  {showSuggestions && suggestions.length > 0 && (
-                    <div className="absolute z-[120] left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto p-1">
-                      {suggestions.map((s, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => {
-                            setNewCustomer(prev => ({ ...prev, name: s.name, phone: s.phone }));
-                            setShowSuggestions(false);
-                          }}
-                          className="w-full p-2 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left border-b border-slate-50 last:border-0"
-                        >
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${s.source === 'db' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
-                            {s.source === 'db' ? 'DB' : 'PH'}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-bold text-slate-800 truncate">{s.name}</div>
-                            <div className="text-[10px] text-slate-400">{s.phone}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                  <textarea
-                    value={newCustomer.address}
-                    onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })}
-                    rows={2}
-                    className="w-full border border-slate-300 rounded-md p-2 text-sm resize-none"
-                    placeholder="Billing address"
-                    data-testid="textarea-address"
-                  />
-                </div>
-                {gstEnabled && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-                      <input
-                        type="text"
-                        value={newCustomer.state}
-                        onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })}
-                        className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                        placeholder="State name"
-                        data-testid="input-state"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">GST Number (Optional)</label>
-                      <input
-                        type="text"
-                        value={newCustomer.gstin}
-                        onChange={(e) => setNewCustomer({ ...newCustomer, gstin: e.target.value })}
-                        className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                        placeholder="15-digit GSTIN"
-                        maxLength={15}
-                        data-testid="input-gstin"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Only visible when GST is enabled in Settings</p>
-                    </div>
-                  </>
-                )}
-                <button
-                  type="submit"
-                  className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700"
-                  data-testid="button-add-customer"
-                >
-                  Add Customer
-                </button>
-              </form>
-            </div>
-          </div>
-        );
-      })()}
-
-      <div className="p-4 md:p-6 bg-slate-50 min-h-full">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-2">
+      <div className="p-4 md:p-8 pb-32 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 pt-4">
+          <div className="flex items-center gap-4">
             {onBack && (
-              <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-slate-200">
-                <ArrowLeft className="w-6 h-6 text-slate-700" />
-              </button>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={onBack}
+                className="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-foreground hover:bg-surface-container-highest transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </motion.button>
             )}
-            <h2 className="text-2xl font-bold text-slate-800">Customers</h2>
+            <div>
+              <h2 className="text-4xl font-black font-heading text-foreground tracking-tight">Customers</h2>
+              <p className="text-sm font-bold text-muted-foreground mt-1">Manage client relationships</p>
+            </div>
           </div>
-          <button
+
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => setShowAddCustomer(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 font-medium shadow-sm transition-all"
+            className="bg-primary text-white px-8 py-4 rounded-full flex items-center justify-center gap-3 font-black text-sm uppercase tracking-widest shadow-google hover:shadow-google-lg transition-all"
           >
             <UserPlus className="w-5 h-5" />
             <span className="hidden sm:inline">Add Customer</span>
-          </button>
+          </motion.button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {customers.map(customer => (
-            <div
-              key={customer.id}
-              onClick={() => handleViewHistory(customer)}
-              className="bg-white p-5 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-all cursor-pointer group"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold text-lg group-hover:bg-blue-100 transition-colors">
-                  {customer.company.charAt(0)}
-                </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleEditCustomer(customer); }}
-                  className="p-2 text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-full transition-colors"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-              </div>
+        {/* Customer Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <AnimatePresence mode="popLayout">
+            {customers.map(customer => (
+              <motion.div
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                key={customer.id}
+                onClick={() => handleViewHistory(customer)}
+                className="bg-surface border border-border p-6 rounded-[32px] shadow-sm hover:shadow-google-lg transition-all cursor-pointer group relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-surface-container-high rounded-full -mr-16 -mt-16 group-hover:bg-google-blue/10 transition-colors" />
 
-              <h3 className="font-bold text-slate-800 text-lg mb-1 truncate">{customer.company}</h3>
-              <p className="text-slate-500 text-sm mb-4 truncate">{customer.name}</p>
-
-              <div className="flex flex-col gap-2 border-t border-slate-50 pt-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500">Balance</span>
-                  <span className={`font-bold ${customer.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    ₹{customer.balance.toLocaleString()}
-                  </span>
+                <div className="flex justify-between items-start mb-6 relative">
+                  <div className="w-14 h-14 bg-surface-container-high text-google-blue rounded-[20px] flex items-center justify-center font-black text-xl shadow-inner group-hover:scale-110 transition-transform">
+                    {customer.company.charAt(0)}
+                  </div>
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={(e) => { e.stopPropagation(); handleEditCustomer(customer); }}
+                    className="w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-google-blue hover:bg-google-blue/10 rounded-full transition-colors"
+                  >
+                    <Edit className="w-5 h-5" />
+                  </motion.button>
                 </div>
-              </div>
+
+                <div className="relative mb-6">
+                  <h3 className="font-black text-foreground text-xl leading-tight mb-1 truncate font-heading">{customer.company}</h3>
+                  <p className="text-sm font-medium text-muted-foreground truncate">{customer.name}</p>
+                </div>
+
+                <div className="flex items-end justify-between border-t border-border pt-4 relative">
+                  <div>
+                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Status</span>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide ${customer.balance > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                      {customer.balance > 0 ? 'Pending' : 'Ok'}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Balance</span>
+                    <span className={`text-2xl font-black tracking-tight ${customer.balance > 0 ? 'text-google-red' : 'text-google-green'}`}>
+                      ₹{customer.balance.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+
+        {customers.length === 0 && (
+          <div className="text-center py-24 bg-surface-container-high/30 rounded-[40px] border-2 border-dashed border-border mt-8">
+            <div className="w-24 h-24 bg-surface-container-highest rounded-[32px] flex items-center justify-center mx-auto mb-6">
+              <UserPlus className="w-10 h-10 text-muted-foreground/40" />
             </div>
-          ))}
-        </div>
+            <h3 className="text-2xl font-black text-foreground mb-2 font-heading">No Customers Yet</h3>
+            <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Add your first client to get started</p>
+          </div>
+        )}
       </div>
+
+      {/* Add Customer Modal - M3 Expressive */}
+      <AnimatePresence>
+        {showAddCustomer && (() => {
+          const gstEnabled = getCurrentGstEnabled();
+          return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowAddCustomer(false)}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative bg-surface w-full max-w-xl rounded-[40px] shadow-google-lg overflow-hidden border border-border max-h-[90vh] overflow-y-auto"
+              >
+                <div className="p-8 border-b border-border bg-surface-container-high/30 flex justify-between items-center sticky top-0 backdrop-blur-md z-10">
+                  <div>
+                    <h3 className="text-2xl font-black font-heading text-foreground">New Customer</h3>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">Add client details</p>
+                  </div>
+                  <button onClick={() => setShowAddCustomer(false)} className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center hover:bg-surface-container-highest transition-colors">
+                    <X className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                </div>
+
+                <div className="p-8">
+                  <form onSubmit={handleAddCustomer} className="space-y-6">
+                    <div className="group space-y-2">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2 flex items-center gap-2">
+                        Customer Name <span className="w-1 h-1 rounded-full bg-google-red" />
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={newCustomer.name}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          setNewCustomer({ ...newCustomer, name: val });
+                          if (val.length >= 2) {
+                            const results = await ContactService.getCombinedContacts(val);
+                            setSuggestions(results);
+                            setShowSuggestions(true);
+                          } else {
+                            setShowSuggestions(false);
+                          }
+                        }}
+                        onFocus={() => { if (newCustomer.name.length >= 2) setShowSuggestions(true); }}
+                        className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-lg font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all placeholder:text-muted-foreground/30"
+                        placeholder="Full Name"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2 flex items-center gap-2">
+                        Company Name <span className="w-1 h-1 rounded-full bg-google-red" />
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={newCustomer.company}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, company: e.target.value })}
+                        className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-lg font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all placeholder:text-muted-foreground/30"
+                        placeholder="Business Name"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2 flex items-center gap-2">
+                        Email <span className="w-1 h-1 rounded-full bg-google-red" />
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={newCustomer.email}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+                        className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-base font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all placeholder:text-muted-foreground/30"
+                        placeholder="email@example.com"
+                      />
+                    </div>
+
+                    <div className="relative space-y-2">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Phone Number</label>
+                      <input
+                        type="tel"
+                        value={newCustomer.phone}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          setNewCustomer({ ...newCustomer, phone: val });
+
+                          const res = await ContactService.resolveName(val);
+                          if (res.name && !newCustomer.name) {
+                            setNewCustomer(prev => ({ ...prev, name: res.name, phone: val }));
+                          }
+
+                          if (val.length >= 2) {
+                            const results = await ContactService.getCombinedContacts(val);
+                            setSuggestions(results);
+                            setShowSuggestions(true);
+                          } else {
+                            setShowSuggestions(false);
+                          }
+                        }}
+                        onFocus={() => { if (newCustomer.phone.length >= 2) setShowSuggestions(true); }}
+                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                        className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-base font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all placeholder:text-muted-foreground/30"
+                        placeholder="10-digit number"
+                      />
+
+                      {showSuggestions && suggestions.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="absolute z-[120] left-0 right-0 top-full mt-2 bg-surface-container-highest border border-border rounded-[24px] shadow-google-lg max-h-48 overflow-y-auto p-2"
+                        >
+                          {suggestions.map((s, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => {
+                                setNewCustomer(prev => ({ ...prev, name: s.name, phone: s.phone }));
+                                setShowSuggestions(false);
+                              }}
+                              className="w-full p-3 flex items-center gap-4 hover:bg-surface-container-high rounded-[20px] transition-colors text-left group"
+                            >
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${s.source === 'db' ? 'bg-google-blue text-white' : 'bg-google-green text-white'}`}>
+                                {s.source === 'db' ? 'DB' : 'PH'}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-bold text-foreground truncate group-hover:text-google-blue transition-colors">{s.name}</div>
+                                <div className="text-[10px] font-medium text-muted-foreground">{s.phone}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Billing Address</label>
+                      <textarea
+                        value={newCustomer.address}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })}
+                        rows={2}
+                        className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-base font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all placeholder:text-muted-foreground/30 resize-none"
+                        placeholder="Full Address"
+                      />
+                    </div>
+
+                    {gstEnabled && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">State</label>
+                          <input
+                            type="text"
+                            value={newCustomer.state}
+                            onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })}
+                            className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-base font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all"
+                            placeholder="State Name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">GSTIN (Optional)</label>
+                          <input
+                            type="text"
+                            value={newCustomer.gstin}
+                            onChange={(e) => setNewCustomer({ ...newCustomer, gstin: e.target.value })}
+                            className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-base font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all"
+                            placeholder="GST Number"
+                            maxLength={15}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      type="submit"
+                      className="w-full bg-google-blue text-white py-5 rounded-full font-black uppercase tracking-widest text-sm shadow-xl shadow-google-blue/20 hover:shadow-google-lg mt-4"
+                    >
+                      Add Customer to Database
+                    </motion.button>
+                  </form>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
+      </AnimatePresence>
     </div>
   );
 };

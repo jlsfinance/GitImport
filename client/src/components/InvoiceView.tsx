@@ -5,7 +5,7 @@ import { Invoice, CompanyProfile, DEFAULT_COMPANY, Customer } from '../types';
 import { StorageService } from '../services/storageService';
 import { GeminiService } from '../services/geminiService';
 import { WhatsAppService } from '../services/whatsappService';
-import { Printer, ArrowLeft, Play, Loader2, Download, Edit, Trash2, MoreVertical, MessageCircle, Check, FilePlus, History, UserPlus, Users } from 'lucide-react';
+import { Printer, ArrowLeft, Play, Loader2, Download, Edit, Trash2, MoreVertical, MessageCircle, Check, FilePlus, History, UserPlus, Users, ChevronRight } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
@@ -651,188 +651,245 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 absolute inset-0 z-40">
-      {/* App-like Top Navigation Bar */}
-      <div className="sticky top-0 z-50 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 h-16 flex items-center justify-between shadow-sm flex-shrink-0 print:hidden">
-        <div className="flex items-center gap-3">
-          <button
+    <div className="flex flex-col h-full bg-surface-container-low absolute inset-0 z-40 font-sans">
+      {/* Material 3 Expressive Top Bar */}
+      <div className="sticky top-0 z-50 bg-surface-container/95 backdrop-blur-xl border-b border-border px-6 h-20 flex items-center justify-between shadow-sm flex-shrink-0 print:hidden">
+        <div className="flex items-center gap-4">
+          <motion.button
+            whileTap={{ scale: 0.92 }}
             onClick={onBack}
-            className="p-2 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors"
             aria-label="Back"
           >
-            <ArrowLeft className="w-6 h-6 text-slate-700 dark:text-slate-200" />
-          </button>
+            <ArrowLeft className="w-6 h-6 text-foreground" />
+          </motion.button>
           <div className="flex flex-col">
-            <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100 leading-tight">Invoice #{invoice.invoiceNumber}</h1>
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full w-fit ${invoice.status === 'PAID' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
-              {invoice.status}
-            </span>
+            <h1 className="text-xl font-bold text-foreground tracking-tight font-heading">Invoice Summary</h1>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">#{invoice.invoiceNumber}</span>
+              <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${invoice.status === 'PAID'
+                ? 'bg-google-green text-white'
+                : 'bg-google-yellow text-white'
+                }`}>
+                {invoice.status}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
-          <button onClick={() => onEdit(invoice)} className="p-2 rounded-full text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" aria-label="Edit">
+        <div className="flex items-center gap-2">
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => onEdit(invoice)}
+            className="w-11 h-11 flex items-center justify-center rounded-full bg-surface-container-high text-google-blue border border-border hover:shadow-google transition-all"
+          >
             <Edit className="w-5 h-5" />
-          </button>
+          </motion.button>
+
           <div className="relative">
-            <button
+            <motion.button
+              whileTap={{ scale: 0.95 }}
               onClick={() => setShowOptions(!showOptions)}
-              className="p-2 rounded-full text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-              aria-label="Options"
+              className="w-11 h-11 flex items-center justify-center rounded-full bg-surface-container-high text-foreground border border-border hover:shadow-google transition-all"
             >
               <MoreVertical className="w-5 h-5" />
-            </button>
-            {/* Dropdown Menu */}
-            {showOptions && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowOptions(false)}></div>
-                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top-right">
-                  <div className="p-1">
-                    <button onClick={() => { setShowOptions(false); handleWhatsAppShare(); }} className="w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg">
-                      <MessageCircle className="w-4 h-4 text-green-500" /> Share on WhatsApp
-                    </button>
-                    <button onClick={() => { setShowOptions(false); handleDownloadPDF(); }} className="w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg">
-                      <Download className="w-4 h-4 text-blue-500" /> Download PDF
-                    </button>
-                    <button onClick={() => { setShowOptions(false); onViewLedger && onViewLedger(invoice.customerId); }} className="w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg">
-                      <Users className="w-4 h-4 text-blue-500" /> View Customer Ledger
-                    </button>
-                    <button onClick={() => { setShowOptions(false); handlePrint(); }} className="w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg">
-                      <Printer className="w-4 h-4 text-slate-500" /> Print
-                    </button>
-                    <button onClick={() => { setShowOptions(false); handleReadAloud(); }} className="w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg">
-                      <Play className="w-4 h-4 text-purple-500" /> Read Aloud
-                    </button>
-                    <div className="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
-                    <div className="px-3 py-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider">Settings</div>
-                    <button onClick={() => setShowPreviousBalance(!showPreviousBalance)} className="w-full flex items-center justify-between px-3 py-3 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg">
-                      <span>Show Prev. Balance</span>
-                      {showPreviousBalance && <Check className="w-4 h-4 text-blue-600" />}
-                    </button>
-                    <button onClick={() => setShowLedger(!showLedger)} className="w-full flex items-center justify-between px-3 py-3 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg">
-                      <span>Attach Ledger</span>
-                      {showLedger && <Check className="w-4 h-4 text-blue-600" />}
-                    </button>
-                    <div className="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
-                    <button onClick={() => { setShowOptions(false); setIsPosView(!isPosView); }} className="w-full flex items-center justify-between px-3 py-3 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg">
-                      <span>POS Mode (Thermal)</span>
-                      {isPosView && <Check className="w-4 h-4 text-blue-600" />}
-                    </button>
-                    <button onClick={() => { setShowOptions(false); setShowDeleteConfirm(true); }} className="w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
-                      <Trash2 className="w-4 h-4" /> Delete Invoice
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
+            </motion.button>
+
+            <AnimatePresence>
+              {showOptions && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowOptions(false)}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    className="absolute right-0 mt-3 w-72 bg-surface-container-highest rounded-[32px] shadow-google-lg border border-border z-50 overflow-hidden p-2 origin-top-right backdrop-blur-2xl"
+                  >
+                    <div className="space-y-1">
+                      {[
+                        { icon: MessageCircle, label: 'Share on WhatsApp', color: 'text-google-green', action: handleWhatsAppShare },
+                        { icon: Download, label: 'Download PDF', color: 'text-google-blue', action: handleDownloadPDF },
+                        { icon: Users, label: 'Customer Ledger', color: 'text-google-blue', action: () => onViewLedger?.(invoice.customerId) },
+                        { icon: Printer, label: 'Print Draft', color: 'text-foreground/60', action: handlePrint },
+                        { icon: Play, label: 'Read Aloud', color: 'text-google-red', action: handleReadAloud },
+                      ].map((item, i) => (
+                        <button
+                          key={i}
+                          onClick={() => { setShowOptions(false); item.action(); }}
+                          className="w-full flex items-center gap-4 px-5 py-3.5 text-sm font-bold text-foreground hover:bg-surface-container-high rounded-[20px] transition-all group"
+                        >
+                          <item.icon className={`w-5 h-5 ${item.color} group-hover:scale-110 transition-transform`} />
+                          <span>{item.label}</span>
+                        </button>
+                      ))}
+
+                      <div className="h-px bg-border/50 mx-4 my-2" />
+
+                      <div className="px-5 py-2 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Settings</div>
+
+                      <button
+                        onClick={() => setShowPreviousBalance(!showPreviousBalance)}
+                        className="w-full flex items-center justify-between px-5 py-3 text-sm font-bold text-foreground hover:bg-surface-container-high rounded-[20px]"
+                      >
+                        <span>Previous Balance</span>
+                        <div className={`w-10 h-6 rounded-full transition-colors relative ${showPreviousBalance ? 'bg-google-blue' : 'bg-border'}`}>
+                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${showPreviousBalance ? 'left-5' : 'left-1'}`} />
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => { setShowOptions(false); setIsPosView(!isPosView); }}
+                        className="w-full flex items-center justify-between px-5 py-3 text-sm font-bold text-foreground hover:bg-surface-container-high rounded-[20px]"
+                      >
+                        <span>POS Mode</span>
+                        <div className={`w-10 h-6 rounded-full transition-colors relative ${isPosView ? 'bg-google-blue' : 'bg-border'}`}>
+                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isPosView ? 'left-5' : 'left-1'}`} />
+                        </div>
+                      </button>
+
+                      <div className="h-px bg-border/50 mx-4 my-2" />
+
+                      <button
+                        onClick={() => { setShowOptions(false); setShowDeleteConfirm(true); }}
+                        className="w-full flex items-center gap-4 px-5 py-3.5 text-sm font-bold text-google-red hover:bg-google-red/5 rounded-[20px]"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                        <span>Delete Bill</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
 
-      {/* Main Content - Scrollable Invoice Preview */}
-      <div className={`flex-1 overflow-y-auto overflow-x-hidden bg-slate-100 dark:bg-slate-950 p-4 pb-24 print:p-0 print:bg-white ${isPosView ? 'print:hidden' : ''}`}>
+      {/* Main Content - Expressive Material View */}
+      <div className={`flex-1 overflow-y-auto overflow-x-hidden bg-surface-container-low p-4 md:p-8 pb-32 print:p-0 print:bg-white ${isPosView ? 'print:hidden' : ''}`}>
 
-        {/* Standard A4 Print Style Removed - Handled by Portal */}
-
-        {/* Invoice Paper Shadow Container */}
-        <div className="max-w-3xl mx-auto bg-white dark:bg-slate-900 shadow-xl rounded-sm print:shadow-none print:w-full overflow-hidden scale-100 md:scale-100 origin-top border dark:border-slate-800 print:border-none">
-          <div id="invoice-print" className="p-6 md:p-10 text-slate-900 dark:text-slate-100 print:text-black">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-5xl mx-auto bg-surface rounded-[40px] shadow-google-lg print:shadow-none border border-border print:border-none overflow-hidden">
+          <div id="invoice-print" className="p-8 md:p-16 text-foreground print:text-black">
 
             {/* Header */}
-            <div className="text-center mb-6">
-              <h1 className="text-2xl md:text-3xl font-bold mb-1 uppercase text-slate-900 dark:text-slate-100">{company.name}</h1>
-              <p className="text-sm text-slate-600 dark:text-slate-400">{company.address}</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Ph: {company.phone}</p>
-              {invoice.gstEnabled && (company.gstin || company.gst) && (
-                <p className="text-sm text-green-700 dark:text-green-500 font-bold mt-1">GSTIN: {company.gstin || company.gst}</p>
-              )}
+            <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-12">
+              <div className="flex-1">
+                <h1 className="text-4xl md:text-5xl font-black font-heading tracking-tight text-foreground mb-4 uppercase leading-none">{company.name}</h1>
+                <div className="space-y-1 opacity-70 font-medium">
+                  <p className="text-sm max-w-sm whitespace-pre-wrap">{company.address}</p>
+                  <p className="text-sm">Ph: {company.phone}</p>
+                  {invoice.gstEnabled && (company.gstin || company.gst) && (
+                    <div className="flex items-center gap-2 text-google-green font-bold text-sm mt-2">
+                      <span className="px-2 py-0.5 bg-google-green text-white text-[10px] rounded animate-pulse">GST</span>
+                      {company.gstin || company.gst}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-right md:pt-4">
+                <div className="inline-block p-6 bg-surface-container-high rounded-[32px] border border-border">
+                  <div className="mb-4">
+                    <span className="block text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-1">Invoice Number</span>
+                    <span className="text-3xl font-black font-heading text-google-blue">#{invoice.invoiceNumber}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-1">Issue Date</span>
+                    <span className="text-lg font-bold text-foreground">{new Date(invoice.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="border-b-2 border-slate-800 dark:border-slate-700 mb-6"></div>
-
-            <div className="flex justify-between items-start mb-8">
-              <div className="text-left">
-                <h3 className="font-bold text-xs uppercase text-slate-400 mb-1">Billed To</h3>
-                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">{invoice.customerName}</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap max-w-[200px]">{invoice.customerAddress}</p>
-              </div>
-              <div className="text-right">
-                <div className="mb-2">
-                  <span className="block text-xs font-bold text-slate-400 uppercase">Invoice No</span>
-                  <span className="text-lg font-bold text-slate-800 dark:text-slate-100">#{invoice.invoiceNumber}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16 px-1">
+              <div>
+                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground mb-4">Billed To</h3>
+                <h2 className="text-2xl font-black font-heading text-foreground mb-3">{invoice.customerName}</h2>
+                <div className="text-sm font-medium opacity-70 leading-relaxed max-w-xs whitespace-pre-wrap">
+                  {invoice.customerAddress}
                 </div>
-                <div>
-                  <span className="block text-xs font-bold text-slate-400 uppercase">Date</span>
-                  <span className="text-base font-medium text-slate-800 dark:text-slate-100">{new Date(invoice.date).toLocaleDateString()}</span>
-                </div>
+                {invoice.customerGstin && (
+                  <p className="text-xs font-bold text-google-blue mt-4 flex items-center gap-2">
+                    <span className="px-1.5 py-0.5 bg-google-blue/10 rounded uppercase text-[9px]">Cust GST</span> {invoice.customerGstin}
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Table */}
-            <div className="mb-8 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold uppercase text-xs">
+            <div className="mb-12 rounded-[32px] border border-border overflow-hidden bg-surface-container-low/30">
+              <table className="w-full text-left">
+                <thead className="bg-surface-container-high text-muted-foreground font-black uppercase text-[10px] tracking-widest border-b border-border">
                   <tr>
-                    <th className="py-3 px-4 text-left">Item</th>
-                    <th className="py-3 px-4 text-center">Qty</th>
-                    <th className="py-3 px-4 text-right">Price</th>
-                    <th className="py-3 px-4 text-right">Total</th>
+                    <th className="py-5 px-6">Description</th>
+                    <th className="py-5 px-6 text-center">Qty</th>
+                    <th className="py-5 px-6 text-right">Price</th>
+                    <th className="py-5 px-6 text-right">Total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-border/50 text-sm">
                   {invoice.items.map((item, idx) => (
-                    <tr key={idx}>
-                      <td className="py-3 px-4">
-                        <div className="font-bold text-slate-800 dark:text-slate-200">{item.description}</div>
-                        {item.hsn && <div className="text-xs text-slate-400">HSN: {item.hsn}</div>}
+                    <tr key={idx} className="hover:bg-surface-container transition-colors group">
+                      <td className="py-5 px-6">
+                        <div className="font-bold text-foreground mb-0.5 group-hover:text-google-blue transition-colors">{item.description}</div>
+                        {item.hsn && <div className="text-[10px] font-bold text-muted-foreground uppercase bg-slate-100 dark:bg-slate-800 w-fit px-1.5 rounded">HSN: {item.hsn}</div>}
                       </td>
-                      <td className="py-3 px-4 text-center font-medium dark:text-slate-300">{item.quantity}</td>
-                      <td className="py-3 px-4 text-right dark:text-slate-300">₹{item.rate}</td>
-                      <td className="py-3 px-4 text-right font-bold dark:text-slate-100">₹{((item.totalAmount || item.baseAmount) || 0).toFixed(2)}</td>
+                      <td className="py-5 px-6 text-center font-bold text-muted-foreground">{item.quantity}</td>
+                      <td className="py-5 px-6 text-right font-medium">₹{item.rate.toLocaleString('en-IN')}</td>
+                      <td className="py-5 px-6 text-right font-black text-foreground">₹{((item.totalAmount || item.baseAmount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Totals */}
-            <div className="flex justify-end mb-8">
-              <div className="w-full md:w-1/2 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500 dark:text-slate-400 font-medium">Subtotal</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200">₹{invoice.subtotal.toFixed(2)}</span>
+            {/* Totals Section Redesign */}
+            <div className="flex justify-end mb-16">
+              <div className="w-full md:w-1/2 bg-surface-container/50 p-8 rounded-[32px] border border-border space-y-3">
+                <div className="flex justify-between text-sm font-bold text-muted-foreground uppercase tracking-widest">
+                  <span>Subtotal</span>
+                  <span className="text-foreground">₹{invoice.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
 
                 {invoice.gstEnabled && ((invoice.totalCgst || 0) + (invoice.totalSgst || 0) + (invoice.totalIgst || 0)) > 0 && (
-                  <>
+                  <div className="space-y-2 pt-2 border-t border-border/50">
                     {(invoice.totalCgst || 0) > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-500 dark:text-slate-400">CGST</span>
-                        <span className="font-medium dark:text-slate-300">₹{(invoice.totalCgst || 0).toFixed(2)}</span>
+                      <div className="flex justify-between text-xs font-bold text-google-green">
+                        <span className="uppercase tracking-wider">CGST</span>
+                        <span>₹{(invoice.totalCgst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                       </div>
                     )}
                     {(invoice.totalSgst || 0) > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-500 dark:text-slate-400">SGST</span>
-                        <span className="font-medium dark:text-slate-300">₹{(invoice.totalSgst || 0).toFixed(2)}</span>
+                      <div className="flex justify-between text-xs font-bold text-google-green">
+                        <span className="uppercase tracking-wider">SGST</span>
+                        <span>₹{(invoice.totalSgst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                       </div>
                     )}
                     {(invoice.totalIgst || 0) > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-500 dark:text-slate-400">IGST</span>
-                        <span className="font-medium dark:text-slate-300">₹{(invoice.totalIgst || 0).toFixed(2)}</span>
+                      <div className="flex justify-between text-xs font-bold text-google-green">
+                        <span className="uppercase tracking-wider">IGST</span>
+                        <span>₹{(invoice.totalIgst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
 
-                <div className="border-t border-slate-200 dark:border-slate-700 pt-2 flex justify-between items-end">
-                  <span className="text-base font-bold text-slate-900 dark:text-slate-100">Total</span>
-                  <span className="text-2xl font-black text-blue-600 dark:text-blue-400">₹{invoice.total.toFixed(2)}</span>
+                <div className="border-t-2 border-border pt-4 flex justify-between items-end">
+                  <span className="text-lg font-black font-heading text-foreground uppercase tracking-tighter">Grand Total</span>
+                  <span className="text-4xl font-black text-google-blue font-heading tracking-tight">₹{invoice.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
-                {/* Amount in Words */}
-                <div className="text-[10px] text-right text-slate-400 mt-1 italic">
-                  ({numberToWords(Math.round(invoice.total))})
+
+                <div className="text-[10px] text-right font-black text-muted-foreground uppercase tracking-widest pt-2">
+                  {numberToWords(Math.round(invoice.total))}
                 </div>
               </div>
             </div>
@@ -864,145 +921,146 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
             </div>
 
           </div>
-        </div>
+        </motion.div>
+      </div>
 
-        {/* POS VIEW RENDERER (Absolute Overlay or Conditional) */}
-        {/* POS VIEW RENDERER (Absolute Overlay or Conditional) */}
-        {isPosView && (
-          <div className="fixed inset-0 z-[60] bg-slate-800/90 backdrop-blur-sm flex justify-center overflow-y-auto print:hidden">
-            {/* Close Button for POS View */}
+      {/* POS VIEW RENDERER (Absolute Overlay or Conditional) */}
+      {/* POS VIEW RENDERER (Absolute Overlay or Conditional) */}
+      {isPosView && (
+        <div className="fixed inset-0 z-[60] bg-slate-800/90 backdrop-blur-sm flex justify-center overflow-y-auto print:hidden">
+          {/* Close Button for POS View */}
+          <button
+            onClick={() => setIsPosView(false)}
+            className="fixed top-4 right-4 bg-white/10 text-white p-2 rounded-full hover:bg-white/20 z-[70]"
+          >
+            <span className="sr-only">Close</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+
+          <div
+            className="bg-white text-black w-[80mm] min-h-0 h-fit shadow-2xl my-8 mx-auto p-2 py-4 font-mono text-[10px] leading-tight"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* POS content (Screen Version) */}
+            <div className="text-center mb-4">
+              <h1 className="text-xl font-bold uppercase">{company.name}</h1>
+              <p className="text-[10px]">{company.address}</p>
+              <p className="text-[10px]">Ph: {company.phone}</p>
+              {invoice.gstEnabled && (company.gstin || company.gst) && (
+                <p className="text-[10px] font-bold mt-1">GSTIN: {company.gstin || company.gst}</p>
+              )}
+            </div>
+            <div className="border-b border-dashed border-black my-2"></div>
+            <div className="flex justify-between text-[10px] mb-1">
+              <span>Invoice No:</span>
+              <span className="font-bold">#{invoice.invoiceNumber}</span>
+            </div>
+            <div className="flex justify-between text-[10px] mb-1">
+              <span>Date:</span>
+              <span>{new Date(invoice.date).toLocaleDateString()}</span>
+            </div>
+            <div className="flex justify-between text-[10px] mb-4">
+              <span>Customer:</span>
+              <span className="font-bold">{invoice.customerName}</span>
+            </div>
+
+            <div className="border-b border-dashed border-black my-2"></div>
+            <table className="w-full text-[10px] mb-4">
+              <thead>
+                <tr>
+                  <th className="text-left py-1">Item</th>
+                  <th className="text-center py-1">Qty</th>
+                  <th className="text-right py-1">Rate</th>
+                  <th className="text-right py-1">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoice.items.map((item, idx) => (
+                  <tr key={idx}>
+                    <td className="text-left py-1">{item.description}</td>
+                    <td className="text-center py-1">{item.quantity}</td>
+                    <td className="text-right py-1">₹{item.rate}</td>
+                    <td className="text-right py-1">₹{((item.totalAmount || item.baseAmount) || 0).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="border-b border-dashed border-black my-2"></div>
+
+            <div className="text-[10px] text-right space-y-1 mb-4">
+              <div className="flex justify-between">
+                <span>Subtotal:</span>
+                <span>{invoice.subtotal.toFixed(2)}</span>
+              </div>
+              {invoice.gstEnabled && ((invoice.totalCgst || 0) + (invoice.totalSgst || 0) + (invoice.totalIgst || 0)) > 0 && (
+                <>
+                  {(invoice.totalCgst || 0) > 0 && (
+                    <div className="flex justify-between">
+                      <span>CGST:</span>
+                      <span>{(invoice.totalCgst || 0).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {(invoice.totalSgst || 0) > 0 && (
+                    <div className="flex justify-between">
+                      <span>SGST:</span>
+                      <span>{(invoice.totalSgst || 0).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {(invoice.totalIgst || 0) > 0 && (
+                    <div className="flex justify-between">
+                      <span>IGST:</span>
+                      <span>{(invoice.totalIgst || 0).toFixed(2)}</span>
+                    </div>
+                  )}
+                </>
+              )}
+              <div className="flex justify-between font-bold text-sm mt-2 pt-2 border-t border-dashed border-black">
+                <span>TOTAL:</span>
+                <span>₹{Math.round(invoice.total).toFixed(2)}</span>
+              </div>
+              <div className="text-xs text-center mt-2 italic">
+                ({numberToWords(Math.round(invoice.total))})
+              </div>
+            </div>
+            <div className="border-b border-dashed border-black my-2"></div>
+
+            {qrCodeUrl && (
+              <div className="flex flex-col items-center py-4">
+                <p className="text-[9px] font-black uppercase mb-1">Scan to Pay</p>
+                <img src={qrCodeUrl} className="w-32 h-32" alt="POS Payment QR" />
+                <p className="text-[8px] font-bold mt-1">{company.upiId}</p>
+              </div>
+            )}
+
+            <div className="text-center text-[9px] mt-4">
+              <p className="font-bold uppercase mb-1">Thank you for your business!</p>
+              <p>Terms & Conditions Apply</p>
+            </div>
+
+            {/* Print Button for POS View */}
             <button
-              onClick={() => setIsPosView(false)}
-              className="fixed top-4 right-4 bg-white/10 text-white p-2 rounded-full hover:bg-white/20 z-[70]"
+              onClick={handlePrint}
+              className="w-full mt-4 py-4 bg-blue-600 text-white font-bold rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95 transition-transform print:hidden"
             >
-              <span className="sr-only">Close</span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              <Printer className="w-5 h-5" />
+              Print Receipt
             </button>
 
-            <div
-              className="bg-white text-black w-[80mm] min-h-0 h-fit shadow-2xl my-8 mx-auto p-2 py-4 font-mono text-[10px] leading-tight"
-              onClick={(e) => e.stopPropagation()}
+            {/* Mobile Only: Close Button at bottom for easier access */}
+            <button
+              onClick={() => setIsPosView(false)}
+              className="w-full mt-2 py-3 bg-slate-100 text-slate-900 rounded-lg md:hidden print:hidden border border-slate-200"
             >
-              {/* POS content (Screen Version) */}
-              <div className="text-center mb-4">
-                <h1 className="text-xl font-bold uppercase">{company.name}</h1>
-                <p className="text-[10px]">{company.address}</p>
-                <p className="text-[10px]">Ph: {company.phone}</p>
-                {invoice.gstEnabled && (company.gstin || company.gst) && (
-                  <p className="text-[10px] font-bold mt-1">GSTIN: {company.gstin || company.gst}</p>
-                )}
-              </div>
-              <div className="border-b border-dashed border-black my-2"></div>
-              <div className="flex justify-between text-[10px] mb-1">
-                <span>Invoice No:</span>
-                <span className="font-bold">#{invoice.invoiceNumber}</span>
-              </div>
-              <div className="flex justify-between text-[10px] mb-1">
-                <span>Date:</span>
-                <span>{new Date(invoice.date).toLocaleDateString()}</span>
-              </div>
-              <div className="flex justify-between text-[10px] mb-4">
-                <span>Customer:</span>
-                <span className="font-bold">{invoice.customerName}</span>
-              </div>
-
-              <div className="border-b border-dashed border-black my-2"></div>
-              <table className="w-full text-[10px] mb-4">
-                <thead>
-                  <tr>
-                    <th className="text-left py-1">Item</th>
-                    <th className="text-center py-1">Qty</th>
-                    <th className="text-right py-1">Rate</th>
-                    <th className="text-right py-1">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoice.items.map((item, idx) => (
-                    <tr key={idx}>
-                      <td className="text-left py-1">{item.description}</td>
-                      <td className="text-center py-1">{item.quantity}</td>
-                      <td className="text-right py-1">₹{item.rate}</td>
-                      <td className="text-right py-1">₹{((item.totalAmount || item.baseAmount) || 0).toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="border-b border-dashed border-black my-2"></div>
-
-              <div className="text-[10px] text-right space-y-1 mb-4">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span>{invoice.subtotal.toFixed(2)}</span>
-                </div>
-                {invoice.gstEnabled && ((invoice.totalCgst || 0) + (invoice.totalSgst || 0) + (invoice.totalIgst || 0)) > 0 && (
-                  <>
-                    {(invoice.totalCgst || 0) > 0 && (
-                      <div className="flex justify-between">
-                        <span>CGST:</span>
-                        <span>{(invoice.totalCgst || 0).toFixed(2)}</span>
-                      </div>
-                    )}
-                    {(invoice.totalSgst || 0) > 0 && (
-                      <div className="flex justify-between">
-                        <span>SGST:</span>
-                        <span>{(invoice.totalSgst || 0).toFixed(2)}</span>
-                      </div>
-                    )}
-                    {(invoice.totalIgst || 0) > 0 && (
-                      <div className="flex justify-between">
-                        <span>IGST:</span>
-                        <span>{(invoice.totalIgst || 0).toFixed(2)}</span>
-                      </div>
-                    )}
-                  </>
-                )}
-                <div className="flex justify-between font-bold text-sm mt-2 pt-2 border-t border-dashed border-black">
-                  <span>TOTAL:</span>
-                  <span>₹{Math.round(invoice.total).toFixed(2)}</span>
-                </div>
-                <div className="text-xs text-center mt-2 italic">
-                  ({numberToWords(Math.round(invoice.total))})
-                </div>
-              </div>
-              <div className="border-b border-dashed border-black my-2"></div>
-
-              {qrCodeUrl && (
-                <div className="flex flex-col items-center py-4">
-                  <p className="text-[9px] font-black uppercase mb-1">Scan to Pay</p>
-                  <img src={qrCodeUrl} className="w-32 h-32" alt="POS Payment QR" />
-                  <p className="text-[8px] font-bold mt-1">{company.upiId}</p>
-                </div>
-              )}
-
-              <div className="text-center text-[9px] mt-4">
-                <p className="font-bold uppercase mb-1">Thank you for your business!</p>
-                <p>Terms & Conditions Apply</p>
-              </div>
-
-              {/* Print Button for POS View */}
-              <button
-                onClick={handlePrint}
-                className="w-full mt-4 py-4 bg-blue-600 text-white font-bold rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95 transition-transform print:hidden"
-              >
-                <Printer className="w-5 h-5" />
-                Print Receipt
-              </button>
-
-              {/* Mobile Only: Close Button at bottom for easier access */}
-              <button
-                onClick={() => setIsPosView(false)}
-                className="w-full mt-2 py-3 bg-slate-100 text-slate-900 rounded-lg md:hidden print:hidden border border-slate-200"
-              >
-                Close View
-              </button>
-            </div>
+              Close View
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* PRINT PORTAL (Using User's Robust Method) */}
-        {createPortal(
-          <div id="print-mount" style={{ display: 'none' }}>
-            <style>{`
+      {/* PRINT PORTAL (Using User's Robust Method) */}
+      {createPortal(
+        <div id="print-mount" style={{ display: 'none' }}>
+          <style>{`
                     @media print {
                         body > * { display: none !important; }
                         body > #print-mount { display: block !important; }
@@ -1021,300 +1079,320 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
                     }
                 `}</style>
 
-            {isPosView ? (
-              /* POS PRINT LAYOUT (80mm) */
-              <div className="bg-white text-black w-[80mm] font-mono text-[12px] leading-tight p-0 mx-auto">
-                <div className="text-center mb-4">
-                  <h1 className="text-xl font-bold uppercase">{company.name}</h1>
-                  <p className="text-[10px]">{company.address}</p>
-                  <p className="text-[10px]">Ph: {company.phone}</p>
-                  {invoice.gstEnabled && (company.gstin || company.gst) && (
-                    <p className="text-[10px] font-bold mt-1">GSTIN: {company.gstin || company.gst}</p>
-                  )}
-                </div>
-                <div className="border-b border-dashed border-black my-2"></div>
-                <div className="flex justify-between mb-1">
-                  <span>Invoice No:</span>
-                  <span className="font-bold">#{invoice.invoiceNumber}</span>
-                </div>
-                <div className="flex justify-between mb-1">
-                  <span>Date:</span>
-                  <span>{new Date(invoice.date).toLocaleDateString()}</span>
-                </div>
-                <div className="flex justify-between mb-4">
-                  <span>Customer:</span>
-                  <span className="font-bold">{invoice.customerName}</span>
-                </div>
-
-                <div className="border-b border-dashed border-black my-2"></div>
-                <table className="w-full mb-4 text-left">
-                  <thead>
-                    <tr>
-                      <th className="py-1 w-[40%]">Item</th>
-                      <th className="py-1 text-center">Qty</th>
-                      <th className="py-1 text-right">Price</th>
-                      <th className="py-1 text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoice.items.map((item, idx) => (
-                      <tr key={idx}>
-                        <td className="py-1">{item.description}</td>
-                        <td className="py-1 text-center">{item.quantity}</td>
-                        <td className="py-1 text-right">{item.rate}</td>
-                        <td className="py-1 text-right">{((item.totalAmount || item.baseAmount) || 0).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="border-b border-dashed border-black my-2"></div>
-
-                <div className="text-right space-y-1 mb-4">
-                  <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span>{invoice.subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-sm mt-2 pt-2 border-t border-dashed border-black">
-                    <span>TOTAL:</span>
-                    <span>₹{Math.round(invoice.total).toFixed(2)}</span>
-                  </div>
-                  <div className="text-[10px] text-center mt-2 italic">
-                    ({numberToWords(Math.round(invoice.total))})
-                  </div>
-                </div>
-                <div className="border-b border-dashed border-black my-2"></div>
-
-                {qrCodeUrl && (
-                  <div className="flex flex-col items-center py-4">
-                    <p className="text-[9px] font-black uppercase mb-1">Scan to Pay</p>
-                    <img src={qrCodeUrl} className="w-32 h-32" alt="Print QR" />
-                    <p className="text-[8px] font-bold mt-1">{company.upiId}</p>
-                  </div>
+          {isPosView ? (
+            /* POS PRINT LAYOUT (80mm) */
+            <div className="bg-white text-black w-[80mm] font-mono text-[12px] leading-tight p-0 mx-auto">
+              <div className="text-center mb-4">
+                <h1 className="text-xl font-bold uppercase">{company.name}</h1>
+                <p className="text-[10px]">{company.address}</p>
+                <p className="text-[10px]">Ph: {company.phone}</p>
+                {invoice.gstEnabled && (company.gstin || company.gst) && (
+                  <p className="text-[10px] font-bold mt-1">GSTIN: {company.gstin || company.gst}</p>
                 )}
-
-                <div className="text-center text-[10px] mt-4">
-                  <p className="font-bold uppercase mb-1">Thank you!</p>
-                </div>
               </div>
-            ) : (
-              /* A4 PRINT LAYOUT */
-              <div className="p-10 text-black max-w-[210mm] mx-auto bg-white">
-                <div className="text-center mb-6">
-                  <h1 className="text-3xl font-bold mb-1 uppercase">{company.name}</h1>
-                  <p className="text-sm text-gray-600">{company.address}</p>
-                  <p className="text-sm text-gray-600">Ph: {company.phone}</p>
-                  {invoice.gstEnabled && (company.gstin || company.gst) && (
-                    <p className="text-sm font-bold mt-1">GSTIN: {company.gstin || company.gst}</p>
-                  )}
-                </div>
+              <div className="border-b border-dashed border-black my-2"></div>
+              <div className="flex justify-between mb-1">
+                <span>Invoice No:</span>
+                <span className="font-bold">#{invoice.invoiceNumber}</span>
+              </div>
+              <div className="flex justify-between mb-1">
+                <span>Date:</span>
+                <span>{new Date(invoice.date).toLocaleDateString()}</span>
+              </div>
+              <div className="flex justify-between mb-4">
+                <span>Customer:</span>
+                <span className="font-bold">{invoice.customerName}</span>
+              </div>
 
-                <div className="border-b-2 border-black mb-6"></div>
-
-                <div className="flex justify-between items-start mb-8">
-                  <div className="text-left">
-                    <h3 className="font-bold text-xs uppercase text-gray-500 mb-1">Billed To</h3>
-                    <h2 className="text-lg font-bold">{invoice.customerName}</h2>
-                    <p className="text-sm text-gray-600 whitespace-pre-wrap max-w-[250px]">{invoice.customerAddress}</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="mb-2">
-                      <span className="block text-xs font-bold text-gray-500 uppercase">Invoice No</span>
-                      <span className="text-lg font-bold">#{invoice.invoiceNumber}</span>
-                    </div>
-                    <div>
-                      <span className="block text-xs font-bold text-gray-500 uppercase">Date</span>
-                      <span className="text-base font-medium">{new Date(invoice.date).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <table className="w-full text-sm mb-8 border-collapse">
-                  <thead>
-                    <tr className="border-b border-black">
-                      <th className="py-2 text-left">Item</th>
-                      <th className="py-2 text-center">Qty</th>
-                      <th className="py-2 text-right">Price</th>
-                      <th className="py-2 text-right">Total</th>
+              <div className="border-b border-dashed border-black my-2"></div>
+              <table className="w-full mb-4 text-left">
+                <thead>
+                  <tr>
+                    <th className="py-1 w-[40%]">Item</th>
+                    <th className="py-1 text-center">Qty</th>
+                    <th className="py-1 text-right">Price</th>
+                    <th className="py-1 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoice.items.map((item, idx) => (
+                    <tr key={idx}>
+                      <td className="py-1">{item.description}</td>
+                      <td className="py-1 text-center">{item.quantity}</td>
+                      <td className="py-1 text-right">{item.rate}</td>
+                      <td className="py-1 text-right">{((item.totalAmount || item.baseAmount) || 0).toFixed(2)}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {invoice.items.map((item, idx) => (
-                      <tr key={idx} className="border-b border-gray-200">
-                        <td className="py-3">{item.description}</td>
-                        <td className="py-3 text-center">{item.quantity}</td>
-                        <td className="py-3 text-right">₹{item.rate}</td>
-                        <td className="py-3 text-right font-bold">₹{((item.totalAmount || item.baseAmount) || 0).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                  ))}
+                </tbody>
+              </table>
+              <div className="border-b border-dashed border-black my-2"></div>
 
-                <div className="flex justify-end mb-8">
-                  <div className="w-1/2 space-y-2 text-right">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600 font-medium">Subtotal</span>
-                      <span className="font-bold">₹{invoice.subtotal.toFixed(2)}</span>
-                    </div>
-                    <div className="border-t border-black pt-2 flex justify-between items-end">
-                      <span className="text-base font-bold">Total</span>
-                      <span className="text-2xl font-black">₹{invoice.total.toFixed(2)}</span>
-                    </div>
-                  </div>
+              <div className="text-right space-y-1 mb-4">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span>{invoice.subtotal.toFixed(2)}</span>
                 </div>
-                {/* Amount in Words for Portal A4 */}
-                <div className="text-right text-[10px] italic mb-8 -mt-6">
+                <div className="flex justify-between font-bold text-sm mt-2 pt-2 border-t border-dashed border-black">
+                  <span>TOTAL:</span>
+                  <span>₹{Math.round(invoice.total).toFixed(2)}</span>
+                </div>
+                <div className="text-[10px] text-center mt-2 italic">
                   ({numberToWords(Math.round(invoice.total))})
                 </div>
+              </div>
+              <div className="border-b border-dashed border-black my-2"></div>
 
-                <div className="flex justify-between items-end mt-12 border-t pt-6">
-                  <div className="space-y-4">
-                    {qrCodeUrl && (
-                      <div className="flex flex-col items-center p-2 border border-gray-100 rounded">
-                        <p className="text-[8px] font-bold uppercase mb-1 text-gray-400">Scan to Pay</p>
-                        <img src={qrCodeUrl} className="w-20 h-20" alt="Print QR A4" />
-                        <p className="text-[8px] font-bold mt-1">{company.upiId}</p>
-                      </div>
-                    )}
-                    <div className="text-xs text-gray-500">
-                      <p className="font-bold uppercase text-[10px] mb-1">Terms:</p>
-                      <p>1. Payment due within 30 days.</p>
-                      <p>2. Goods once sold will not be taken back.</p>
+              {qrCodeUrl && (
+                <div className="flex flex-col items-center py-4">
+                  <p className="text-[9px] font-black uppercase mb-1">Scan to Pay</p>
+                  <img src={qrCodeUrl} className="w-32 h-32" alt="Print QR" />
+                  <p className="text-[8px] font-bold mt-1">{company.upiId}</p>
+                </div>
+              )}
+
+              <div className="text-center text-[10px] mt-4">
+                <p className="font-bold uppercase mb-1">Thank you!</p>
+              </div>
+            </div>
+          ) : (
+            /* A4 PRINT LAYOUT */
+            <div className="p-10 text-black max-w-[210mm] mx-auto bg-white">
+              <div className="text-center mb-6">
+                <h1 className="text-3xl font-bold mb-1 uppercase">{company.name}</h1>
+                <p className="text-sm text-gray-600">{company.address}</p>
+                <p className="text-sm text-gray-600">Ph: {company.phone}</p>
+                {invoice.gstEnabled && (company.gstin || company.gst) && (
+                  <p className="text-sm font-bold mt-1">GSTIN: {company.gstin || company.gst}</p>
+                )}
+              </div>
+
+              <div className="border-b-2 border-black mb-6"></div>
+
+              <div className="flex justify-between items-start mb-8">
+                <div className="text-left">
+                  <h3 className="font-bold text-xs uppercase text-gray-500 mb-1">Billed To</h3>
+                  <h2 className="text-lg font-bold">{invoice.customerName}</h2>
+                  <p className="text-sm text-gray-600 whitespace-pre-wrap max-w-[250px]">{invoice.customerAddress}</p>
+                </div>
+                <div className="text-right">
+                  <div className="mb-2">
+                    <span className="block text-xs font-bold text-gray-500 uppercase">Invoice No</span>
+                    <span className="text-lg font-bold">#{invoice.invoiceNumber}</span>
+                  </div>
+                  <div>
+                    <span className="block text-xs font-bold text-gray-500 uppercase">Date</span>
+                    <span className="text-base font-medium">{new Date(invoice.date).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              <table className="w-full text-sm mb-8 border-collapse">
+                <thead>
+                  <tr className="border-b border-black">
+                    <th className="py-2 text-left">Item</th>
+                    <th className="py-2 text-center">Qty</th>
+                    <th className="py-2 text-right">Price</th>
+                    <th className="py-2 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoice.items.map((item, idx) => (
+                    <tr key={idx} className="border-b border-gray-200">
+                      <td className="py-3">{item.description}</td>
+                      <td className="py-3 text-center">{item.quantity}</td>
+                      <td className="py-3 text-right">₹{item.rate}</td>
+                      <td className="py-3 text-right font-bold">₹{((item.totalAmount || item.baseAmount) || 0).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="flex justify-end mb-8">
+                <div className="w-1/2 space-y-2 text-right">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 font-medium">Subtotal</span>
+                    <span className="font-bold">₹{invoice.subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t border-black pt-2 flex justify-between items-end">
+                    <span className="text-base font-bold">Total</span>
+                    <span className="text-2xl font-black">₹{invoice.total.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+              {/* Amount in Words for Portal A4 */}
+              <div className="text-right text-[10px] italic mb-8 -mt-6">
+                ({numberToWords(Math.round(invoice.total))})
+              </div>
+
+              <div className="flex justify-between items-end mt-12 border-t pt-6">
+                <div className="space-y-4">
+                  {qrCodeUrl && (
+                    <div className="flex flex-col items-center p-2 border border-gray-100 rounded">
+                      <p className="text-[8px] font-bold uppercase mb-1 text-gray-400">Scan to Pay</p>
+                      <img src={qrCodeUrl} className="w-20 h-20" alt="Print QR A4" />
+                      <p className="text-[8px] font-bold mt-1">{company.upiId}</p>
                     </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="h-16 w-40 border-b border-gray-300 mb-2"></div>
-                    <p className="font-bold text-sm">For {company.name}</p>
-                    <p className="text-xs text-gray-400 uppercase">Authorized Signatory</p>
+                  )}
+                  <div className="text-xs text-gray-500">
+                    <p className="font-bold uppercase text-[10px] mb-1">Terms:</p>
+                    <p>1. Payment due within 30 days.</p>
+                    <p>2. Goods once sold will not be taken back.</p>
                   </div>
                 </div>
 
-                <div className="text-center text-gray-400 text-[10px] mt-8">
-                  <p className="font-bold uppercase mb-1 tracking-widest">Thank you for your business!</p>
+                <div className="text-right">
+                  <div className="h-16 w-40 border-b border-gray-300 mb-2"></div>
+                  <p className="font-bold text-sm">For {company.name}</p>
+                  <p className="text-xs text-gray-400 uppercase">Authorized Signatory</p>
                 </div>
               </div>
-            )}
-          </div>,
-          document.body
-        )}
 
-        {/* Delete Confirmation Modal */}
+              <div className="text-center text-gray-400 text-[10px] mt-8">
+                <p className="font-bold uppercase mb-1 tracking-widest">Thank you for your business!</p>
+              </div>
+            </div>
+          )}
+        </div>,
+        document.body
+      )}
+
+      {/* Expressive M3 Delete Confirmation Modal */}
+      <AnimatePresence>
         {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[60] p-4 print:hidden">
-            <div className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl max-w-sm w-full animate-in zoom-in-95 duration-200 border border-slate-100 dark:border-slate-800">
-              <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 mb-2 uppercase italic tracking-tight">Delete Invoice?</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 font-medium">Are you sure you want to delete this invoice? This action cannot be undone.</p>
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="flex-1 px-6 py-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 font-black uppercase tracking-widest text-[10px] transition-all"
-                >
-                  Cancel
-                </button>
-                <button
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowDeleteConfirm(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative bg-surface rounded-[40px] p-8 shadow-google-lg max-w-sm w-full border border-border text-center overflow-hidden"
+            >
+              <div className="w-20 h-20 rounded-[28px] bg-google-red/10 flex items-center justify-center text-google-red mx-auto mb-6 border border-google-red/10">
+                <Trash2 className="w-10 h-10" />
+              </div>
+              <h3 className="text-3xl font-black font-heading text-foreground mb-3 tracking-tight">Delete Bill?</h3>
+              <p className="text-sm font-bold text-muted-foreground mb-8">This action is permanent and will remove the balance from records.</p>
+              <div className="flex flex-col gap-3">
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   onClick={handleDelete}
-                  className="flex-1 px-6 py-4 bg-red-600 text-white rounded-2xl hover:bg-red-700 font-black uppercase tracking-widest text-[10px] shadow-xl shadow-red-500/30 transition-all active:scale-95"
+                  className="w-full py-5 bg-google-red text-white rounded-full font-black uppercase tracking-widest text-[11px] shadow-lg shadow-google-red/20 active:shadow-inner"
                 >
-                  Delete
-                </button>
+                  Confirm Delete
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="w-full py-4 text-muted-foreground font-black uppercase tracking-widest text-[10px] hover:bg-surface-container rounded-full transition-colors"
+                >
+                  Keep Bill
+                </motion.button>
               </div>
-            </div>
+            </motion.div>
           </div>
         )}
+      </AnimatePresence>
 
-        {/* Post Save Success Actions Modal */}
-        {showPostSaveActions && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 w-full max-w-sm text-center shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
-              <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-green-200 shadow-lg">
-                <Check className="w-10 h-10" />
-              </div>
+      {/* Post Save Success Actions Modal */}
+      {showPostSaveActions && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 w-full max-w-sm text-center shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
+            <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-green-200 shadow-lg">
+              <Check className="w-10 h-10" />
+            </div>
 
-              <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 mb-2">Invoice Saved!</h2>
-              <p className="text-slate-500 font-medium mb-8">₹{invoice.total} • #{invoice.invoiceNumber}</p>
+            <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 mb-2">Invoice Saved!</h2>
+            <p className="text-slate-500 font-medium mb-8">₹{invoice.total} • #{invoice.invoiceNumber}</p>
 
-              <div className="space-y-4">
-                <button
-                  onClick={handlePrint}
-                  className="w-full py-5 rounded-2xl bg-blue-600 text-white font-black text-lg shadow-xl shadow-blue-500/30 active:scale-95 transition-transform flex items-center justify-center gap-3"
-                >
-                  <Printer className="w-6 h-6" />
-                  Print Invoice
-                </button>
+            <div className="space-y-4">
+              <button
+                onClick={handlePrint}
+                className="w-full py-5 rounded-2xl bg-blue-600 text-white font-black text-lg shadow-xl shadow-blue-500/30 active:scale-95 transition-transform flex items-center justify-center gap-3"
+              >
+                <Printer className="w-6 h-6" />
+                Print Invoice
+              </button>
 
-                <button
-                  onClick={handleWhatsAppClick}
-                  className="w-full py-5 rounded-2xl bg-green-600 text-white font-black text-lg shadow-xl shadow-green-500/30 active:scale-95 transition-transform flex items-center justify-center gap-3"
-                >
-                  <MessageCircle className="w-6 h-6" />
-                  Send on WhatsApp
-                </button>
+              <button
+                onClick={handleWhatsAppClick}
+                className="w-full py-5 rounded-2xl bg-green-600 text-white font-black text-lg shadow-xl shadow-green-500/30 active:scale-95 transition-transform flex items-center justify-center gap-3"
+              >
+                <MessageCircle className="w-6 h-6" />
+                Send on WhatsApp
+              </button>
 
-                <button
-                  onClick={onClosePostSaveActions}
-                  className="w-full py-4 font-bold text-slate-400 mt-2"
-                >
-                  Close
-                </button>
-              </div>
+              <button
+                onClick={onClosePostSaveActions}
+                className="w-full py-4 font-bold text-slate-400 mt-2"
+              >
+                Close
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* WhatsApp Phone Input Modal */}
+      {/* Expressive M3 WhatsApp Modal */}
+      <AnimatePresence>
         {showWhatsAppPhoneModal && (
-          <div className="fixed inset-0 z-[100] flex items-end justify-center p-0 md:p-6 sm:items-center">
+          <div className="fixed inset-0 z-[110] flex items-end md:items-center justify-center p-0 md:p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowWhatsAppPhoneModal(false)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ y: 100, opacity: 0 }}
+              initial={{ y: "100%", opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[32px] md:rounded-[32px] p-8 shadow-2xl z-[110] overflow-hidden"
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="relative w-full max-w-lg bg-surface rounded-t-[40px] md:rounded-[40px] p-8 md:p-10 shadow-google-lg z-[120] border border-border overflow-hidden"
             >
-              <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full mx-auto mb-8 md:hidden" />
+              <div className="w-12 h-1.5 bg-border rounded-full mx-auto mb-8 md:hidden" />
 
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-14 h-14 rounded-2xl bg-green-50 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400">
+              <div className="flex items-center gap-5 mb-10">
+                <div className="w-16 h-16 rounded-[24px] bg-google-green text-white flex items-center justify-center shadow-lg">
                   <MessageCircle className="w-8 h-8" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tracking-tight">Send via WhatsApp</h3>
-                  <p className="text-sm text-slate-500 font-medium">Link this bill to a phone number</p>
+                  <h3 className="text-3xl font-black font-heading text-foreground tracking-tight">Share Bill</h3>
+                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mt-1">Send secure digital link</p>
                 </div>
               </div>
 
-              <div className="space-y-6 mb-10">
+              <div className="space-y-6 mb-12">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Customer Name</label>
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Customer Name</label>
                   <input
                     type="text"
                     value={waName}
                     onChange={(e) => setWaName(e.target.value)}
-                    className="w-full p-4 bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800 rounded-2xl text-lg font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
-                    placeholder="Enter Name"
+                    className="w-full p-5 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-lg font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all placeholder:text-muted-foreground/30"
+                    placeholder="Enter full name"
                   />
                 </div>
 
                 <div className="space-y-2 relative">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">WhatsApp Number</label>
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">WhatsApp Number</label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-lg">+91</span>
+                    <span className="absolute left-6 top-1/2 -translate-y-1/2 text-google-blue font-black text-xl">+91</span>
                     <input
                       type="tel"
                       value={waPhone}
                       onChange={async (e) => {
-                        const val = e.target.value;
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
                         setWaPhone(val);
 
                         const res = await ContactService.resolveName(val);
-                        if (res.name) {
-                          setWaName(res.name);
-                        }
+                        if (res.name) setWaName(res.name);
 
                         if (val.length >= 2) {
                           const results = await ContactService.getCombinedContacts(val);
@@ -1326,14 +1404,18 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
                       }}
                       onFocus={() => { if (waPhone.length >= 2) setShowSuggestions(true); }}
                       onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                      className="w-full p-4 pl-14 bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800 rounded-2xl text-xl font-bold tracking-widest text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
-                      placeholder="9999999999"
+                      className="w-full p-5 pl-16 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-2xl font-black tracking-[0.1em] text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all placeholder:text-muted-foreground/30"
+                      placeholder="00000 00000"
                       autoFocus
                     />
                   </div>
 
                   {showSuggestions && suggestions.length > 0 && (
-                    <div className="absolute z-[120] left-0 right-0 top-full mt-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-2xl max-h-48 overflow-y-auto p-2">
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="absolute z-[130] left-0 right-0 top-full mt-3 bg-surface-container-highest border border-border rounded-[32px] shadow-google-lg max-h-56 overflow-y-auto p-2 backdrop-blur-2xl"
+                    >
                       {suggestions.map((s, i) => (
                         <button
                           key={i}
@@ -1343,53 +1425,58 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
                             setWaName(s.name);
                             setShowSuggestions(false);
                           }}
-                          className="w-full p-3 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors text-left"
+                          className="w-full p-4 flex items-center gap-4 hover:bg-surface-container-high rounded-[20px] transition-all text-left group"
                         >
-                          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${s.source === 'db' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${s.source === 'db' ? 'bg-google-blue text-white' : 'bg-google-green text-white'}`}>
                             {s.source === 'db' ? 'DB' : 'PH'}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{s.name}</div>
-                            <div className="text-[10px] font-medium text-slate-400 tracking-widest">{s.phone}</div>
+                            <div className="text-sm font-black text-foreground truncate group-hover:text-google-blue transition-colors">{s.name}</div>
+                            <div className="text-[10px] font-bold text-muted-foreground tracking-widest">{s.phone}</div>
                           </div>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground/30" />
                         </button>
                       ))}
-                    </div>
+                    </motion.div>
                   )}
                 </div>
               </div>
 
               <div className="flex flex-col gap-3">
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => sendWhatsApp(waPhone, waName)}
-                  className="w-full py-4 bg-primary text-white rounded-2xl font-semibold tracking-wide shadow-xl shadow-primary/20 flex items-center justify-center gap-2 active:scale-95 transition-all"
+                  className="w-full py-5 bg-google-green text-white rounded-full font-black uppercase tracking-widest text-[11px] shadow-lg shadow-google-green/30 flex items-center justify-center gap-3"
                 >
                   <MessageCircle className="w-5 h-5" />
-                  Send Link
-                </button>
+                  Send Digital Link
+                </motion.button>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <button
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => handleSaveToPhoneDirect(waPhone, waName)}
-                    className="py-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-95 transition-all"
+                    className="py-5 bg-surface-container-high text-foreground rounded-full font-black uppercase tracking-widest text-[10px] border border-border flex items-center justify-center gap-2"
                   >
-                    <UserPlus className="w-5 h-5" />
+                    <UserPlus className="w-5 h-5 text-google-blue" />
                     Save Contact
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => setShowWhatsAppPhoneModal(false)}
-                    className="py-4 text-slate-400 font-semibold text-sm hover:text-slate-600 transition-colors"
+                    className="py-5 text-muted-foreground font-black uppercase tracking-widest text-[10px] hover:bg-surface-container rounded-full transition-colors"
                   >
-                    Not Now
-                  </button>
+                    Maybe Later
+                  </motion.button>
                 </div>
               </div>
             </motion.div>
           </div>
         )}
+      </AnimatePresence>
 
-      </div>
     </div>
+
   );
 };
 

@@ -72,88 +72,121 @@ const Inventory: React.FC = () => {
   const lowStockCount = products.filter(p => p.stock <= 10).length;
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-900 min-h-screen pb-20">
-      {/* Header Area */}
-      <div className="bg-white dark:bg-slate-900 pt-8 pb-6 px-4 md:px-8 border-b border-slate-100 dark:border-slate-800">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Inventory</h1>
-            <p className="text-slate-500 text-sm font-medium mt-1">Manage your stock and pricing</p>
+    <div className="bg-surface-container-low min-h-screen pb-32 font-sans">
+      {/* Material 3 Large Top Bar */}
+      <div className="pt-16 pb-8 px-6 md:px-12 bg-surface-container-low sticky top-0 z-30 transition-all">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex flex-col">
+            <span className="text-[11px] font-black text-google-blue uppercase tracking-[0.3em] mb-2 px-1">Management</span>
+            <h1 className="text-4xl md:text-5xl font-black font-heading text-foreground tracking-tight leading-none">Inventory</h1>
           </div>
 
-          <button
-            onClick={() => { setIsAdding(true); setOriginalId(null); setNewProduct({ name: '', price: 0, stock: 0, category: 'General' }); }}
-            className="bg-blue-600 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 font-bold shadow-lg shadow-blue-200 active:scale-95 transition-transform"
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              setIsAdding(true);
+              setOriginalId(null);
+              setNewProduct({ name: '', price: 0, stock: 0, category: 'General' });
+            }}
+            className="bg-primary text-white px-8 py-4 rounded-full flex items-center justify-center gap-3 font-black text-sm uppercase tracking-widest shadow-google hover:shadow-google-lg transition-all"
           >
-            <Plus className="w-5 h-5" /> Add Product
-          </button>
+            <Plus className="w-5 h-5" strokeWidth={3} /> Add New Item
+          </motion.button>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-8">
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-[28px] border border-slate-100 dark:border-slate-700 shadow-sm">
-            <Package className="w-6 h-6 text-blue-500 mb-3" />
-            <p className="text-2xl font-black text-slate-800 dark:text-slate-100">{products.length}</p>
-            <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Items</p>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-6xl mx-auto p-4 md:p-8 space-y-8"
+      >
+        {/* Expressive Stats Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-surface-container-high p-6 rounded-[32px] border border-border shadow-sm group hover:bg-surface-container-highest transition-all">
+            <div className="w-12 h-12 rounded-2xl bg-google-blue/10 flex items-center justify-center text-google-blue mb-4 group-hover:scale-110 transition-transform">
+              <Package className="w-6 h-6" />
+            </div>
+            <p className="text-3xl font-black text-foreground font-heading">{products.length}</p>
+            <p className="text-[10px] uppercase font-black text-muted-foreground tracking-[0.2em] mt-1">Total Products</p>
           </div>
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-[28px] border border-slate-100 dark:border-slate-700 shadow-sm text-emerald-600">
-            <TrendingUp className="w-6 h-6 mb-3" />
-            <p className="text-2xl font-black">₹{totalStockValue.toLocaleString('en-IN')}</p>
-            <p className="text-[10px] uppercase font-bold opacity-60 tracking-wider">Stock Value</p>
+
+          <div className="bg-surface-container-high p-6 rounded-[32px] border border-border shadow-sm group hover:bg-surface-container-highest transition-all">
+            <div className="w-12 h-12 rounded-2xl bg-google-green/10 flex items-center justify-center text-google-green mb-4 group-hover:scale-110 transition-transform">
+              <TrendingUp className="w-6 h-6" />
+            </div>
+            <p className="text-3xl font-black text-foreground font-heading">₹{Math.round(totalStockValue).toLocaleString('en-IN')}</p>
+            <p className="text-[10px] uppercase font-black text-muted-foreground tracking-[0.2em] mt-1">Inventory Value</p>
           </div>
-          <div className={`p-5 rounded-[28px] border shadow-sm ${lowStockCount > 0 ? 'bg-orange-50 border-orange-100 text-orange-600' : 'bg-white border-slate-100 text-slate-400'}`}>
-            <AlertTriangle className="w-6 h-6 mb-3" />
-            <p className="text-2xl font-black">{lowStockCount}</p>
-            <p className="text-[10px] uppercase font-bold opacity-60 tracking-wider">Low Stock</p>
+
+          <div className={`p-6 rounded-[32px] border transition-all h-full ${lowStockCount > 0
+            ? 'bg-google-red/5 border-google-red/10 text-google-red'
+            : 'bg-surface-container-high border-border text-foreground'
+            }`}>
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${lowStockCount > 0 ? 'bg-google-red/10' : 'bg-surface-container-highest'
+              }`}>
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <p className="text-3xl font-black font-heading">{lowStockCount}</p>
+            <p className={`text-[10px] uppercase font-black tracking-[0.2em] mt-1 ${lowStockCount > 0 ? 'text-google-red' : 'text-muted-foreground'
+              }`}>Low Stock Alerts</p>
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+        {/* M3 Search Bar */}
+        <div className="relative group">
+          <div className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-google-blue transition-colors">
+            <Search className="w-6 h-6" />
+          </div>
           <input
             type="text"
-            placeholder="Search products by name or category..."
-            className="w-full pl-12 pr-6 py-4 bg-white dark:bg-slate-800 border-none rounded-2xl shadow-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+            placeholder="Search items by name or category..."
+            className="w-full pl-16 pr-8 py-6 bg-surface-container-high border-2 border-transparent focus:border-google-blue/20 rounded-[32px] shadow-sm focus:ring-4 focus:ring-google-blue/5 outline-none font-bold text-foreground transition-all placeholder:text-muted-foreground/40"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
         {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <AnimatePresence>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <AnimatePresence mode="popLayout">
             {filteredProducts.map((product) => (
               <motion.div
                 key={product.id}
+                layout
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-white dark:bg-slate-800 p-5 rounded-[28px] border border-slate-100 dark:border-slate-700 shadow-sm relative group hover:border-blue-200 transition-colors"
+                className="bg-surface border border-border p-6 rounded-[32px] shadow-sm hover:shadow-google-lg hover:border-google-blue/20 transition-all group relative overflow-hidden active:scale-[0.98]"
               >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-slate-400">
-                    <Package className="w-6 h-6" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-google-blue/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-google-blue/10 transition-colors" />
+
+                <div className="flex justify-between items-start mb-6 relative">
+                  <div className="w-14 h-14 rounded-2xl bg-surface-container-high flex items-center justify-center text-google-blue shadow-inner group-hover:scale-110 transition-transform">
+                    <Package className="w-7 h-7" />
                   </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => handleEdit(product)} className="p-2 text-slate-400 hover:text-blue-500 rounded-full hover:bg-blue-50"><Edit2 className="w-4 h-4" /></button>
-                    <button onClick={() => handleDelete(product.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-full hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => handleEdit(product)} className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-google-blue hover:bg-google-blue/5 rounded-full"><Edit2 className="w-4 h-4" /></button>
+                    <button onClick={() => handleDelete(product.id)} className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-google-red hover:bg-google-red/5 rounded-full"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
 
-                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 line-clamp-1">{product.name}</h3>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{product.category}</p>
+                <div className="relative">
+                  <h3 className="text-xl font-black text-foreground line-clamp-1 font-heading mb-1">{product.name}</h3>
+                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">{product.category}</p>
+                </div>
 
-                <div className="flex items-end justify-between pt-4 border-t border-slate-50 dark:border-slate-700">
+                <div className="mt-8 pt-6 border-t border-border flex items-end justify-between relative">
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Unit Price</p>
-                    <p className="text-xl font-black text-blue-600">₹{product.price.toFixed(2)}</p>
+                    <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Unit Price</p>
+                    <p className="text-2xl font-black text-google-blue tracking-tighter">₹{product.price.toLocaleString('en-IN')}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Stock</p>
-                    <span className={`text-sm font-black px-3 py-1 rounded-full ${product.stock > 10 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                    <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-2">Stock Level</p>
+                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter ${product.stock > 10
+                      ? 'bg-google-green text-white shadow-lg shadow-google-green/20'
+                      : 'bg-google-red text-white shadow-lg shadow-google-red/20 animate-pulse'
+                      }`}>
                       {product.stock} Units
                     </span>
                   </div>
@@ -164,88 +197,123 @@ const Inventory: React.FC = () => {
         </div>
 
         {filteredProducts.length === 0 && (
-          <div className="text-center py-20">
-            <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Package className="w-10 h-10 text-slate-300" />
+          <div className="text-center py-24 bg-surface-container-high/50 rounded-[40px] border-2 border-dashed border-border mt-8">
+            <div className="w-24 h-24 bg-surface-container-highest rounded-full flex items-center justify-center mx-auto mb-6">
+              <Package className="w-12 h-12 text-muted-foreground/30" strokeWidth={1.5} />
             </div>
-            <h3 className="text-lg font-bold text-slate-600">No products found</h3>
-            <p className="text-slate-400">Add a product or try a different search</p>
+            <h3 className="text-2xl font-black text-foreground mb-2 font-heading">Empty Warehouse</h3>
+            <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Add your first item to get started</p>
           </div>
         )}
-      </div>
+      </motion.div>
 
-      {/* Add Product Modal */}
+      {/* Expressive M3 Side Sheet Modal for Adding Product */}
       <AnimatePresence>
         {isAdding && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
             <motion.div
-              initial={{ y: 100, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 100, opacity: 0 }}
-              className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-[32px] overflow-hidden shadow-2xl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAdding(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              layoutId="product-modal"
+              initial={{ y: 50, opacity: 0, scale: 0.95 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 50, opacity: 0, scale: 0.95 }}
+              className="relative bg-surface w-full max-w-xl rounded-[40px] overflow-hidden shadow-google-lg border border-border"
             >
-              <div className="p-8 pb-0 flex justify-between items-center">
-                <h2 className="text-2xl font-bold">{newProduct.id ? 'Edit Product' : 'New Product'}</h2>
-                <button onClick={() => setIsAdding(false)} className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">✕</button>
+              <div className="p-10 pb-4 flex justify-between items-start">
+                <div>
+                  <h2 className="text-4xl font-black font-heading text-foreground tracking-tight">{newProduct.id ? 'Edit item' : 'New item'}</h2>
+                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mt-2">{newProduct.id ? 'Refining stock details' : 'Expansion mode active'}</p>
+                </div>
+                <button
+                  onClick={() => setIsAdding(false)}
+                  className="w-12 h-12 bg-surface-container-high rounded-full flex items-center justify-center text-foreground hover:bg-surface-container-highest transition-colors"
+                >
+                  ✕
+                </button>
               </div>
 
-              <form onSubmit={handleSave} className="p-8 space-y-6">
+              <form onSubmit={handleSave} className="p-10 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Identification Code</label>
+                    <input
+                      className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-base font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none font-mono transition-all"
+                      placeholder="SMART_CALC_ID"
+                      value={newProduct.id || ''}
+                      onChange={e => setNewProduct({ ...newProduct, id: e.target.value })}
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-400 uppercase ml-2">Item ID (For Smart Calc)</label>
-                  <input
-                    className="w-full p-4 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl text-base font-bold text-slate-600 focus:ring-2 focus:ring-blue-500 outline-none font-mono"
-                    placeholder="Auto-generated if empty"
-                    value={newProduct.id || ''}
-                    onChange={e => setNewProduct({ ...newProduct, id: e.target.value })}
-                  />
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Category</label>
+                    <input
+                      className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-base font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all"
+                      placeholder="General"
+                      value={newProduct.category || ''}
+                      onChange={e => setNewProduct({ ...newProduct, category: e.target.value })}
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-400 uppercase ml-2">Product Name</label>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Product Label</label>
                   <input
                     required
                     autoFocus
-                    className="w-full p-4 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl text-lg font-bold focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="Enter Name..."
+                    className="w-full p-5 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-2xl font-black text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all placeholder:text-muted-foreground/30 font-heading"
+                    placeholder="Premium Product Name"
                     value={newProduct.name}
                     onChange={e => setNewProduct({ ...newProduct, name: e.target.value })}
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-slate-400 uppercase ml-2">Sale Price</label>
-                    <input
-                      required
-                      type="number"
-                      className="w-full p-4 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl font-bold focus:ring-2 focus:ring-blue-500 outline-none"
-                      placeholder="₹"
-                      value={newProduct.price || ''}
-                      onChange={e => setNewProduct({ ...newProduct, price: Number(e.target.value) })}
-                    />
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Sale Price (₹)</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-google-blue">₹</span>
+                      <input
+                        required
+                        type="number"
+                        className="w-full p-5 pl-10 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-xl font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all"
+                        placeholder="0.00"
+                        value={newProduct.price || ''}
+                        onChange={e => setNewProduct({ ...newProduct, price: Number(e.target.value) })}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-slate-400 uppercase ml-2">Opening Stock</label>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Initial Stock</label>
                     <input
                       required
                       type="number"
-                      className="w-full p-4 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full p-5 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-xl font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all"
+                      placeholder="0"
                       value={newProduct.stock || ''}
                       onChange={e => setNewProduct({ ...newProduct, stock: Number(e.target.value) })}
                     />
                   </div>
                 </div>
 
-                <button type="submit" className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-blue-200 active:scale-95 transition-transform">
-                  Save Product
-                </button>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  type="submit"
+                  className="w-full bg-google-blue text-white py-6 rounded-full font-black text-lg uppercase tracking-widest shadow-lg shadow-google-blue/20 hover:shadow-google-lg active:shadow-inner transition-all mt-4"
+                >
+                  Confirm & Sync
+                </motion.button>
               </form>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-    </div >
+    </div>
   );
 };
 

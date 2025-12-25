@@ -189,7 +189,7 @@ const AppContent: React.FC = () => {
       <div
         className={`
           fixed inset-0 z-[100] md:relative md:z-auto
-          ${isSidebarOpen ? 'flex' : 'hidden md:flex'}
+          ${isSidebarOpen ? 'flex' : (['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE'].includes(currentView) ? 'hidden' : 'hidden md:flex')}
         `}
       >
         {/* Backdrop for Mobile */}
@@ -363,23 +363,20 @@ const AppContent: React.FC = () => {
         </AnimatePresence>
       </main>
 
-      {/* Mobile Bottom Navigation - Visible only on Mobile */}
-      <div className="md:hidden">
-        <MobileBottomNav
-          currentView={currentView}
-          onChangeView={(view) => {
+      {/* Mobile Bottom Navigation - Visible only on Mobile and non-focused views */}
+      {!['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE'].includes(currentView) && (
+        <div className="md:hidden">
+          <MobileBottomNav currentView={currentView} onChangeView={(view) => {
             if (view === ViewState.CREATE_INVOICE) {
-              setInvoiceToEdit(null);
-              setStartSmartCalc(false);
-            }
-            if (view === ViewState.IMPORT) {
-              setShowImport(true); // Or navigate to import view
+              handleCreateNew();
+            } else if (view === ViewState.IMPORT) {
+              setShowImport(true);
             } else {
               setCurrentView(view);
             }
-          }}
-        />
-      </div>
+          }} />
+        </div>
+      )}
 
       {/* Import Modal */}
       {showImport && currentView !== ViewState.IMPORT && (

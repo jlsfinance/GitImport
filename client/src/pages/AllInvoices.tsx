@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Invoice } from '../types';
 import { StorageService } from '../services/storageService';
-import { Search, MoreVertical, FileText, Trash2, Users, Edit, MessageCircle, Eye } from 'lucide-react';
+import { Search, MoreVertical, FileText, Trash2, Users, Edit, MessageCircle, Eye, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HapticService } from '../services/hapticService';
 import {
@@ -32,6 +32,7 @@ const AllInvoices: React.FC<AllInvoicesProps> = ({
   const invoices = propInvoices || StorageService.getInvoices();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PAID' | 'PENDING'>('ALL');
+  const [selectedForAction, setSelectedForAction] = useState<Invoice | null>(null);
 
   const filteredInvoices = useMemo(() => {
     return invoices.filter(inv => {
@@ -55,130 +56,235 @@ const AllInvoices: React.FC<AllInvoicesProps> = ({
   };
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-900 min-h-screen flex flex-col pb-32">
-      {/* Apple-style Compact Header */}
-      <div className="bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-xl sticky top-0 z-30 px-4 pt-6 pb-4">
+    <div className="bg-background min-h-screen flex flex-col pb-32">
+      {/* Google Search Style Header */}
+      <div className="sticky top-0 z-30 px-4 pt-14 pb-4 bg-background/95 backdrop-blur-md">
         <div className="max-w-5xl mx-auto">
-          <div className="flex justify-between items-baseline mb-4">
-            <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">Invoices</h1>
-            <p className="text-slate-400 text-xs font-black uppercase tracking-widest">{filteredInvoices.length} Items</p>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold font-heading text-foreground tracking-tight">Invoices</h1>
+            <span className="px-3 py-1 bg-surface-container-highest text-muted-foreground text-[10px] font-bold rounded-full border border-border uppercase tracking-widest">
+              {filteredInvoices.length} Bills
+            </span>
           </div>
 
-          <div className="flex gap-3">
-            <div className="flex-1 bg-white dark:bg-slate-800 rounded-2xl px-4 py-3.5 flex items-center gap-3 border border-slate-200 dark:border-slate-800 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-              <Search className="w-4 h-4 text-slate-400 group-focus-within:text-blue-500" />
-              <input
-                type="text"
-                placeholder="Search invoices or clients..."
-                className="bg-transparent flex-1 outline-none text-sm font-black uppercase tracking-tight text-slate-700 dark:text-slate-200 placeholder:text-slate-400 placeholder:normal-case"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+              <Search className="w-5 h-5 text-muted-foreground group-focus-within:text-google-blue transition-colors" />
             </div>
-            <div className="relative">
-              <select
-                className="bg-white dark:bg-slate-800 rounded-2xl px-6 py-3.5 outline-none border border-slate-200 dark:border-slate-800 font-black text-[10px] uppercase tracking-widest text-slate-600 dark:text-slate-300 appearance-none min-w-[120px] shadow-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as any)}
+            <input
+              type="text"
+              placeholder="Search by client name or bill #"
+              className="w-full bg-surface-container-low border border-border rounded-[28px] pl-12 pr-4 py-4 outline-none text-sm font-semibold text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-google-blue/20 focus:border-google-blue transition-all shadow-sm"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div className="flex gap-2 mt-4 overflow-x-auto no-scrollbar py-1">
+            {['ALL', 'PAID', 'PENDING'].map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status as any)}
+                className={`px-6 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-wider transition-all border shadow-sm whitespace-nowrap ${statusFilter === status
+                    ? 'bg-google-blue text-white border-google-blue'
+                    : 'bg-surface-container-low text-muted-foreground border-border hover:bg-surface-container-highest'
+                  }`}
               >
-                <option value="ALL">All Status</option>
-                <option value="PAID">Paid Only</option>
-                <option value="PENDING">Pending</option>
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                <div className="w-1.5 h-1.5 border-r-2 border-b-2 border-slate-400 rotate-45" />
-              </div>
-            </div>
+                {status}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-2 mt-4 space-y-2">
+      <div className="max-w-5xl mx-auto w-full px-4 mt-4 space-y-3">
         <AnimatePresence mode='popLayout'>
-          {filteredInvoices.map((invoice, index) => (
-            <div key={invoice.id} className="relative overflow-hidden rounded-2xl group">
+          {filteredInvoices.map((invoice) => (
+            <div key={invoice.id} className="relative overflow-hidden rounded-[28px] group bg-surface-container-low border border-border shadow-sm hover:shadow-google transition-all">
               {/* Delete Action Background */}
-              <div className="absolute inset-0 bg-red-500 flex justify-end items-center px-6">
+              <div className="absolute inset-0 bg-google-red flex justify-end items-center px-8">
                 <Trash2 className="w-6 h-6 text-white" />
               </div>
 
               {/* Swipeable Card Content */}
               <motion.div
+                layout
                 drag="x"
                 dragConstraints={{ left: -100, right: 0 }}
-                dragElastic={0.05}
+                dragElastic={0.6}
+                dragMomentum={false}
                 onDragEnd={(_, info) => {
-                  if (info.offset.x < -60) {
+                  if (info.offset.x < -80) {
                     HapticService.medium();
                     handleDelete(invoice);
                   }
                 }}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -100 }}
-                transition={{ delay: index * 0.03 }}
-                className="bg-white dark:bg-slate-800 p-4 flex justify-between items-center rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-blue-100 dark:hover:border-blue-900/30 relative z-10 cursor-pointer transition-all active:scale-[0.99]"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                whileTap={{ scale: 0.99 }}
+                className="bg-surface-container-low p-5 flex justify-between items-center relative z-10 cursor-pointer"
                 onClick={() => onView && onView(invoice)}
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-lg shadow-inner">
+                  <div className="w-12 h-12 rounded-full bg-google-blue/10 flex items-center justify-center text-google-blue font-bold text-lg border border-google-blue/5">
                     {invoice.customerName.charAt(0)}
                   </div>
-                  <div className="overflow-hidden">
-                    <h3 className="font-black text-slate-900 dark:text-slate-100 text-sm tracking-tight truncate max-w-[180px]">{invoice.customerName}</h3>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">#{invoice.invoiceNumber}</span>
-                      <span className="w-1 h-1 bg-slate-300 dark:bg-slate-700 rounded-full"></span>
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-black tracking-widest uppercase">
-                        {new Date(invoice.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                      </span>
-                    </div>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-foreground text-sm tracking-tight truncate max-w-[180px]">{invoice.customerName}</h3>
+                    <p className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1.5 mt-0.5">
+                      #{invoice.invoiceNumber}
+                      <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                      {new Date(invoice.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <p className="text-lg font-black text-slate-900 dark:text-slate-100 italic">₹{invoice.total.toLocaleString('en-IN')}</p>
-                    <div className={`mt-1 flex items-center justify-end gap-1.5`}>
-                      <div className={`w-1.5 h-1.5 rounded-full ${invoice.status === 'PAID' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                      <span className={`text-[9px] font-black uppercase tracking-widest ${invoice.status === 'PAID'
-                        ? 'text-emerald-600'
-                        : 'text-amber-600'
-                        }`}>
-                        {invoice.status}
-                      </span>
-                    </div>
+                    <p className="text-base font-bold text-foreground">₹{invoice.total.toLocaleString('en-IN')}</p>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${invoice.status === 'PAID' ? 'bg-google-green/10 text-google-green' : 'bg-google-yellow/10 text-google-yellow'
+                      }`}>
+                      {invoice.status}
+                    </span>
                   </div>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        className="p-3 -mr-2 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-300 hover:text-slate-600 dark:hover:text-slate-200"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MoreVertical className="w-5 h-5" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" sideOffset={12}>
-                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView && onView(invoice); }}>
-                        <Eye className="mr-3 h-4 w-4" /> View Invoice
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onViewLedger && onViewLedger(invoice.customerId); }}>
-                        <Users className="mr-3 h-4 w-4 text-blue-500" /> View Ledger
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit && onEdit(invoice); }}>
-                        <Edit className="mr-3 h-4 w-4 text-orange-500" /> Edit Invoice
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-red-600" onClick={(e) => { e.stopPropagation(); handleDelete(invoice); }}>
-                        <Trash2 className="mr-3 h-4 w-4" /> Delete Permanently
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <button
+                    className="p-2 rounded-full hover:bg-surface-container-highest transition-colors text-muted-foreground"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      HapticService.light();
+                      setSelectedForAction(invoice);
+                    }}
+                  >
+                    <MoreVertical className="w-5 h-5" />
+                  </button>
                 </div>
               </motion.div>
             </div>
           ))}
+        </AnimatePresence>
+
+        {/* PREMIUM BOTTOM ACTION SHEET */}
+        <AnimatePresence>
+          {selectedForAction && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedForAction(null)}
+                className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[100]"
+              />
+
+              {/* Sheet */}
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 z-[101] rounded-t-[32px] shadow-2xl overflow-hidden pb-8"
+              >
+                {/* Drag Handle */}
+                <div className="flex justify-center py-3">
+                  <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full" />
+                </div>
+
+                {/* Header Info */}
+                <div className="px-6 py-4 flex items-center gap-4 border-b border-slate-50 dark:border-slate-800/50">
+                  <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                    <FileText className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black font-heading text-slate-900 dark:text-slate-100 tracking-tight leading-tight">
+                      {selectedForAction.customerName}
+                    </h2>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5 opacity-60">
+                      Invoice: #{selectedForAction.invoiceNumber}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action Items */}
+                <div className="px-4 py-4 space-y-2">
+                  {/* View Details */}
+                  <button
+                    onClick={() => {
+                      onView && onView(selectedForAction);
+                      setSelectedForAction(null);
+                    }}
+                    className="w-full flex items-center gap-4 p-4 rounded-[24px] hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group active:scale-[0.98]"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                      <Eye className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="font-bold text-slate-900 dark:text-slate-100 text-base">View Details</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">View or print breakdown</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                  </button>
+
+                  {/* Ledger */}
+                  <button
+                    onClick={() => {
+                      onViewLedger && onViewLedger(selectedForAction.customerId);
+                      setSelectedForAction(null);
+                    }}
+                    className="w-full flex items-center gap-4 p-4 rounded-[24px] hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group active:scale-[0.98]"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                      <Users className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="font-bold text-slate-900 dark:text-slate-100 text-base">Customer Ledger</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Statement & history</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                  </button>
+
+                  {/* Edit */}
+                  <button
+                    onClick={() => {
+                      onEdit && onEdit(selectedForAction);
+                      setSelectedForAction(null);
+                    }}
+                    className="w-full flex items-center gap-4 p-4 rounded-[24px] hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group active:scale-[0.98]"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0">
+                      <Edit className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="font-bold text-slate-900 dark:text-slate-100 text-base">Edit Invoice</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Modify balance or items</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                  </button>
+
+                  {/* Delete */}
+                  <div className="pt-2">
+                    <button
+                      onClick={() => {
+                        handleDelete(selectedForAction);
+                        setSelectedForAction(null);
+                      }}
+                      className="w-full flex items-center gap-4 p-4 rounded-[24px] hover:bg-red-50 dark:hover:bg-red-900/10 transition-all group active:scale-[0.98]"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
+                        <Trash2 className="w-6 h-6" />
+                      </div>
+                      <div className="flex-1 text-left min-w-0">
+                        <p className="font-bold text-red-600 text-base">Delete Permanently</p>
+                        <p className="text-xs text-red-400/80">Remove record forever</p>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-red-200 group-hover:text-red-400 transition-colors" />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          )}
         </AnimatePresence>
 
         {filteredInvoices.length === 0 && (

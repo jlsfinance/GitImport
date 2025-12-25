@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
 import { ViewState } from '../types';
-import { LayoutDashboard, FileText, Package, Menu, Plus, Users, Settings, LogOut, Upload, X, Receipt, ArrowDownLeft } from 'lucide-react';
+import { LayoutDashboard, FileText, Package, Menu, Plus, Users, Settings, LogOut, Upload, X, Receipt, ArrowDownLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
+import { HapticService } from '@/services/hapticService';
 
 interface MobileBottomNavProps {
   currentView: ViewState;
@@ -59,28 +60,47 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, onChange
                   </button>
                 </div>
 
-                <div className="grid grid-cols-4 gap-4 mb-6">
+                <div className="space-y-2 mb-6">
                   {menuItems.map((item) => (
                     <button
                       key={item.id}
                       onClick={() => handleNavClick(item.id)}
-                      className="flex flex-col items-center gap-2 group"
+                      className="w-full flex items-center gap-4 p-4 rounded-[24px] hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group active:scale-[0.98]"
                     >
-                      <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center group-hover:bg-slate-100 transition-colors border border-slate-100 dark:border-slate-700">
+                      <div className={`w-12 h-12 rounded-full ${item.bgColor} dark:bg-slate-800 flex items-center justify-center border border-slate-100 dark:border-slate-700 shrink-0`}>
                         <item.icon className={`w-6 h-6 ${item.color}`} />
                       </div>
-                      <span className="text-xs font-medium text-slate-600 dark:text-slate-400 text-center leading-tight">{item.label}</span>
+                      <div className="flex-1 text-left">
+                        <p className="font-bold text-slate-800 dark:text-slate-100 text-base">{item.label}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {item.id === ViewState.CUSTOMERS ? 'Manage your client base' :
+                            item.id === ViewState.EXPENSES ? 'Track business spending' :
+                              item.id === ViewState.PAYMENTS ? 'View payment history' :
+                                item.id === ViewState.IMPORT ? 'Backup and restore data' :
+                                  'App configuration'}
+                        </p>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-slate-500 transition-colors" />
                     </button>
                   ))}
                 </div>
 
                 <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
                   <button
-                    onClick={() => signOut()}
-                    className="w-full flex items-center justify-center gap-2 p-4 text-red-600 dark:text-red-400 font-semibold bg-red-50 dark:bg-red-500/10 rounded-[24px] hover:bg-red-100 dark:hover:bg-red-500/20 transition-all border border-red-100/50 dark:border-red-500/20"
+                    onClick={() => {
+                      HapticService.medium();
+                      signOut();
+                    }}
+                    className="w-full flex items-center gap-4 p-4 text-red-600 dark:text-red-400 font-bold bg-red-50 dark:bg-red-500/10 rounded-[24px] hover:bg-red-100 dark:hover:bg-red-500/20 transition-all group active:scale-[0.98]"
                   >
-                    <LogOut className="w-5 h-5" />
-                    Sign Out
+                    <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                      <LogOut className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-bold">Sign Out</p>
+                      <p className="text-xs text-red-400 opacity-60">Exit your account safely</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 opacity-40" />
                   </button>
                 </div>
               </div>
@@ -89,20 +109,24 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, onChange
         )}
       </AnimatePresence>
 
-      {/* Floating Action Button (M3 Style) */}
+      {/* Floating Action Button (M3 Large FAB) - Official Google Style */}
       <div className="fixed bottom-28 right-6 z-40">
         <motion.button
+          whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.9 }}
-          onClick={() => handleNavClick(ViewState.CREATE_INVOICE)}
-          className="w-16 h-16 rounded-[24px] bg-primary text-white shadow-xl flex items-center justify-center hover:shadow-2xl transition-all border-none"
+          onClick={() => {
+            HapticService.medium();
+            handleNavClick(ViewState.CREATE_INVOICE);
+          }}
+          className="w-16 h-16 rounded-[24px] bg-google-blue text-white shadow-google-lg flex items-center justify-center hover:shadow-google transition-all border-none"
         >
           <Plus className="w-8 h-8" strokeWidth={3} />
         </motion.button>
       </div>
 
       {/* Material 3 Bottom Navigation Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-800/50 pb-safe z-30 h-[88px]">
-        <div className="flex justify-around items-center h-full px-2 max-w-lg mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 bg-surface-container/95 dark:bg-surface-container-low/95 backdrop-blur-2xl border-t border-border/50 pb-safe z-30 h-[88px]">
+        <div className="flex justify-around items-center h-full px-4 max-w-lg mx-auto">
           <NavButton
             active={currentView === ViewState.DASHBOARD}
             onClick={() => handleNavClick(ViewState.DASHBOARD)}
@@ -125,7 +149,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, onChange
             active={isMenuOpen}
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             icon={Menu}
-            label="More"
+            label="Menu"
           />
         </div>
       </div>
@@ -135,16 +159,23 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, onChange
 
 const NavButton: React.FC<{ active: boolean; onClick: () => void; icon: any; label: string }> = ({ active, onClick, icon: Icon, label }) => (
   <button
-    onClick={onClick}
-    className="flex flex-col items-center justify-center w-full h-full group"
+    onClick={() => {
+      HapticService.light();
+      onClick();
+    }}
+    className="flex flex-col items-center justify-center flex-1 h-full group"
   >
-    <div className={`
-        flex items-center justify-center w-16 h-8 rounded-full mb-1.5 transition-all duration-300
-        ${active ? 'bg-primary/10 dark:bg-primary/20' : 'bg-transparent'}
-    `}>
-      <Icon className={`w-6 h-6 ${active ? 'text-primary' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600'}`} strokeWidth={active ? 2.5 : 2} />
+    <div className="relative flex items-center justify-center w-16 h-8 rounded-full mb-1 transition-all duration-300">
+      {active && (
+        <motion.div
+          layoutId="nav-pill"
+          className="absolute inset-0 bg-primary/20 dark:bg-primary/30 rounded-full"
+          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+        />
+      )}
+      <Icon className={`w-6 h-6 relative z-10 ${active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} strokeWidth={active ? 2.5 : 2} />
     </div>
-    <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${active ? 'text-primary' : 'text-slate-400 dark:text-slate-500'}`}>
+    <span className={`text-[11px] font-bold tracking-tight transition-colors ${active ? 'text-foreground' : 'text-muted-foreground'}`}>
       {label}
     </span>
   </button>

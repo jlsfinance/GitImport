@@ -59,21 +59,38 @@
 
   --color-secondary-border: var(--secondary-border);
 
+  --color-surface: hsl(var(--card));
+  --color-surface-container-low: hsl(var(--surface-container-low));
+  --color-surface-container: hsl(var(--surface-container));
+  --color-surface-container-high: hsl(var(--surface-container-high));
+  --color-surface-container-highest: hsl(var(--surface-container-highest));
+
   --color-muted-border: var(--muted-border);
 
   --color-accent-border: var(--accent-border);
 
   --color-destructive-border: var(--destructive-border);
 
+  --color-google-blue: hsl(var(--google-blue));
+  --color-google-red: hsl(var(--google-red));
+  --color-google-yellow: hsl(var(--google-yellow));
+  --color-google-green: hsl(var(--google-green));
 }
 
 /* MODER MATERIAL 3 THEME - ADVANCED REFINEMENT */
 :root {
-  /* LIGHT MODE - Material 3 Blue Baseline Refined */
+  /* OFFICIAL GOOGLE BRAND COLORS */
+  --google-blue: 217 89% 61%;
+  /* #4285F4 */
+  --google-red: 5 81% 56%;
+  /* #EA4335 */
+  --google-yellow: 45 100% 51%;
+  /* #FBBC05 */
+  --google-green: 152 68% 41%;
+  /* #34A853 */
+
   --background: 210 33% 99%;
-  /* #F8FAFD */
   --foreground: 220 20% 10%;
-  /* #171A1C */
 
   --card: 0 0% 100%;
   --card-foreground: 220 20% 10%;
@@ -82,33 +99,31 @@
   --popover-foreground: 220 20% 10%;
 
   --primary: 215 100% 45%;
-  /* #0056D2 - More vibrant Google Blue */
   --primary-foreground: 210 40% 98%;
 
-  --secondary: 217 19% 27%;
-  /* Professional Slate */
-  --secondary-foreground: 210 40% 98%;
+  --secondary: 215 20% 95%;
+  --secondary-foreground: 215 10% 10%;
 
-  --muted: 214 32% 91%;
+  --muted: 210 30% 96%;
   --muted-foreground: 215 16% 47%;
 
-  --accent: 215 100% 94%;
-  /* Primary Container Light */
-  --accent-foreground: 215 100% 15%;
+  --accent: 215 100% 96%;
+  --accent-foreground: 215 100% 20%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
+  --border: 214 30% 92%;
+  --input: 214 30% 92%;
   --ring: 215 100% 45%;
 
-  --radius: 1.5rem;
-  /* 24px - M3 Standard for cards */
+  --radius: 1.75rem;
+  /* 28px - Official M3 Large */
 
-  --surface-container: 0 0% 100%;
-  --surface-container-low: 210 33% 97%;
-  --surface-container-high: 210 33% 94%;
+  --surface-container-low: 210 33% 98%;
+  --surface-container: 210 33% 100%;
+  --surface-container-high: 210 33% 96%;
+  --surface-container-highest: 210 33% 92%;
 
   --sidebar: 210 33% 99%;
   --sidebar-foreground: 220 20% 10%;
@@ -121,59 +136,61 @@
 
   --elevate-1: rgba(0, 0, 0, 0.04);
   --elevate-2: rgba(0, 0, 0, 0.08);
+
+  /* Google Style Shadows */
+  --shadow-google: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+  --shadow-google-lg: 0 4px 4px 0 rgba(60, 64, 67, 0.30), 0 8px 12px 6px rgba(60, 64, 67, 0.15);
 }
 
 .dark {
-  /* DARK MODE - Deep Material 3 Midnight - REFINED */
-  --background: 222 25% 6%;
-  /* #090B0D - Deep Slate */
+  /* DARK MODE - Deep Material 3 Midnight */
+  --background: 222 25% 4%;
   --foreground: 210 20% 98%;
 
-  --card: 222 20% 9%;
-  /* #121417 */
+  --card: 222 20% 7%;
   --card-foreground: 210 20% 98%;
 
-  --popover: 222 20% 11%;
+  --popover: 222 20% 9%;
   --popover-foreground: 210 20% 98%;
 
-  --primary: 215 100% 75%;
-  /* Pastal Google Blue */
+  --primary: 215 100% 78%;
   --primary-foreground: 215 100% 10%;
 
-  --secondary: 222 15% 20%;
+  --secondary: 222 15% 15%;
   --secondary-foreground: 210 20% 98%;
 
-  --muted: 222 20% 12%;
-  /* Surface container */
-  --muted-foreground: 215 12% 60%;
+  --muted: 222 20% 10%;
+  --muted-foreground: 215 12% 65%;
 
-  --accent: 215 100% 18%;
-  /* Deep Container Overlay */
-  --accent-foreground: 215 100% 90%;
+  --accent: 215 100% 15%;
+  --accent-foreground: 215 100% 95%;
 
-  --destructive: 0 70% 45%;
+  --destructive: 0 70% 50%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 222 15% 15%;
-  /* Softer, more subtle borders */
-  --input: 222 15% 15%;
-  --ring: 215 100% 75%;
+  --border: 222 15% 12%;
+  --input: 222 15% 12%;
+  --ring: 215 100% 78%;
 
-  --surface-container: 222 20% 8%;
-  --surface-container-low: 222 20% 7%;
-  --surface-container-high: 222 20% 14%;
+  --surface-container-low: 222 25% 5%;
+  --surface-container: 222 25% 6%;
+  --surface-container-high: 222 25% 8%;
+  --surface-container-highest: 222 25% 12%;
 
-  --sidebar: 222 25% 6%;
+  --sidebar: 222 25% 4%;
   --sidebar-foreground: 210 20% 98%;
-  --sidebar-primary: 215 100% 75%;
+  --sidebar-primary: 215 100% 78%;
   --sidebar-primary-foreground: 215 100% 10%;
-  --sidebar-accent: 215 100% 15%;
-  --sidebar-accent-foreground: 223 10% 90%;
-  --sidebar-border: 222 15% 12%;
-  --sidebar-ring: 215 100% 75%;
+  --sidebar-accent: 215 100% 12%;
+  --sidebar-accent-foreground: 223 10% 95%;
+  --sidebar-border: 222 15% 10%;
+  --sidebar-ring: 215 100% 78%;
 
   --elevate-1: rgba(255, 255, 255, 0.02);
-  --elevate-2: rgba(255, 255, 255, 0.05);
+  --elevate-2: rgba(255, 255, 255, 0.04);
+
+  --shadow-google: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  --shadow-google-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
 }
 
 @layer base {

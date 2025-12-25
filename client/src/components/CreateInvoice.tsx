@@ -564,7 +564,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
   });
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-900 min-h-screen pb-48">
+    <div className="bg-background min-h-screen pb-48 font-sans">
       {/* Edit Warning Modal */}
       {showEditWarning && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
@@ -582,28 +582,31 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
         </div>
       )}
 
-      {/* Top App Bar */}
+      {/* Top App Bar/Header - Google Activity Style */}
       <motion.div
-        className={`sticky top-0 z-20 border-b transition-all duration-300 ${isScrolled
-          ? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-slate-200 dark:border-slate-800 shadow-sm'
-          : 'bg-white dark:bg-slate-900 border-transparent'
+        className={`sticky top-0 z-30 transition-all duration-300 ${isScrolled
+          ? 'bg-background/95 backdrop-blur-xl border-b border-border shadow-sm'
+          : 'bg-background border-b border-transparent'
           }`}
       >
         <div className="flex items-center justify-between px-4 h-16 max-w-5xl mx-auto">
-          <button onClick={onCancel} className="p-2 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
-            <ArrowLeft className="w-6 h-6 text-slate-700 dark:text-slate-200" />
+          <button onClick={onCancel} className="p-2 -ml-2 rounded-full hover:bg-surface-container-highest transition-colors">
+            <ArrowLeft className="w-6 h-6 text-foreground" />
           </button>
-          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex-1 ml-2">
-            {initialInvoice ? 'Edit Invoice' : 'New Invoice'}
-          </h1>
-          <div className="flex items-center gap-2">
-            <div className="hidden md:block text-sm font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">
+          <div className="flex-1 ml-4 overflow-hidden">
+            <h1 className="text-xl font-bold text-foreground tracking-tight truncate">
+              {initialInvoice ? 'Edit Inovice' : 'New Invoice'}
+            </h1>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">
               {getInvoiceNumberPreview()}
-            </div>
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
             <motion.button
+              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleSubmit}
-              className="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold shadow-lg shadow-blue-500/30 flex items-center gap-2 active:bg-blue-700"
+              className="bg-google-blue text-white px-6 py-2.5 rounded-full font-bold shadow-lg shadow-google-blue/20 flex items-center gap-2 hover:shadow-google transition-all"
             >
               <Save className="w-5 h-5" />
               <span>Save</span>
@@ -612,14 +615,17 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
         </div>
       </motion.div>
 
-      <div className="max-w-5xl mx-auto space-y-6 pt-6 px-4">
+      <div className="max-w-5xl mx-auto space-y-4 pt-6 px-4">
         {/* Customer Section */}
-        <div className="bg-white dark:bg-slate-900 p-8 rounded-[32px] shadow-sm border border-slate-100 dark:border-slate-800 mb-6">
+        <div className="bg-surface-container p-6 md:p-8 rounded-[32px] border border-border shadow-sm">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
-              <UserPlus className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-2xl bg-google-blue/10 flex items-center justify-center text-google-blue border border-google-blue/10">
+              <UserPlus className="w-6 h-6" />
             </div>
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Bill To</h2>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Bill To</h2>
+              <p className="text-xs text-muted-foreground font-medium">Select or create client</p>
+            </div>
           </div>
           <div className="relative group">
             <Autocomplete
@@ -662,54 +668,48 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
             </div>
           )}
 
-          <div className="flex gap-4 mt-6">
-            <div className="flex-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Date</label>
-              <div className="mt-1 relative bg-slate-50 dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
-                <input type="date" value={date} onChange={(e) => { setDate(e.target.value); setHasChanges(true); }} className="w-full bg-transparent p-3 text-sm font-medium outline-none" />
+          <div className="grid grid-cols-2 gap-4 mt-6">
+            <div>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-2 mb-1 block">Date</label>
+              <div className="relative bg-surface-container-high rounded-[20px] overflow-hidden border border-border">
+                <input type="date" value={date} onChange={(e) => { setDate(e.target.value); setHasChanges(true); }} className="w-full bg-transparent p-3 text-sm font-bold text-foreground outline-none" />
               </div>
             </div>
-            <div className="flex-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Due Date</label>
-              <div className="mt-1 relative bg-slate-50 dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
-                <input type="date" value={dueDate} onChange={(e) => { setDueDate(e.target.value); setHasChanges(true); }} className="w-full bg-transparent p-3 text-sm font-medium outline-none" />
+            <div>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-2 mb-1 block">Due Date</label>
+              <div className="relative bg-surface-container-high rounded-[20px] overflow-hidden border border-border">
+                <input type="date" value={dueDate} onChange={(e) => { setDueDate(e.target.value); setHasChanges(true); }} className="w-full bg-transparent p-3 text-sm font-bold text-foreground outline-none" />
               </div>
             </div>
           </div>
         </div>
 
         {/* payment Mode */}
-        <div className="bg-white dark:bg-slate-900 overflow-hidden p-1.5 rounded-[24px] shadow-sm border border-slate-100 dark:border-slate-800 flex">
+        <div className="bg-surface-container p-1 rounded-full border border-border flex items-center shadow-sm">
           <button
             onClick={() => { setPaymentMode('CREDIT'); setHasChanges(true); }}
-            className={`flex-1 py-3 px-4 rounded-[20px] flex items-center justify-center gap-2 transition-all ${paymentMode === 'CREDIT'
-              ? 'bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-400 font-bold shadow-sm'
-              : 'text-slate-500 dark:text-slate-500 font-medium opacity-60 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+            className={`flex-1 py-3 px-6 rounded-full flex items-center justify-center gap-2 transition-all ${paymentMode === 'CREDIT'
+              ? 'bg-google-red text-white font-bold shadow-google'
+              : 'text-muted-foreground font-bold hover:bg-surface-container-high'
               }`}
           >
-            <CreditCard className="w-5 h-5" /> Credit
+            <CreditCard className="w-5 h-5" /> <span>Credit Bill</span>
           </button>
           <button
             onClick={() => { setPaymentMode('CASH'); setHasChanges(true); }}
-            className={`flex-1 py-3 px-4 rounded-[20px] flex items-center justify-center gap-2 transition-all ${paymentMode === 'CASH'
-              ? 'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 font-bold shadow-sm'
-              : 'text-slate-500 dark:text-slate-500 font-medium opacity-60 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+            className={`flex-1 py-3 px-6 rounded-full flex items-center justify-center gap-2 transition-all ${paymentMode === 'CASH'
+              ? 'bg-google-green text-white font-bold shadow-google'
+              : 'text-muted-foreground font-bold hover:bg-surface-container-high'
               }`}
           >
-            <Banknote className="w-5 h-5" /> Cash
+            <Banknote className="w-5 h-5" /> <span>Cash Bill</span>
           </button>
         </div>
 
-        {/* Invoice Items - Vyapar Desi Style Grid */}
-        <div className="space-y-4">
+        <div className="space-y-4 pt-4">
           <div className="flex items-center justify-between px-2">
-            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Items List</h2>
-            <div className="hidden md:flex gap-16 text-[10px] font-black text-slate-400 uppercase mr-32">
-              <span>Product</span>
-              <span>Rate</span>
-              <span>Qty</span>
-              <span>Total</span>
-            </div>
+            <h2 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Added Items</h2>
+            <button onClick={handleAddItem} className="text-[11px] font-bold text-google-blue uppercase tracking-widest bg-google-blue/10 px-4 py-2 rounded-full border border-google-blue/10">Add Row</button>
           </div>
 
           <div className="space-y-3">
@@ -718,26 +718,26 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
                 <motion.div
                   key={idx}
                   layout
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
                   onClick={() => handleOpenItemModal(items.indexOf(item))}
-                  className="bg-white dark:bg-slate-900 p-5 rounded-[32px] shadow-sm border border-slate-100 dark:border-white/5 flex gap-4 items-center active:scale-[0.98] transition-all cursor-pointer group"
+                  className="bg-surface-container p-5 rounded-[32px] border border-border flex gap-4 items-center active:scale-[0.98] transition-all cursor-pointer group hover:bg-surface-container-high hover:shadow-google"
                 >
-                  <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                  <div className="w-14 h-14 rounded-full bg-google-blue/10 flex items-center justify-center text-google-blue shrink-0 group-hover:bg-google-blue group-hover:text-white transition-all transform group-hover:rotate-6 border border-google-blue/10">
                     <Package className="w-7 h-7" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-lg font-semibold text-slate-900 dark:text-slate-100 truncate tracking-tight">{item.description}</p>
+                    <p className="text-base font-bold text-foreground truncate tracking-tight">{item.description}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-500 uppercase tracking-wider">{item.quantity} Unit</span>
-                      <span className="text-[10px] font-bold text-slate-400">@</span>
-                      <span className="text-sm font-medium text-slate-600 dark:text-slate-400">₹{item.rate}</span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-surface-container-highest text-[10px] font-bold text-muted-foreground uppercase tracking-widest border border-border">{item.quantity} Unit</span>
+                      <span className="text-[10px] font-bold text-muted-foreground">@</span>
+                      <span className="text-[11px] font-bold text-foreground">₹{item.rate}</span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-semibold text-primary tracking-tight">₹{(item.totalAmount || 0).toLocaleString('en-IN')}</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest opacity-60">Amount</p>
+                    <p className="text-xl font-bold font-heading text-foreground">₹{(item.totalAmount || 0).toLocaleString('en-IN')}</p>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest opacity-60">Subtotal</p>
                   </div>
                 </motion.div>
               ))}
@@ -1041,7 +1041,26 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
           </motion.div>
         </div>
       )}
-
+      {/* Sticky Bottom Summary Bar - Google Premium Style */}
+      <div className="fixed bottom-0 left-0 right-0 bg-surface-container/80 backdrop-blur-xl border-t border-border z-40 pb-safe">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">Total Payable</p>
+            <p className="text-3xl font-bold font-heading text-foreground">
+              ₹{calculateRoundedTotal().toLocaleString('en-IN')}
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="flex items-center gap-2 mb-1 justify-end">
+              <span className="w-2 h-2 rounded-full bg-google-green" />
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{items.filter(i => i.productId).length} Items Added</span>
+            </div>
+            <p className="text-[11px] font-bold text-google-blue">
+              {roundUpTo === 'FIXED' ? 'Rounded Off' : 'Exact Amount'}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

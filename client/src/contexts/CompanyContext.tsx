@@ -37,7 +37,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
-
+    setLoading(true);
     try {
       setPermissionError(false);
       const snap = await getDoc(doc(db, 'companies', user.uid));
