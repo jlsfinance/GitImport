@@ -148,11 +148,11 @@ export const StorageService = {
   },
 
   // --- Getters ---
-  getProducts: (): Product[] => cache.products,
-  getCustomers: (): Customer[] => cache.customers,
-  getInvoices: (): Invoice[] => cache.invoices,
-  getPayments: (): Payment[] => cache.payments,
-  getExpenses: (): Expense[] => cache.expenses,
+  getProducts: (): Product[] => [...cache.products],
+  getCustomers: (): Customer[] => [...cache.customers],
+  getInvoices: (): Invoice[] => [...cache.invoices],
+  getPayments: (): Payment[] => [...cache.payments],
+  getExpenses: (): Expense[] => [...cache.expenses],
   getCompanyProfile: (): CompanyProfile => cache.company,
 
   getFirebaseConfig: (): FirebaseConfig | null => {
@@ -167,11 +167,17 @@ export const StorageService = {
 
   saveProduct: (product: Product) => {
     const index = cache.products.findIndex(p => p.id === product.id);
-    if (index >= 0) cache.products[index] = product;
-    else cache.products.push(product);
+    const newProducts = [...cache.products];
+    if (index >= 0) newProducts[index] = product;
+    else newProducts.push(product);
+    cache.products = newProducts;
 
     StorageService.persistToLocalStorage();
     if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('products'), product.id, product);
+  },
+
+  updateProduct: (product: Product) => {
+    StorageService.saveProduct(product); // Reuse save since it handles upsert
   },
 
   deleteProduct: (id: string) => {
@@ -182,8 +188,10 @@ export const StorageService = {
 
   saveCustomer: (customer: Customer) => {
     const index = cache.customers.findIndex(c => c.id === customer.id);
-    if (index >= 0) cache.customers[index] = customer;
-    else cache.customers.push(customer);
+    const newCustomers = [...cache.customers];
+    if (index >= 0) newCustomers[index] = customer;
+    else newCustomers.push(customer);
+    cache.customers = newCustomers;
 
     StorageService.persistToLocalStorage();
     if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), customer.id, customer);
@@ -197,8 +205,13 @@ export const StorageService = {
         read: false,
         ...notification
       };
-      if (!cache.customers[index].notifications) cache.customers[index].notifications = [];
-      cache.customers[index].notifications.unshift(newNotification);
+      const customerToUpdate = { ...cache.customers[index] }; // Create a new customer object
+      if (!customerToUpdate.notifications) customerToUpdate.notifications = [];
+      customerToUpdate.notifications = [newNotification, ...customerToUpdate.notifications]; // Create a new notifications array
+
+      const newCustomers = [...cache.customers]; // Create a new customers array
+      newCustomers[index] = customerToUpdate;
+      cache.customers = newCustomers; // Update cache with the new array
 
       StorageService.persistToLocalStorage();
       if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), customerId, cache.customers[index]);
@@ -206,23 +219,29 @@ export const StorageService = {
   },
 
   saveInvoice: (invoice: Invoice) => {
+    const newProducts = [...cache.products];
     invoice.items.forEach(item => {
-      const pIndex = cache.products.findIndex(p => p.id === item.productId);
-      if (pIndex >= 0 && cache.products[pIndex].category !== 'Services') {
-        const product = cache.products[pIndex];
+      const pIndex = newProducts.findIndex(p => p.id === item.productId);
+      if (pIndex >= 0 && newProducts[pIndex].category !== 'Services') {
+        const product = { ...newProducts[pIndex] };
         product.stock -= item.quantity;
+        newProducts[pIndex] = product;
         if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('products'), product.id, product);
       }
     });
+    cache.products = newProducts;
 
-    const cIndex = cache.customers.findIndex(c => c.id === invoice.customerId);
+    const newCustomers = [...cache.customers];
+    const cIndex = newCustomers.findIndex(c => c.id === invoice.customerId);
     if (cIndex >= 0 && invoice.status === 'PENDING') {
-      const customer = cache.customers[cIndex];
+      const customer = { ...newCustomers[cIndex] };
       customer.balance += invoice.total;
+      newCustomers[cIndex] = customer;
       if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), customer.id, customer);
     }
+    cache.customers = newCustomers;
 
-    cache.invoices.unshift(invoice);
+    cache.invoices = [invoice, ...cache.invoices];
 
     StorageService.persistToLocalStorage();
     if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('invoices'), invoice.id, invoice);
@@ -236,14 +255,17 @@ export const StorageService = {
   },
 
   savePayment: (payment: Payment) => {
-    cache.payments.unshift(payment);
+    cache.payments = [payment, ...cache.payments];
 
-    const cIndex = cache.customers.findIndex(c => c.id === payment.customerId);
+    const newCustomers = [...cache.customers];
+    const cIndex = newCustomers.findIndex(c => c.id === payment.customerId);
     if (cIndex >= 0) {
-      const customer = cache.customers[cIndex];
+      const customer = { ...newCustomers[cIndex] };
       customer.balance -= payment.amount;
+      newCustomers[cIndex] = customer;
       if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), customer.id, customer);
     }
+    cache.customers = newCustomers;
 
     StorageService.persistToLocalStorage();
     if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('payments'), payment.id, payment);

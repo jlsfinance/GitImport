@@ -12,27 +12,48 @@ const Inventory: React.FC = () => {
   const [newProduct, setNewProduct] = useState<Partial<Product>>({
     name: '', price: 0, stock: 0, category: 'General'
   });
+  const [originalId, setOriginalId] = useState<string | null>(null);
 
   useEffect(() => {
     setProducts(StorageService.getProducts());
   }, []);
 
+  const handleEdit = (product: Product) => {
+    setNewProduct(product);
+    setOriginalId(product.id);
+    setIsAdding(true);
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newProduct.name || !newProduct.price) return;
+    if (!newProduct.name || newProduct.price === undefined) return;
+
+    // Use entered ID or preserve existing ID or generate new
+    const finalId = newProduct.id?.trim() || crypto.randomUUID();
 
     const product: Product = {
-      id: crypto.randomUUID(),
+      id: finalId,
       name: newProduct.name!,
       price: Number(newProduct.price),
       stock: Number(newProduct.stock) || 0,
-      category: newProduct.category || 'General'
+      category: newProduct.category || 'General',
+      gstRate: newProduct.gstRate,
+      hsn: newProduct.hsn
     };
 
+    // Handle ID Renaming
+    if (originalId && originalId !== finalId) {
+      // ID changed, delete old one to prevent duplicates (effectively a rename)
+      // Warning: This breaks history links if not handled carefully, but user requested edit capability.
+      StorageService.deleteProduct(originalId);
+    }
+
     StorageService.saveProduct(product);
+
     setProducts(StorageService.getProducts());
     setIsAdding(false);
     setNewProduct({ name: '', price: 0, stock: 0, category: 'General' });
+    setOriginalId(null);
   };
 
   const handleDelete = (id: string) => {
@@ -59,8 +80,9 @@ const Inventory: React.FC = () => {
             <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Inventory</h1>
             <p className="text-slate-500 text-sm font-medium mt-1">Manage your stock and pricing</p>
           </div>
+
           <button
-            onClick={() => setIsAdding(true)}
+            onClick={() => { setIsAdding(true); setOriginalId(null); setNewProduct({ name: '', price: 0, stock: 0, category: 'General' }); }}
             className="bg-blue-600 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 font-bold shadow-lg shadow-blue-200 active:scale-95 transition-transform"
           >
             <Plus className="w-5 h-5" /> Add Product
@@ -116,7 +138,7 @@ const Inventory: React.FC = () => {
                     <Package className="w-6 h-6" />
                   </div>
                   <div className="flex gap-1">
-                    <button className="p-2 text-slate-400 hover:text-blue-500 rounded-full hover:bg-blue-50"><Edit2 className="w-4 h-4" /></button>
+                    <button onClick={() => handleEdit(product)} className="p-2 text-slate-400 hover:text-blue-500 rounded-full hover:bg-blue-50"><Edit2 className="w-4 h-4" /></button>
                     <button onClick={() => handleDelete(product.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-full hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
@@ -163,11 +185,22 @@ const Inventory: React.FC = () => {
               className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-[32px] overflow-hidden shadow-2xl"
             >
               <div className="p-8 pb-0 flex justify-between items-center">
-                <h2 className="text-2xl font-bold">New Product</h2>
+                <h2 className="text-2xl font-bold">{newProduct.id ? 'Edit Product' : 'New Product'}</h2>
                 <button onClick={() => setIsAdding(false)} className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">✕</button>
               </div>
 
               <form onSubmit={handleSave} className="p-8 space-y-6">
+
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-400 uppercase ml-2">Item ID (For Smart Calc)</label>
+                  <input
+                    className="w-full p-4 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl text-base font-bold text-slate-600 focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                    placeholder="Auto-generated if empty"
+                    value={newProduct.id || ''}
+                    onChange={e => setNewProduct({ ...newProduct, id: e.target.value })}
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <label className="text-xs font-black text-slate-400 uppercase ml-2">Product Name</label>
                   <input
@@ -212,7 +245,7 @@ const Inventory: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </div >
   );
 };
 

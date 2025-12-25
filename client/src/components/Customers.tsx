@@ -7,6 +7,7 @@ import { UserPlus, Phone, Mail, MapPin, ArrowLeft, FileText, Calendar, Bell, Sen
 import { jsPDF } from 'jspdf';
 import InvoiceView from './InvoiceView';
 import { HapticService } from '@/services/hapticService';
+import { ContactService } from '../services/contactService';
 
 interface CustomersProps {
   onEditInvoice?: (invoice: Invoice) => void;
@@ -55,6 +56,8 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack }) => {
     state: '',
     gstin: ''
   });
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Edit Customer Modal State
   const [showEditCustomer, setShowEditCustomer] = useState(false);
@@ -805,13 +808,24 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack }) => {
                 <button onClick={() => setShowAddCustomer(false)} className="p-1"><X className="w-5 h-5 text-gray-400 hover:text-gray-600" /></button>
               </div>
               <form onSubmit={handleAddCustomer} className="space-y-4">
-                <div>
+                <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name *</label>
                   <input
                     type="text"
                     required
                     value={newCustomer.name}
-                    onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+                    onChange={async (e) => {
+                      const val = e.target.value;
+                      setNewCustomer({ ...newCustomer, name: val });
+                      if (val.length >= 2) {
+                        const results = await ContactService.getCombinedContacts(val);
+                        setSuggestions(results);
+                        setShowSuggestions(true);
+                      } else {
+                        setShowSuggestions(false);
+                      }
+                    }}
+                    onFocus={() => { if (newCustomer.name.length >= 2) setShowSuggestions(true); }}
                     className="w-full border border-slate-300 rounded-md p-2 text-sm"
                     placeholder="Full name"
                     data-testid="input-customer-name"
@@ -841,16 +855,58 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack }) => {
                     data-testid="input-email"
                   />
                 </div>
-                <div>
+                <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                   <input
                     type="tel"
                     value={newCustomer.phone}
-                    onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
+                    onChange={async (e) => {
+                      const val = e.target.value;
+                      setNewCustomer({ ...newCustomer, phone: val });
+
+                      const res = await ContactService.resolveName(val);
+                      if (res.name && !newCustomer.name) {
+                        setNewCustomer(prev => ({ ...prev, name: res.name, phone: val }));
+                      }
+
+                      if (val.length >= 2) {
+                        const results = await ContactService.getCombinedContacts(val);
+                        setSuggestions(results);
+                        setShowSuggestions(true);
+                      } else {
+                        setShowSuggestions(false);
+                      }
+                    }}
+                    onFocus={() => { if (newCustomer.phone.length >= 2) setShowSuggestions(true); }}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                     className="w-full border border-slate-300 rounded-md p-2 text-sm"
                     placeholder="10-digit number"
                     data-testid="input-phone"
                   />
+
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute z-[120] left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto p-1">
+                      {suggestions.map((s, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => {
+                            setNewCustomer(prev => ({ ...prev, name: s.name, phone: s.phone }));
+                            setShowSuggestions(false);
+                          }}
+                          className="w-full p-2 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left border-b border-slate-50 last:border-0"
+                        >
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${s.source === 'db' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
+                            {s.source === 'db' ? 'DB' : 'PH'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-slate-800 truncate">{s.name}</div>
+                            <div className="text-[10px] text-slate-400">{s.phone}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>

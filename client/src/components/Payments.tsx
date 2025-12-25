@@ -8,9 +8,10 @@ import { HapticService } from '@/services/hapticService';
 
 interface PaymentsProps {
     onBack: () => void;
+    initialPayment?: Payment | null;
 }
 
-const Payments: React.FC<PaymentsProps> = ({ onBack }) => {
+const Payments: React.FC<PaymentsProps> = ({ onBack, initialPayment }) => {
     const [payments, setPayments] = useState<Payment[]>(StorageService.getPayments());
     const [customers] = useState<Customer[]>(StorageService.getCustomers());
     const [showAddModal, setShowAddModal] = useState(false);
@@ -23,6 +24,12 @@ const Payments: React.FC<PaymentsProps> = ({ onBack }) => {
     const [mode, setMode] = useState<'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE'>('CASH');
     const [reference, setReference] = useState('');
     const [note, setNote] = useState('');
+
+    React.useEffect(() => {
+        if (initialPayment) {
+            handleEdit(initialPayment);
+        }
+    }, [initialPayment]);
 
     const handleOpenAdd = () => {
         setEditingPayment(null);
@@ -178,6 +185,7 @@ const Payments: React.FC<PaymentsProps> = ({ onBack }) => {
                                     onChange={setSelectedCustomerId}
                                     onCreate={() => { }}
                                     placeholder="Select Customer"
+                                    type="customer"
                                 />
                             </div>
 

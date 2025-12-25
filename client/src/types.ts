@@ -116,6 +116,7 @@ export interface Invoice {
   roundUpAmount?: number; // Amount added by rounding (calculated, not user set)
   total: number;
   status: 'PAID' | 'PENDING' | 'OVERDUE';
+  paymentMode?: 'CASH' | 'CREDIT' | 'ONLINE';
   notes?: string;
   terms?: string;
 }
