@@ -23,7 +23,10 @@ const firebaseConfig = {
   appId: "1:231225025529:web:e079fe0aa1be713625d328"
 };
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// Use a unique name for this app instance to avoid conflict with Loan module's default app
+const app = getApps().length > 0 && getApps().find(a => a.name === 'accounting-app')
+  ? getApp('accounting-app')
+  : initializeApp(firebaseConfig, 'accounting-app');
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);

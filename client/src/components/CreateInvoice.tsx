@@ -1072,7 +1072,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{items.filter(i => i.productId).length} Items Added</span>
             </div>
             <p className="text-[11px] font-bold text-google-blue">
-              {roundUpTo === 'FIXED' ? 'Rounded Off' : 'Exact Amount'}
+              {roundUpTo > 0 ? 'Rounded Off' : 'Exact Amount'}
             </p>
           </div>
         </div>

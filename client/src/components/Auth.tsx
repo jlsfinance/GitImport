@@ -169,8 +169,8 @@ export const Auth = () => {
                   type="submit"
                   disabled={loading}
                   className={`w-full flex justify-center items-center gap-2 py-3.5 px-4 rounded-xl text-sm font-bold text-white transition-all shadow-lg hover:shadow-blue-500/30 active:scale-[0.98] ${loading
-                      ? 'bg-slate-400 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+                    ? 'bg-slate-400 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
                     }`}
                 >
                   {loading ? (
@@ -195,6 +195,19 @@ export const Auth = () => {
               >
                 {isLogin ? "Sign up for free" : "Log in to existing account"}
               </button>
+
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('active_module');
+                    window.location.href = '/';
+                  }}
+                  className="text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors flex items-center justify-center gap-2 w-full"
+                >
+                  <ArrowRight className="w-3 h-3 rotate-180" />
+                  Switch Module
+                </button>
+              </div>
             </div>
           </div>
         </div>
