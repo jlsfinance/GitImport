@@ -246,11 +246,31 @@ export const StorageService = {
     StorageService.persistToLocalStorage();
     if (FirebaseService.isReady()) {
       FirebaseService.saveDocument(StorageService.getCollectionPath('invoices'), invoice.id, invoice);
-      // Save a public copy for deep-linking (no-auth access)
-      // We include company profile so the public view has supplier details
+
+      // ✅ PUBLIC COPY (Safe Fields Only)
       FirebaseService.saveDocument('publicBills', invoice.id, {
-        ...invoice,
-        _company: cache.company
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        customerName: invoice.customerName,
+        customerAddress: invoice.customerAddress,
+        customerGstin: invoice.customerGstin,
+        date: invoice.date,
+        items: invoice.items,
+        subtotal: invoice.subtotal,
+        total: invoice.total,
+        totalCgst: invoice.totalCgst || 0,
+        totalSgst: invoice.totalSgst || 0,
+        totalIgst: invoice.totalIgst || 0,
+        gstEnabled: invoice.gstEnabled,
+        status: invoice.status,
+        notes: invoice.notes,
+        _company: {
+          name: cache.company.name,
+          address: cache.company.address,
+          phone: cache.company.phone,
+          gstin: cache.company.gstin || cache.company.gst,
+          upiId: cache.company.upiId
+        }
       });
     }
 
@@ -400,10 +420,31 @@ export const StorageService = {
     StorageService.persistToLocalStorage();
     if (FirebaseService.isReady()) {
       FirebaseService.saveDocument(StorageService.getCollectionPath('invoices'), updatedInvoice.id, updatedInvoice);
-      // Update public copy
+
+      // ✅ UPDATE PUBLIC COPY (Safe Fields Only)
       FirebaseService.saveDocument('publicBills', updatedInvoice.id, {
-        ...updatedInvoice,
-        _company: cache.company
+        id: updatedInvoice.id,
+        invoiceNumber: updatedInvoice.invoiceNumber,
+        customerName: updatedInvoice.customerName,
+        customerAddress: updatedInvoice.customerAddress,
+        customerGstin: updatedInvoice.customerGstin,
+        date: updatedInvoice.date,
+        items: updatedInvoice.items,
+        subtotal: updatedInvoice.subtotal,
+        total: updatedInvoice.total,
+        totalCgst: updatedInvoice.totalCgst || 0,
+        totalSgst: updatedInvoice.totalSgst || 0,
+        totalIgst: updatedInvoice.totalIgst || 0,
+        gstEnabled: updatedInvoice.gstEnabled,
+        status: updatedInvoice.status,
+        notes: updatedInvoice.notes,
+        _company: {
+          name: cache.company.name,
+          address: cache.company.address,
+          phone: cache.company.phone,
+          gstin: cache.company.gstin || cache.company.gst,
+          upiId: cache.company.upiId
+        }
       });
     }
 
