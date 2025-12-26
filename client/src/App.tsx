@@ -65,10 +65,28 @@ const AppContent: React.FC = () => {
       const path = window.location.pathname;
       if (path.startsWith('/view/')) {
         const invoiceId = path.split('/')[2];
-        const foundInvoice = StorageService.getInvoices().find(inv => inv.id === invoiceId);
+        let foundInvoice = StorageService.getInvoices().find(inv => inv.id === invoiceId);
+
         if (foundInvoice) {
           setSelectedInvoice(foundInvoice);
           setCurrentView(ViewState.VIEW_INVOICE);
+        } else {
+          // New: Try fetching from Cloud
+          try {
+            // Basic structure check before we assume it's valid
+            if (invoiceId && invoiceId.trim() !== '') {
+              const fetchedInvoice = await FirebaseService.getDocument<Invoice>('invoices', invoiceId);
+              if (fetchedInvoice) {
+                setSelectedInvoice(fetchedInvoice);
+                setCurrentView(ViewState.VIEW_INVOICE);
+              } else {
+                console.warn("Invoice not found in cloud either.");
+                // Optional: Show 404 state? For now, we leave it blank or user will see dashboard
+              }
+            }
+          } catch (err) {
+            console.error("Error fetching public invoice:", err);
+          }
         }
       } else if (path.startsWith('/customer/')) {
         const parts = path.split('/');

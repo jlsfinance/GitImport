@@ -5,27 +5,27 @@ import { db } from '../lib/firebase';
 export const FirebaseService = {
   // Deprecated init, kept for compatibility but does nothing as we init statically
   init: (config: FirebaseConfig): boolean => {
-      console.log("Firebase already initialized via lib/firebase");
-      return true;
+    console.log("Firebase already initialized via lib/firebase");
+    return true;
   },
 
   isReady: () => true,
 
   testConnection: async (): Promise<{ success: boolean; message: string }> => {
     try {
-        // Try to write a test document
-        const testRef = doc(db, 'system', 'connection_test');
-        await setDoc(testRef, { 
-            status: 'connected', 
-            timestamp: new Date().toISOString() 
-        });
-        return { success: true, message: "Connection Successful! Read/Write access confirmed." };
+      // Try to write a test document
+      const testRef = doc(db, 'system', 'connection_test');
+      await setDoc(testRef, {
+        status: 'connected',
+        timestamp: new Date().toISOString()
+      });
+      return { success: true, message: "Connection Successful! Read/Write access confirmed." };
     } catch (error: any) {
-        console.error("Test Connection Failed:", error);
-        if (error.code === 'permission-denied') {
-            return { success: false, message: "Permission Denied. Please set Firestore Rules to 'allow read, write: if true;' in Firebase Console." };
-        }
-        return { success: false, message: error.message || "Unknown error during connection test." };
+      console.error("Test Connection Failed:", error);
+      if (error.code === 'permission-denied') {
+        return { success: false, message: "Permission Denied. Please set Firestore Rules to 'allow read, write: if true;' in Firebase Console." };
+      }
+      return { success: false, message: error.message || "Unknown error during connection test." };
     }
   },
 
@@ -58,20 +58,37 @@ export const FirebaseService = {
     }
   },
 
+  // Get Single Document
+  getDocument: async <T>(collectionName: string, id: string): Promise<T | null> => {
+    try {
+      const docRef = doc(db, collectionName, id);
+      const docSnap = await import('firebase/firestore').then(m => m.getDoc(docRef));
+      if (docSnap.exists()) {
+        return docSnap.data() as T;
+      } else {
+        console.log("No such document!");
+        return null;
+      }
+    } catch (error) {
+      console.error("Error getting document:", error);
+      return null;
+    }
+  },
+
   // Batch Save (for initial sync)
   batchSave: async (collectionName: string, items: any[]) => {
     try {
-        // Firestore batch limit is 500. For simplicity in this demo, assuming < 500 items.
-        // In production, chunk array.
-        const batch = writeBatch(db);
-        items.forEach(item => {
-            const ref = doc(db, collectionName, item.id);
-            batch.set(ref, item);
-        });
-        await batch.commit();
-        console.log(`Batch saved ${items.length} items to ${collectionName}`);
+      // Firestore batch limit is 500. For simplicity in this demo, assuming < 500 items.
+      // In production, chunk array.
+      const batch = writeBatch(db);
+      items.forEach(item => {
+        const ref = doc(db, collectionName, item.id);
+        batch.set(ref, item);
+      });
+      await batch.commit();
+      console.log(`Batch saved ${items.length} items to ${collectionName}`);
     } catch (error) {
-        console.error("Batch save error", error);
+      console.error("Batch save error", error);
     }
   }
 };
