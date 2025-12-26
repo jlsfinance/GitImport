@@ -16,7 +16,6 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
 
     // Background heights based on drag
     const topHeight = useTransform(y, (latest) => `calc(50% + ${latest}px)`);
-    const bottomHeight = useTransform(y, (latest) => `calc(50% - ${latest}px)`);
 
     const handleDragEnd = () => {
         const currentY = y.get();
@@ -32,62 +31,67 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
     };
 
     return (
-        <div className="fixed inset-0 w-full h-full bg-slate-900 overflow-hidden font-sans select-none flex flex-col">
+        // Main Container is Green (Emerald-50). The Pink (Rose-50) overlays it.
+        <div className="fixed inset-0 w-full h-full bg-emerald-50 overflow-hidden font-sans select-none flex flex-col">
 
-            {/* TOP SECTION: BILLING (Rose) */}
+            {/* TOP SECTION: BILLING (Rose) - Covers Top Half + Wave */}
             <motion.div
                 style={{ height: topHeight }}
-                className="relative w-full bg-rose-50 flex flex-col items-center justify-start pt-12 border-b-0 z-10"
+                className="absolute top-0 left-0 right-0 z-10 flex flex-col"
             >
-                {/* Content */}
-                <div className="text-center opacity-80">
-                    <h2 className="text-xs font-bold text-rose-400 tracking-widest uppercase mb-1">Accounting</h2>
-                    <h1 className="text-4xl font-black text-rose-900 tracking-tighter">BILLING</h1>
+                {/* Solid Pink Part (Fills space above wave) */}
+                <div className="bg-rose-50 flex-grow w-full flex flex-col items-center justify-start pt-12 relative overflow-hidden">
+                    <div className="text-center opacity-80">
+                        <h2 className="text-xs font-bold text-rose-400 tracking-widest uppercase mb-1">Accounting</h2>
+                        <h1 className="text-4xl font-black text-rose-900 tracking-tighter">BILLING</h1>
+                    </div>
+
+                    <div className="mt-8 flex flex-col items-center animate-bounce opacity-60">
+                        <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-1">Swipe Down</p>
+                        <ChevronDown className="text-rose-400" size={20} />
+                    </div>
                 </div>
 
-                <div className="mt-8 flex flex-col items-center animate-bounce opacity-60">
-                    <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-1">Swipe Down</p>
-                    <ChevronDown className="text-rose-400" size={20} />
+                {/* ANIMATED WAVE BOTTOM EDGE */}
+                <div className="relative h-24 w-full overflow-hidden -mt-[1px]"> {/* Negative margin to ensure no gap */}
+                    <motion.div
+                        className="flex w-[200%] h-full absolute bottom-0"
+                        animate={{ x: ["0%", "-50%"] }}
+                        transition={{ repeat: Infinity, ease: "linear", duration: 3 }}
+                    >
+                        {[0, 1].map((i) => (
+                            <div key={i} className="w-1/2 h-full flex-shrink-0 relative">
+                                {/* Combined SVG: Pink Fill + Blue Stroke */}
+                                <svg
+                                    className="w-full h-full block transform scale-y-110" // Slight scale to ensure coverage
+                                    viewBox="0 0 100 40"
+                                    preserveAspectRatio="none"
+                                >
+                                    {/* Pink Fill Area (Fills TOP part of svg) */}
+                                    <path
+                                        d="M0 0 L0 20 Q 25 0, 50 20 T 100 20 L 100 0 Z"
+                                        fill="#fff1f2" // Matching bg-rose-50
+                                        stroke="none"
+                                    />
+                                    {/* Blue Stroke Line (The Wave) */}
+                                    <path
+                                        d="M0 20 Q 25 0, 50 20 T 100 20"
+                                        fill="none"
+                                        stroke="#1A73E8"
+                                        strokeWidth="1.5"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                </svg>
+                            </div>
+                        ))}
+                    </motion.div>
                 </div>
             </motion.div>
 
-            {/* ANIMATED DEEP WAVE DIVIDER */}
-            <motion.div
-                className="absolute left-0 right-0 z-20 h-24 pointer-events-none"
-                style={{ top: '50%', y, marginTop: '-48px' }} // Height 24 (96px), Margin -48 to center
-            >
-                <motion.div
-                    className="flex w-[200%] h-full"
-                    animate={{ x: ["0%", "-50%"] }}
-                    transition={{ repeat: Infinity, ease: "linear", duration: 3 }}
-                >
-                    {/* Two seamless copies of the deep wave */}
-                    {[0, 1].map((i) => (
-                        <div key={i} className="w-1/2 h-full flex-shrink-0">
-                            <svg
-                                className="w-full h-full drop-shadow-sm"
-                                viewBox="0 0 100 40"
-                                preserveAspectRatio="none"
-                            >
-                                <path
-                                    d="M0 20 Q 25 0, 50 20 T 100 20"
-                                    fill="none"
-                                    stroke="#1A73E8"
-                                    strokeWidth="1.5"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                            </svg>
-                        </div>
-                    ))}
-                </motion.div>
-            </motion.div>
-
-            {/* BOTTOM SECTION: LOANS (Green) */}
-            <motion.div
-                style={{ height: bottomHeight }}
-                className="relative w-full bg-emerald-50 flex flex-col items-center justify-end pb-12 z-10"
-            >
+            {/* BOTTOM SECTION CONTENT (Green) */}
+            {/* The Green background is the main container. This div just holds the content. */}
+            <div className="absolute bottom-0 inset-x-0 h-1/2 flex flex-col items-center justify-end pb-12 z-0 pointer-events-none">
                 <div className="mb-8 flex flex-col items-center animate-bounce opacity-60">
                     <ChevronUp className="text-emerald-400" size={20} />
                     <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mt-1">Swipe Up</p>
@@ -97,7 +101,7 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
                     <h1 className="text-4xl font-black text-emerald-900 tracking-tighter">LOANS</h1>
                     <h2 className="text-xs font-bold text-emerald-400 tracking-widest uppercase mt-1">Management</h2>
                 </div>
-            </motion.div>
+            </div>
 
 
             {/* INTERACTIVE DRAG LAYER (CENTERED) */}
@@ -114,7 +118,6 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
 
                     {/* The ROPE */}
                     <div className="absolute inset-y-0 w-2 bg-amber-800 rounded-full shadow-sm">
-                        {/* Rope texture/strands */}
                         <div className="w-full h-full flex flex-col justify-between py-1 opacity-30">
                             {[...Array(10)].map((_, i) => (
                                 <div key={i} className="w-full h-1 bg-amber-950/20 rotate-45 transform" />
