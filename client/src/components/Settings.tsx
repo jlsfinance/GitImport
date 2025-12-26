@@ -30,6 +30,7 @@ const Settings: React.FC = () => {
   const [showAutoFill, setShowAutoFill] = useState(false);
   const [rawConfigInput, setRawConfigInput] = useState('');
   const [connectionStatus, setConnectionStatus] = useState<{ success: boolean, message: string } | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -185,6 +186,22 @@ const Settings: React.FC = () => {
     };
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleForceSyncPublic = async () => {
+    setIsSyncing(true);
+    try {
+      const result = await StorageService.syncAllToPublic();
+      if (result.success) {
+        alert(`Successfully synced ${result.count} bills to public link! Ab saare WhatsApp links kaam karenge.`);
+      } else {
+        alert("Sync failed. Please check your internet connection.");
+      }
+    } catch (err) {
+      alert("Error during sync.");
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   return (
@@ -508,6 +525,21 @@ const Settings: React.FC = () => {
                     accept=".json"
                     className="hidden"
                   />
+                </button>
+
+                {/* FORCE SYNC BUTTON */}
+                <button
+                  onClick={handleForceSyncPublic}
+                  disabled={isSyncing}
+                  className={`col-span-1 sm:col-span-2 flex items-center justify-center gap-4 p-5 rounded-2xl transition-all group border border-dashed text-white shadow-xl ${isSyncing ? 'bg-slate-400 border-slate-300' : 'bg-gradient-to-r from-emerald-600 to-teal-600 border-emerald-400 shadow-emerald-500/20 active:scale-95'}`}
+                >
+                  <div className={`p-3 rounded-2xl group-hover:scale-110 transition-transform ${isSyncing ? 'bg-slate-300' : 'bg-white/20'}`}>
+                    {isSyncing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Wifi className="w-6 h-6" />}
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold">{isSyncing ? 'Syncing...' : 'Sync All Bills to WhatsApp'}</div>
+                    <div className="text-[10px] opacity-80 uppercase font-black tracking-widest">Fix all "Invalid Link" errors in one click</div>
+                  </div>
                 </button>
               </div>
 
