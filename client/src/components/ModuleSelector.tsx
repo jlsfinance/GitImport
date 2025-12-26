@@ -51,16 +51,30 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
                 </div>
             </motion.div>
 
-            {/* ZIGZAG DIVIDER */}
+            {/* ANIMATED WAVE DIVIDER (Google Play Style) */}
             <motion.div
-                className="absolute left-0 right-0 z-20 h-6 flex items-center justify-center pointer-events-none"
-                style={{ top: '50%', y, marginTop: '-12px' }}
+                className="absolute left-0 right-0 z-20 h-8 flex items-center justify-center pointer-events-none overflow-hidden"
+                style={{ top: '50%', y, marginTop: '-16px' }}
             >
-                <div className="w-[120%] -ml-[10%] h-12 bg-transparent relative flex items-center">
-                    <svg className="w-full h-full text-rose-50 drop-shadow-sm" preserveAspectRatio="none" viewBox="0 0 100 10">
-                        <polygon points="0,0 2,10 4,0 6,10 8,0 10,10 12,0 14,10 16,0 18,10 20,0 22,10 24,0 26,10 28,0 30,10 32,0 34,10 36,0 38,10 40,0 42,10 44,0 46,10 48,0 50,10 52,0 54,10 56,0 58,10 60,0 62,10 64,0 66,10 68,0 70,10 72,0 74,10 76,0 78,10 80,0 82,10 84,0 86,10 88,0 90,10 92,0 94,10 96,0 98,10 100,0 100,0 0,0" fill="currentColor" />
-                    </svg>
-                </div>
+                <motion.div
+                    className="flex w-[200%] h-full"
+                    animate={{ x: ["0%", "-50%"] }}
+                    transition={{ repeat: Infinity, ease: "linear", duration: 1.5 }}
+                >
+                    {[0, 1].map((i) => (
+                        <div key={i} className="w-1/2 h-full flex items-center justify-center">
+                            <svg className="w-full h-4 drop-shadow-sm" viewBox="0 0 100 10" preserveAspectRatio="none">
+                                <path
+                                    d="M0 5 C 20 -5, 30 15, 50 5 C 70 -5, 80 15, 100 5"
+                                    fill="none"
+                                    stroke="#1A73E8"
+                                    strokeWidth="3"
+                                    strokeLinecap="round"
+                                />
+                            </svg>
+                        </div>
+                    ))}
+                </motion.div>
             </motion.div>
 
             {/* BOTTOM SECTION: LOANS (Google Green) */}
