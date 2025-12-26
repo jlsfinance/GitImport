@@ -1,130 +1,149 @@
-import React from 'react';
-import { motion, PanInfo } from 'framer-motion';
-import { Receipt, Landmark, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+```
+import React, { useState } from 'react';
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import { Receipt, Landmark, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface ModuleSelectorProps {
     onSelect: (module: 'accounting' | 'loan') => void;
 }
 
 const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
+    const y = useMotionValue(0);
+    const [selected, setSelected] = useState<'accounting' | 'loan' | null>(null);
 
-    const handleDragEnd = (event: any, info: PanInfo, module: 'accounting' | 'loan') => {
-        const threshold = 50;
-        if (module === 'accounting' && info.offset.y > threshold) {
-            onSelect('accounting');
-        } else if (module === 'loan' && info.offset.y < -threshold) {
-            onSelect('loan');
+    // Dynamic transforms based on drag
+    const manScale = useTransform(y, [0, 200], [1, 1.5]);
+    const lionScale = useTransform(y, [0, -200], [1, 1.5]);
+    
+    // The "loser" gets pulled depending on drag direction
+    const lionY = useTransform(y, [0, 300], [0, 300]); // Lion gets pulled up (towards man) when dragging down (positive Y) ? 
+    // Wait, dragging down (positive Y) moves content down. 
+    // If I pull DOWN (Billing), I want the top content to expand.
+    // So the Rope should move DOWN.
+    // The Lion (bottom) should be pulled UP towards the rope? No, if rope moves down, Lion moves down. 
+    // Let's visualize: 
+    // Man is at Top. Lion is at Bottom. Rope connects them.
+    // Swipe DOWN -> Man pulls rope DOWN. Lion gets pulled DOWN (off screen?) OR Lion resists?
+    // User said: "oposite side vala haar jaye ya vo istaraf aaye" (Opposite side loses or comes this side).
+    // If I select Top (Billing), Lion should be pulled UP to the Top? or Man pulls rope to him?
+    // Let's do: Rope and characters follow the drag. 
+    // Drag Down (Billing Wins) -> Whole assembly moves Down. Lion disappears off bottom? Or Man takes over screen?
+    // Let's go with: Man takes over screen.
+    
+    // Adjusted logic:
+    // Drag Down (Positive Y) -> Man enters more.
+    // Drag Up (Negative Y) -> Lion enters more.
+    
+    const handleDragEnd = () => {
+        const currentY = y.get();
+        if (currentY > 100) {
+            // Billing Wins
+            setSelected('accounting');
+            // Animate completion
+            animate(y, window.innerHeight, { duration: 0.5 });
+            setTimeout(() => onSelect('accounting'), 500);
+        } else if (currentY < -100) {
+            // Loans Wins
+            setSelected('loan');
+            animate(y, -window.innerHeight, { duration: 0.5 });
+            setTimeout(() => onSelect('loan'), 500);
+        } else {
+            // Reset
+            animate(y, 0, { type: 'spring' });
         }
     };
 
     return (
-        <div className="fixed inset-0 w-full h-full bg-slate-50 overflow-hidden font-sans flex flex-col">
+        <div className="fixed inset-0 w-full h-full bg-slate-100 overflow-hidden font-sans flex flex-col select-none">
+            
+            {/* Background Split */}
+            <motion.div style={{ height: useTransform(y, (latest) => `calc(50 % + ${ latest }px)`) }} className="absolute top-0 inset-x-0 bg-rose-50 border-b border-slate-200" />
+            <motion.div style={{ height: useTransform(y, (latest) => `calc(50 % - ${ latest }px)`) }} className="absolute bottom-0 inset-x-0 bg-emerald-50" />
 
-            {/* Top Half - Billing (Pink Theme) */}
-            <motion.div
-                className="flex-1 relative bg-gradient-to-b from-rose-50 to-white flex flex-col items-center justify-end pb-12 z-10 cursor-pointer"
+            {/* Central Interactive Layer */}
+            <motion.div 
+                className="relative w-full h-full flex flex-col items-center justify-center cursor-grab active:cursor-grabbing z-20"
                 drag="y"
-                dragConstraints={{ top: 0, bottom: 0 }}
-                dragElastic={0.2}
-                onDragEnd={(e, i) => handleDragEnd(e, i, 'accounting')}
-                onClick={() => onSelect('accounting')}
+                dragConstraints={{ top: 0, bottom: 0 }} // Elastic drag
+                dragElastic={0.6}
+                style={{ y }}
+                onDragEnd={handleDragEnd}
             >
-                {/* Background Decor */}
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute -top-20 -left-20 w-60 h-60 bg-rose-400/10 rounded-full blur-3xl" />
-                    <div className="absolute top-20 right-10 w-40 h-40 bg-pink-400/10 rounded-full blur-3xl" />
-                </div>
-
-                <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-sm px-6">
-                    {/* Header */}
-                    <div className="text-center space-y-2">
-                        <div className="w-12 h-1 bg-rose-200 rounded-full mx-auto mb-4" />
-                        <h1 className="text-4xl font-black text-rose-900 tracking-tighter">Billing</h1>
-                        <p className="text-rose-400 text-[10px] font-black uppercase tracking-[0.3em] flex items-center justify-center gap-1 animate-pulse">
-                            Swipe Down <ChevronDown className="w-3 h-3" />
-                        </p>
+                
+                {/* ROPE SVG */}
+                <div className="absolute top-0 bottom-0 w-2 bg-transparent flex flex-col items-center justify-center pointer-events-none">
+                    <div className="w-1 h-full bg-amber-700/80 shadow-sm relative">
+                        {/* Knot */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-amber-800 rounded-full shadow-lg border-2 border-amber-600" />
                     </div>
-
-                    {/* Card Mockup */}
-                    <motion.div
-                        whileTap={{ scale: 0.95 }}
-                        className="w-full bg-white rounded-[32px] p-6 shadow-xl shadow-rose-200/50 border border-rose-100"
-                    >
-                        <div className="flex items-center justify-between mb-8">
-                            <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-500">
-                                <Receipt className="w-5 h-5" />
-                            </div>
-                            <div className="text-right">
-                                <p className="text-[10px] font-bold text-rose-300 uppercase">Due Today</p>
-                                <p className="text-lg font-black text-slate-800">$124.00</p>
-                            </div>
-                        </div>
-                        <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden">
-                            <div className="h-full w-2/3 bg-rose-400 rounded-full" />
-                        </div>
-                    </motion.div>
                 </div>
-            </motion.div>
 
-
-            {/* Center Separator */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
-                <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="w-14 h-14 bg-white rounded-full shadow-lg shadow-slate-200 flex items-center justify-center border-4 border-slate-50"
+                {/* Top Player: Businessman (Billing) */}
+                <motion.div 
+                    className="absolute top-[15%] flex flex-col items-center gap-4 p-4"
+                    style={{ scale: manScale }}
                 >
-                    <Plus className="w-6 h-6 text-slate-400" />
-                </motion.div>
-            </div>
-
-
-            {/* Bottom Half - Loan (Green Theme) */}
-            <motion.div
-                className="flex-1 relative bg-gradient-to-t from-emerald-50 to-white flex flex-col items-center justify-start pt-12 z-10 cursor-pointer"
-                drag="y"
-                dragConstraints={{ top: 0, bottom: 0 }}
-                dragElastic={0.2}
-                onDragEnd={(e, i) => handleDragEnd(e, i, 'loan')}
-                onClick={() => onSelect('loan')}
-            >
-                {/* Background Decor */}
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute bottom-0 right-0 w-80 h-80 bg-emerald-400/10 rounded-full blur-3xl" />
-                </div>
-
-                <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-sm px-6">
-                    {/* Card Mockup */}
-                    <motion.div
-                        whileTap={{ scale: 0.95 }}
-                        className="w-full bg-white rounded-[32px] p-6 shadow-xl shadow-emerald-200/50 border border-emerald-100"
+                    <div 
+                        onClick={() => onSelect('accounting')}
+                        className="w-32 h-32 bg-white rounded-full shadow-2xl shadow-rose-900/20 border-4 border-rose-500 flex items-center justify-center text-7xl relative z-10 hover:scale-105 transition-transform cursor-pointer"
                     >
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="w-12 h-1.5 bg-emerald-400 rounded-full" />
+                        👨‍💼
+                        <div className="absolute -bottom-4 bg-rose-600 text-white text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">
+                            Billing
                         </div>
-                        <div className="space-y-1 mb-4">
-                            <p className="text-[10px] font-bold text-emerald-400 uppercase">Available Credit</p>
-                            <h2 className="text-2xl font-black text-slate-800">+$15,000</h2>
-                        </div>
-                        <div className="flex justify-end">
-                            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-                                <Landmark className="w-4 h-4" />
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    {/* Footer */}
-                    <div className="text-center space-y-2">
-                        <p className="text-emerald-400 text-[10px] font-black uppercase tracking-[0.3em] flex items-center justify-center gap-1 animate-pulse">
-                            <ChevronUp className="w-3 h-3" /> Swipe Up
-                        </p>
-                        <h1 className="text-4xl font-black text-emerald-900 tracking-tighter">Loans</h1>
-                        <div className="w-12 h-1 bg-emerald-200 rounded-full mx-auto mt-4" />
                     </div>
-                </div>
+                </motion.div>
+
+                {/* VISUAL HINT */}
+                {!selected && (
+                   <motion.div 
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-xl border border-white/50"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 1 }}
+                   >
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                         <ChevronUp size={12} /> VS <ChevronDown size={12} />
+                      </p>
+                   </motion.div>
+                )}
+
+
+                {/* Bottom Player: Lion (Loans) */}
+                <motion.div 
+                    className="absolute bottom-[15%] flex flex-col items-center gap-4 p-4"
+                    style={{ scale: lionScale }}
+                >
+                    <div 
+                        onClick={() => onSelect('loan')}
+                        className="w-32 h-32 bg-white rounded-full shadow-2xl shadow-emerald-900/20 border-4 border-emerald-500 flex items-center justify-center text-7xl relative z-10 hover:scale-105 transition-transform cursor-pointer"
+                    >
+                        🦁
+                        <div className="absolute -top-4 bg-emerald-600 text-white text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">
+                            Loans
+                        </div>
+                    </div>
+                </motion.div>
             </motion.div>
+
+            {/* Victory/Defeat Messages */}
+            <motion.div 
+                className="absolute top-10 w-full text-center pointer-events-none"
+                style={{ opacity: useTransform(y, [50, 200], [0, 1]) }}
+            >
+                <h1 className="text-4xl font-black text-rose-500 scale-125 transition-transform">BILLING WINS!</h1>
+            </motion.div>
+
+            <motion.div 
+                className="absolute bottom-10 w-full text-center pointer-events-none"
+                style={{ opacity: useTransform(y, [-50, -200], [0, 1]) }}
+            >
+                <h1 className="text-4xl font-black text-emerald-500 scale-125 transition-transform">LOANS WIN!</h1>
+            </motion.div>
+
         </div>
     );
 };
 
 export default ModuleSelector;
+```
