@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ViewState } from '../types';
-import { LayoutDashboard, FileText, Users, Package, PlusCircle, Receipt, Settings, Cloud, CloudOff, LogOut, Upload, ArrowDownLeft, Sun, Moon, X } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, Package, PlusCircle, Receipt, Settings, Cloud, CloudOff, LogOut, Upload, ArrowDownLeft, Sun, Moon, X, ArrowLeftRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from 'next-themes';
 import { HapticService } from '@/services/hapticService';
@@ -61,8 +61,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCloudCon
 
           {/* Cloud Status Card - Expressive */}
           <div className={`p-4 rounded-[24px] border flex items-center gap-3 transition-all ${isCloudConnected
-              ? 'bg-google-green/5 border-google-green/10 text-google-green'
-              : 'bg-surface-container-high border-border text-muted-foreground'
+            ? 'bg-google-green/5 border-google-green/10 text-google-green'
+            : 'bg-surface-container-high border-border text-muted-foreground'
             }`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isCloudConnected ? 'bg-google-green/10' : 'bg-surface-container'
               }`}>
@@ -88,8 +88,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCloudCon
                   HapticService.light();
                 }}
                 className={`w-full group relative flex items-center gap-4 px-6 py-4 rounded-full text-sm font-bold transition-all ${isActive
-                    ? 'bg-google-blue text-white shadow-google scale-[1.02]'
-                    : 'text-muted-foreground hover:bg-surface-container-high hover:text-foreground'
+                  ? 'bg-google-blue text-white shadow-google scale-[1.02]'
+                  : 'text-muted-foreground hover:bg-surface-container-high hover:text-foreground'
                   }`}
               >
                 <item.icon className={`w-6 h-6 transition-transform group-hover:scale-110 ${isActive ? 'text-white' : 'text-muted-foreground group-hover:text-google-blue'}`} />
@@ -128,6 +128,17 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCloudCon
 
         {/* Footer Actions */}
         <div className="p-6 border-t border-border">
+          <button
+            onClick={() => {
+              localStorage.removeItem('active_module');
+              window.location.href = '/';
+            }}
+            className="w-full mb-2 flex items-center gap-4 px-6 py-4 rounded-[24px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all font-bold text-sm group"
+          >
+            <ArrowLeftRight className="w-5 h-5 group-hover:rotate-180 transition-transform" />
+            <span>Switch App</span>
+          </button>
+
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-4 px-6 py-4 rounded-[24px] bg-google-red/5 text-google-red hover:bg-google-red hover:text-white transition-all font-bold text-sm group"
