@@ -34,12 +34,12 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
     return (
         <div className="fixed inset-0 w-full h-full bg-slate-900 overflow-hidden font-sans select-none flex flex-col">
 
-            {/* TOP SECTION: BILLING (Google Red/Pink) */}
+            {/* TOP SECTION: BILLING (Rose) */}
             <motion.div
                 style={{ height: topHeight }}
                 className="relative w-full bg-rose-50 flex flex-col items-center justify-start pt-12 border-b-0 z-10"
             >
-                {/* Content moved safely inside */}
+                {/* Content */}
                 <div className="text-center opacity-80">
                     <h2 className="text-xs font-bold text-rose-400 tracking-widest uppercase mb-1">Accounting</h2>
                     <h1 className="text-4xl font-black text-rose-900 tracking-tighter">BILLING</h1>
@@ -51,25 +51,31 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
                 </div>
             </motion.div>
 
-            {/* ANIMATED WAVE DIVIDER (Google Play Style) */}
+            {/* ANIMATED DEEP WAVE DIVIDER */}
             <motion.div
-                className="absolute left-0 right-0 z-20 h-8 flex items-center justify-center pointer-events-none overflow-hidden"
-                style={{ top: '50%', y, marginTop: '-16px' }}
+                className="absolute left-0 right-0 z-20 h-24 pointer-events-none"
+                style={{ top: '50%', y, marginTop: '-48px' }} // Height 24 (96px), Margin -48 to center
             >
                 <motion.div
                     className="flex w-[200%] h-full"
                     animate={{ x: ["0%", "-50%"] }}
-                    transition={{ repeat: Infinity, ease: "linear", duration: 1.5 }}
+                    transition={{ repeat: Infinity, ease: "linear", duration: 3 }}
                 >
+                    {/* Two seamless copies of the deep wave */}
                     {[0, 1].map((i) => (
-                        <div key={i} className="w-1/2 h-full flex items-center justify-center">
-                            <svg className="w-full h-4 drop-shadow-sm" viewBox="0 0 100 10" preserveAspectRatio="none">
+                        <div key={i} className="w-1/2 h-full flex-shrink-0">
+                            <svg
+                                className="w-full h-full drop-shadow-sm"
+                                viewBox="0 0 100 40"
+                                preserveAspectRatio="none"
+                            >
                                 <path
-                                    d="M0 5 C 20 -5, 30 15, 50 5 C 70 -5, 80 15, 100 5"
+                                    d="M0 20 Q 25 0, 50 20 T 100 20"
                                     fill="none"
                                     stroke="#1A73E8"
-                                    strokeWidth="3"
+                                    strokeWidth="1.5"
                                     strokeLinecap="round"
+                                    strokeLinejoin="round"
                                 />
                             </svg>
                         </div>
@@ -77,7 +83,7 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
                 </motion.div>
             </motion.div>
 
-            {/* BOTTOM SECTION: LOANS (Google Green) */}
+            {/* BOTTOM SECTION: LOANS (Green) */}
             <motion.div
                 style={{ height: bottomHeight }}
                 className="relative w-full bg-emerald-50 flex flex-col items-center justify-end pb-12 z-10"
@@ -118,7 +124,7 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
                     {/* Knot center */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-8 bg-amber-700 rounded-md shadow-md border border-amber-900/40 z-10" />
 
-                    {/* Top Character (Billing Businessman) - Attached to Top of Rope */}
+                    {/* Top Character (Billing Businessman) */}
                     <motion.div
                         className="absolute -top-28 bg-white p-4 rounded-3xl shadow-xl shadow-rose-900/10 border-[3px] border-rose-100 flex flex-col items-center gap-2 w-32"
                         style={{ scale: manScale }}
@@ -128,17 +134,15 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
                         <div className="bg-rose-100 px-3 py-1 rounded-full w-full text-center">
                             <span className="text-[10px] font-black uppercase text-rose-600 tracking-wider">Billing</span>
                         </div>
-                        {/* Rope Connector */}
                         <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-1 h-4 bg-amber-800" />
                     </motion.div>
 
-                    {/* Bottom Character (Loan Lion) - Attached to Bottom of Rope */}
+                    {/* Bottom Character (Loan Lion) */}
                     <motion.div
                         className="absolute -bottom-28 bg-white p-4 rounded-3xl shadow-xl shadow-emerald-900/10 border-[3px] border-emerald-100 flex flex-col items-center gap-2 w-32"
                         style={{ scale: lionScale }}
                         onClick={() => onSelect('loan')}
                     >
-                        {/* Rope Connector */}
                         <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-1 h-4 bg-amber-800" />
                         <div className="bg-emerald-100 px-3 py-1 rounded-full w-full text-center mb-1">
                             <span className="text-[10px] font-black uppercase text-emerald-600 tracking-wider">Loans</span>
