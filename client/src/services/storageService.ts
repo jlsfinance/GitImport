@@ -14,12 +14,12 @@ const KEYS = {
 
 // YOUR FIREBASE CONFIGURATION (Hardcoded as requested)
 const DEFAULT_FIREBASE_CONFIG: FirebaseConfig = {
-  apiKey: "AIzaSyBDto4M27_AmBJ-eGNZyQI-Jtmhfnv1X5g",
-  authDomain: "studio-5843390050-90c53.firebaseapp.com",
-  projectId: "studio-5843390050-90c53",
-  storageBucket: "studio-5843390050-90c53.firebasestorage.app",
-  messagingSenderId: "796126072517",
-  appId: "1:796126072517:web:be2ff390a075fad7bcaaac"
+  apiKey: "AIzaSyDOhuszbQuXpMO0WY-FXzkyY8dABjj4MHg",
+  authDomain: "sample-firebase-ai-app-1f72d.firebaseapp.com",
+  projectId: "sample-firebase-ai-app-1f72d",
+  storageBucket: "sample-firebase-ai-app-1f72d.firebasestorage.app",
+  messagingSenderId: "231225025529",
+  appId: "1:231225025529:web:e079fe0aa1be713625d328"
 };
 
 // Initial Data Seeding
@@ -244,7 +244,35 @@ export const StorageService = {
     cache.invoices = [invoice, ...cache.invoices];
 
     StorageService.persistToLocalStorage();
-    if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('invoices'), invoice.id, invoice);
+    if (FirebaseService.isReady()) {
+      FirebaseService.saveDocument(StorageService.getCollectionPath('invoices'), invoice.id, invoice);
+
+      // ✅ PUBLIC COPY (Safe Fields Only)
+      FirebaseService.saveDocument('publicBills', invoice.id, {
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        customerName: invoice.customerName,
+        customerAddress: invoice.customerAddress,
+        customerGstin: invoice.customerGstin,
+        date: invoice.date,
+        items: invoice.items,
+        subtotal: invoice.subtotal,
+        total: invoice.total,
+        totalCgst: invoice.totalCgst || 0,
+        totalSgst: invoice.totalSgst || 0,
+        totalIgst: invoice.totalIgst || 0,
+        gstEnabled: invoice.gstEnabled,
+        status: invoice.status,
+        notes: invoice.notes,
+        _company: {
+          name: cache.company.name,
+          address: cache.company.address,
+          phone: cache.company.phone,
+          gstin: cache.company.gstin || cache.company.gst,
+          upiId: cache.company.upiId
+        }
+      });
+    }
 
     StorageService.addNotification(invoice.customerId, {
       type: 'INVOICE',
@@ -390,7 +418,35 @@ export const StorageService = {
     cache.invoices[oldInvoiceIndex] = updatedInvoice;
 
     StorageService.persistToLocalStorage();
-    if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('invoices'), updatedInvoice.id, updatedInvoice);
+    if (FirebaseService.isReady()) {
+      FirebaseService.saveDocument(StorageService.getCollectionPath('invoices'), updatedInvoice.id, updatedInvoice);
+
+      // ✅ UPDATE PUBLIC COPY (Safe Fields Only)
+      FirebaseService.saveDocument('publicBills', updatedInvoice.id, {
+        id: updatedInvoice.id,
+        invoiceNumber: updatedInvoice.invoiceNumber,
+        customerName: updatedInvoice.customerName,
+        customerAddress: updatedInvoice.customerAddress,
+        customerGstin: updatedInvoice.customerGstin,
+        date: updatedInvoice.date,
+        items: updatedInvoice.items,
+        subtotal: updatedInvoice.subtotal,
+        total: updatedInvoice.total,
+        totalCgst: updatedInvoice.totalCgst || 0,
+        totalSgst: updatedInvoice.totalSgst || 0,
+        totalIgst: updatedInvoice.totalIgst || 0,
+        gstEnabled: updatedInvoice.gstEnabled,
+        status: updatedInvoice.status,
+        notes: updatedInvoice.notes,
+        _company: {
+          name: cache.company.name,
+          address: cache.company.address,
+          phone: cache.company.phone,
+          gstin: cache.company.gstin || cache.company.gst,
+          upiId: cache.company.upiId
+        }
+      });
+    }
 
     if (oldInvoice.total !== updatedInvoice.total) {
       StorageService.addNotification(updatedInvoice.customerId, {
@@ -557,6 +613,25 @@ export const StorageService = {
     } catch (e) {
       console.error("Failed to import data", e);
       return false;
+    }
+  },
+
+  syncAllToPublic: async (): Promise<{ success: boolean; count: number }> => {
+    if (!FirebaseService.isReady()) return { success: false, count: 0 };
+
+    try {
+      let count = 0;
+      for (const invoice of cache.invoices) {
+        await FirebaseService.saveDocument('publicBills', invoice.id, {
+          ...invoice,
+          _company: cache.company
+        });
+        count++;
+      }
+      return { success: true, count };
+    } catch (err) {
+      console.error("Sync Error:", err);
+      return { success: false, count: 0 };
     }
   }
 };

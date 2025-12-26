@@ -40,13 +40,13 @@ const AppContent: React.FC = () => {
   const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [publicBillId, setPublicBillId] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isCloudConnected, setIsCloudConnected] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [selectedDaybookDate, setSelectedDaybookDate] = useState<string | null>(null);
   const [selectedPaymentToEdit, setSelectedPaymentToEdit] = useState<any | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [publicBillId, setPublicBillId] = useState<string | null>(null);
 
   const [startSmartCalc, setStartSmartCalc] = useState(false);
   const [showPostSaveActions, setShowPostSaveActions] = useState(false);
@@ -65,9 +65,7 @@ const AppContent: React.FC = () => {
       const path = window.location.pathname;
       if (path.startsWith('/view/') || path.startsWith('/v/')) {
         const parts = path.split('/');
-        const invoiceId = parts[2] || parts[3]; // Adjust for /v/:id vs /view/:id
-        const idToUse = path.startsWith('/v/') ? parts[2] : parts[2]; // Usually parts[2]
-
+        const idToUse = parts[2];
         if (idToUse) {
           setPublicBillId(idToUse);
           setCurrentView(ViewState.PUBLIC_VIEW_INVOICE);
@@ -174,17 +172,11 @@ const AppContent: React.FC = () => {
     return <PermissionErrorModal />;
   }
 
-  // --- PUBLIC ACCESS BYPASS ---
-  const isPublicView = window.location.pathname.startsWith('/view/') || window.location.pathname.startsWith('/v/');
-
-  if (!user && !isPublicView) {
+  if (!user && currentView !== ViewState.PUBLIC_VIEW_INVOICE) {
     return <Auth />;
   }
 
-  // If public view and no user, we might need a dummy company context or handle it gracefully
-  // But for now, let's just let it fall through.
-  // Note: CompanyProvider might block if no company is set.
-  if (!company && !isPublicView) {
+  if (!company && currentView !== ViewState.PUBLIC_VIEW_INVOICE) {
     return <CompanyForm />;
   }
 

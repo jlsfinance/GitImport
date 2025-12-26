@@ -2,6 +2,18 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 
+// Assuming FirebaseConfig type is defined elsewhere or needs to be added.
+// For the purpose of this edit, we'll assume it's available or will be handled.
+// If not, you might need to define it, e.g.:
+// type FirebaseConfig = {
+//   apiKey: string;
+//   authDomain: string;
+//   projectId: string;
+//   storageBucket: string;
+//   messagingSenderId: string;
+//   appId: string;
+// };
+
 const firebaseConfig = {
   apiKey: "AIzaSyDOhuszbQuXpMO0WY-FXzkyY8dABjj4MHg",
   authDomain: "sample-firebase-ai-app-1f72d.firebaseapp.com",
