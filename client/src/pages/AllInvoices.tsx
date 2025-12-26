@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Invoice } from '../types';
 import { StorageService } from '../services/storageService';
-import { Search, MoreVertical, FileText, Trash2, Users, Edit, MessageCircle, Eye, ChevronRight } from 'lucide-react';
+import { Search, MoreVertical, FileText, Trash2, Users, Edit, MessageCircle, Eye, ChevronRight, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HapticService } from '../services/hapticService';
 import {
@@ -19,6 +19,7 @@ interface AllInvoicesProps {
   onEdit?: (invoice: Invoice) => void;
   onDelete?: (invoice: Invoice) => void;
   onViewLedger?: (customerId: string) => void;
+  onCreate?: () => void;
 }
 
 const AllInvoices: React.FC<AllInvoicesProps> = ({
@@ -26,7 +27,8 @@ const AllInvoices: React.FC<AllInvoicesProps> = ({
   onView,
   onEdit,
   onDelete,
-  onViewLedger
+  onViewLedger,
+  onCreate
 }) => {
   // If props aren't passed (legacy), fetch from storage
   const invoices = propInvoices || StorageService.getInvoices();
@@ -86,8 +88,8 @@ const AllInvoices: React.FC<AllInvoicesProps> = ({
                 key={status}
                 onClick={() => setStatusFilter(status as any)}
                 className={`px-6 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-wider transition-all border shadow-sm whitespace-nowrap ${statusFilter === status
-                    ? 'bg-google-blue text-white border-google-blue'
-                    : 'bg-surface-container-low text-muted-foreground border-border hover:bg-surface-container-highest'
+                  ? 'bg-google-blue text-white border-google-blue'
+                  : 'bg-surface-container-low text-muted-foreground border-border hover:bg-surface-container-highest'
                   }`}
               >
                 {status}
@@ -297,6 +299,24 @@ const AllInvoices: React.FC<AllInvoicesProps> = ({
           </div>
         )}
       </div>
+
+      {onCreate && (
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="fixed bottom-24 right-4 z-40 md:bottom-8 md:right-8"
+        >
+          <button
+            onClick={() => {
+              HapticService.medium();
+              onCreate();
+            }}
+            className="w-14 h-14 bg-google-blue text-white rounded-[20px] shadow-lg shadow-google-blue/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+          >
+            <Plus className="w-7 h-7" />
+          </button>
+        </motion.div>
+      )}
     </div>
   );
 };

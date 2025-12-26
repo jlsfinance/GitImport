@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { Upload, AlertCircle, CheckCircle, Loader2, Download } from 'lucide-react';
 import { StorageService } from '../services/storageService';
 import { Product, Customer } from '../types';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -32,7 +32,9 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete }) => {
               id: Math.random().toString(36).substr(2, 9),
               name: row['Product Name'] || row['Name'] || '',
               price: parseFloat(row['Price'] || row['Rate'] || 0),
-              stock: parseInt(row['Stock'] || row['Quantity'] || 0),
+              stock: (row['Stock'] !== undefined || row['Quantity'] !== undefined)
+                ? parseInt(row['Stock'] || row['Quantity'])
+                : 1, // Default to 1 if missing
               category: row['Category'] || '',
               hsn: company?.gst_enabled ? (row['HSN'] || row['HSN Code'] || '') : '',
               gstRate: company?.gst_enabled ? parseFloat(row['GST Rate'] || row['GSTRATE'] || 0) : 0
@@ -131,6 +133,39 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete }) => {
     return result;
   };
 
+  const handleDownloadSample = () => {
+    // Sample data structure matching the parsing logic
+    const sampleData = [
+      {
+        'Product Name': 'Sample Product',
+        'Price': 100,
+        'Quantity': 10,
+        'Category': 'General',
+        'HSN': '1234',
+        'GST Rate': 18
+      },
+      {
+        'Product Name': 'Service Item',
+        'Price': 500,
+        'Quantity': 1, // Will autofill to 1 if removed
+        'Category': 'Services',
+        'HSN': '9988',
+        'GST Rate': 5
+      }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(sampleData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Products");
+
+    // Add a Customers sheet sample too
+    const customerData = [{ 'Customer Name': 'John Doe', 'Phone': '9876543210', 'State': 'Delhi' }];
+    const wsCust = XLSX.utils.json_to_sheet(customerData);
+    XLSX.utils.book_append_sheet(wb, wsCust, "Customers");
+
+    XLSX.writeFile(wb, "BillBook_Import_Sample.xlsx");
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -194,6 +229,14 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete }) => {
         <h2 className="text-xl font-bold text-slate-900 mb-4">Import Data</h2>
 
         <div className="space-y-4">
+          <button
+            onClick={handleDownloadSample}
+            className="w-full flex items-center justify-center gap-2 mb-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold border border-blue-100 hover:bg-blue-100 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Download Sample Excel
+          </button>
+
           {/* File Upload Area */}
           <div className="border-2 border-dashed border-blue-200 rounded-lg p-6 text-center hover:bg-blue-50 transition-colors">
             <label className="cursor-pointer flex flex-col items-center gap-2">

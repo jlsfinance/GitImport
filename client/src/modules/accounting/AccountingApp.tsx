@@ -4,6 +4,7 @@ import Sidebar from '../../components/Sidebar';
 import MobileBottomNav from '../../components/MobileBottomNav';
 import InvoiceView from '../../components/InvoiceView';
 import CreateInvoice from '../../components/CreateInvoice';
+import CreatePurchase from '../../components/CreatePurchase'; // Added
 import AllInvoices from '../../pages/AllInvoices';
 import Inventory from '../../components/Inventory';
 import Customers from '../../components/Customers';
@@ -40,6 +41,7 @@ const AccountingApp: React.FC = () => {
     const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
     const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
+    const [purchases, setPurchases] = useState<Invoice[]>([]); // Added
     const [publicBillId, setPublicBillId] = useState<string | null>(null);
     const [isInitializing, setIsInitializing] = useState(true);
     const [isCloudConnected, setIsCloudConnected] = useState(false);
@@ -55,6 +57,7 @@ const AccountingApp: React.FC = () => {
         const initApp = async () => {
             await StorageService.init(user?.uid || null);
             setInvoices(StorageService.getInvoices());
+            setPurchases(StorageService.getPurchases()); // Added
 
             // Check cloud status
             const hasConfig = !!StorageService.getFirebaseConfig();
@@ -103,6 +106,7 @@ const AccountingApp: React.FC = () => {
     useEffect(() => {
         if (!isInitializing) {
             setInvoices(StorageService.getInvoices());
+            setPurchases(StorageService.getPurchases()); // Added
         }
     }, [currentView, isInitializing]);
 
@@ -133,6 +137,26 @@ const AccountingApp: React.FC = () => {
         setShowPostSaveActions(showActions);
         setCurrentView(ViewState.VIEW_INVOICE);
         setInvoiceToEdit(null);
+    };
+
+    // Purchase Handlers
+    const handleSavePurchase = (purchase: Invoice) => {
+        if (currentView === ViewState.EDIT_PURCHASE) {
+            StorageService.updatePurchase(purchase);
+        } else {
+            StorageService.savePurchase(purchase);
+        }
+        setPurchases(StorageService.getPurchases());
+        setCurrentView(ViewState.PURCHASES);
+        setInvoiceToEdit(null); // Reuse this state or create new one? reuse is risky if typing mismatch
+        // Actually CreateInvoice uses `invoiceToEdit` state. CreatePurchase uses `initialPurchase`.
+        // I should stick to `invoiceToEdit` but cast it, or create `purchaseToEdit`.
+        // Let's use `invoiceToEdit` since Invoice type is same.
+    };
+
+    const handleEditPurchase = (purchase: Invoice) => {
+        setInvoiceToEdit(purchase);
+        setCurrentView(ViewState.EDIT_PURCHASE);
     };
 
     const handleQuickShare = (invoice: Invoice) => {
@@ -197,7 +221,7 @@ const AccountingApp: React.FC = () => {
             <div
                 className={`
           fixed inset-0 z-[100] md:relative md:z-auto
-          ${isSidebarOpen ? 'flex' : (['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE', 'PUBLIC_VIEW_INVOICE'].includes(currentView) ? 'hidden' : 'hidden md:flex')}
+          ${isSidebarOpen ? 'flex' : (['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE', 'PUBLIC_VIEW_INVOICE', 'CREATE_PURCHASE', 'EDIT_PURCHASE'].includes(currentView) ? 'hidden' : 'hidden md:flex')}
         `}
             >
                 <div
@@ -226,7 +250,7 @@ const AccountingApp: React.FC = () => {
             </div>
 
             <main className="flex-1 overflow-y-auto h-full relative w-full scroll-smooth bg-slate-50 dark:bg-slate-900">
-                {!['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE', 'PUBLIC_VIEW_INVOICE'].includes(currentView) && (
+                {!['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE', 'PUBLIC_VIEW_INVOICE', 'CREATE_PURCHASE', 'EDIT_PURCHASE'].includes(currentView) && (
                     <div className="md:hidden sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-4 h-16 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/50 shadow-sm">
                         <button
                             onClick={() => setIsSidebarOpen(true)}
@@ -300,6 +324,42 @@ const AccountingApp: React.FC = () => {
                                 initialPayment={selectedPaymentToEdit}
                             />
                         )}
+
+                        {/* PURCHASES LIST */}
+                        {currentView === ViewState.PURCHASES && (
+                            <AllInvoices
+                                invoices={purchases}
+                                onView={(inv) => {
+                                    // For now, no separate view for purchase, maybe just Edit?
+                                    // Or generic InvoiceView.
+                                    handleEditPurchase(inv);
+                                }}
+                                onEdit={handleEditPurchase}
+                                onViewLedger={handleViewCustomerLedger} // Works for Vendor if ID matches
+                                onDelete={(inv) => {
+                                    StorageService.deletePurchase(inv.id);
+                                    setPurchases(StorageService.getPurchases());
+                                }}
+                            />
+                        )}
+
+                        {/* CREATE PURCHASE */}
+                        {currentView === ViewState.CREATE_PURCHASE && (
+                            <CreatePurchase
+                                onSave={handleSavePurchase}
+                                onCancel={() => setCurrentView(ViewState.DASHBOARD)} // Or Inventory?
+                            />
+                        )}
+
+                        {/* EDIT PURCHASE */}
+                        {currentView === ViewState.EDIT_PURCHASE && invoiceToEdit && (
+                            <CreatePurchase
+                                onSave={handleSavePurchase}
+                                onCancel={() => setCurrentView(ViewState.PURCHASES)}
+                                initialPurchase={invoiceToEdit}
+                            />
+                        )}
+
                         {currentView === ViewState.REPORTS && (
                             <Reports
                                 onBack={() => setCurrentView(ViewState.DASHBOARD)}
@@ -356,7 +416,7 @@ const AccountingApp: React.FC = () => {
                 </AnimatePresence>
             </main>
 
-            {!['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE', 'PUBLIC_VIEW_INVOICE'].includes(currentView) && (
+            {!['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE', 'PUBLIC_VIEW_INVOICE', 'CREATE_PURCHASE', 'EDIT_PURCHASE'].includes(currentView) && (
                 <div className="md:hidden">
                     <MobileBottomNav currentView={currentView} onChangeView={(view) => {
                         if (view === ViewState.CREATE_INVOICE) {

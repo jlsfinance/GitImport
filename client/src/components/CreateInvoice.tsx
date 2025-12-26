@@ -325,6 +325,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     setItems(items.filter((_, i) => i !== index));
   };
 
+
   // Smart Calculator Logic
   const handleSmartCalcInput = (char: string) => {
     HapticService.light();
@@ -332,14 +333,43 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     if (char === 'C') {
       setSmartCalcInput('');
     } else if (char === '+') {
-      if (smartCalcInput) handleSmartAdd();
+      if (smartCalcInput) handleSmartAction('ADD');
+    } else if (char === '-') {
+      if (smartCalcInput) handleSmartAction('REMOVE');
+    } else if (char === '*') {
+      // Prevent multiple *
+      if (!smartCalcInput.includes('*')) setSmartCalcInput(prev => prev + char);
     } else {
       setSmartCalcInput(prev => prev + char);
     }
   };
 
-  const handleSmartAdd = () => {
-    const product = products.find(p => p.id === smartCalcInput);
+  const handleSmartAction = (action: 'ADD' | 'REMOVE') => {
+    // Parse Input: could be "ID" or "QTY*ID" or "ID*QTY"
+    // Heuristic: Check if part is ID. 
+    const parts = smartCalcInput.split('*');
+    let product: Product | undefined;
+    let quantityOp = 1;
+
+    if (parts.length === 1) {
+      // Just ID
+      product = products.find(p => p.id === parts[0]);
+    } else if (parts.length === 2) {
+      // Try Part 0 as ID
+      let p = products.find(prod => prod.id === parts[0]);
+      if (p) {
+        product = p;
+        quantityOp = Number(parts[1]) || 1;
+      } else {
+        // Try Part 1 as ID
+        p = products.find(prod => prod.id === parts[1]);
+        if (p) {
+          product = p;
+          quantityOp = Number(parts[0]) || 1;
+        }
+      }
+    }
+
     if (!product) {
       setCalcError('Item ID not found');
       HapticService.heavy(); // Error haptic
@@ -347,41 +377,60 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     }
 
     setHasChanges(true);
-    const existingItemIndex = items.findIndex(i => i.productId === product.id);
+    const existingItemIndex = items.findIndex(i => i.productId === product!.id); // bang operator safe due to check above
 
-    if (existingItemIndex > -1) {
-      // Increment quantity
-      handleUpdateItem(existingItemIndex, 'quantity', items[existingItemIndex].quantity + 1);
-    } else {
-      // Add new item
-      const newItem: InvoiceItem = {
-        productId: product.id,
-        description: product.name,
-        quantity: 1,
-        rate: product.price,
-        baseAmount: 0,
-        hsn: product.hsn || '',
-        gstRate: product.gstRate || 0,
-        cgstAmount: 0,
-        sgstAmount: 0,
-        igstAmount: 0,
-        totalAmount: 0
-      };
+    if (action === 'ADD') {
+      if (existingItemIndex > -1) {
+        // Increment quantity
+        handleUpdateItem(existingItemIndex, 'quantity', items[existingItemIndex].quantity + quantityOp);
+      } else {
+        // Add new item
+        const newItem: InvoiceItem = {
+          productId: product.id,
+          description: product.name,
+          quantity: quantityOp,
+          rate: product.price,
+          baseAmount: 0,
+          hsn: product.hsn || '',
+          gstRate: product.gstRate || 0,
+          cgstAmount: 0,
+          sgstAmount: 0,
+          igstAmount: 0,
+          totalAmount: 0
+        };
+        // Calculate taxes... reuse logic
+        const supplier = company;
+        const customer = customers.find(c => c.id === selectedCustomerId);
+        let rateToUse = product.price;
+        if (selectedCustomerId) {
+          const lastRate = StorageService.getLastSalePrice(selectedCustomerId, product.id);
+          if (lastRate !== null) rateToUse = lastRate;
+        }
+        newItem.rate = rateToUse;
+        newItem.baseAmount = newItem.quantity * newItem.rate;
+        if (gstEnabled) calculateTaxes(newItem, supplier, customer);
+        else newItem.totalAmount = newItem.baseAmount;
 
-      // Calculate initial taxes/totals for the new item
-      const supplier = company;
-      const customer = customers.find(c => c.id === selectedCustomerId);
-      let rateToUse = product.price;
-      if (selectedCustomerId) {
-        const lastRate = StorageService.getLastSalePrice(selectedCustomerId, product.id);
-        if (lastRate !== null) rateToUse = lastRate;
+        setItems(prev => [...prev.filter(i => i.productId), newItem]);
       }
-      newItem.rate = rateToUse;
-      newItem.baseAmount = newItem.quantity * newItem.rate;
-      if (gstEnabled) calculateTaxes(newItem, supplier, customer);
-      else newItem.totalAmount = newItem.baseAmount;
+    } else {
+      // REMOVE / DECREASE
+      if (existingItemIndex > -1) {
+        const currentQty = items[existingItemIndex].quantity;
+        const newQty = currentQty - quantityOp;
 
-      setItems(prev => [...prev.filter(i => i.productId), newItem]);
+        if (newQty <= 0) {
+          // Remove functionality
+          handleRemoveItem(existingItemIndex);
+        } else {
+          // Decrease functionality
+          handleUpdateItem(existingItemIndex, 'quantity', newQty);
+        }
+      } else {
+        setCalcError('Item not in list');
+        HapticService.heavy();
+        return;
+      }
     }
 
     setSmartCalcInput(''); // Reset for next item
@@ -993,26 +1042,39 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
 
             {/* Keypad */}
             <div className="grid grid-cols-4 gap-3">
+              {/* Row 1: 7, 8, 9, CLR */}
               {[7, 8, 9].map(n => (
                 <button key={n} onClick={() => handleSmartCalcInput(n.toString())} className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 text-2xl font-bold hover:bg-slate-100 active:scale-95 transition-all shadow-sm border border-slate-200 dark:border-slate-700">{n}</button>
               ))}
               <button onClick={() => handleSmartCalcInput('C')} className="h-16 rounded-2xl bg-red-50 text-red-600 text-xl font-black hover:bg-red-100 active:scale-95 transition-all">CLR</button>
 
+              {/* Row 2: 4, 5, 6, QTY(*) */}
               {[4, 5, 6].map(n => (
                 <button key={n} onClick={() => handleSmartCalcInput(n.toString())} className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 text-2xl font-bold hover:bg-slate-100 active:scale-95 transition-all shadow-sm border border-slate-200 dark:border-slate-700">{n}</button>
               ))}
-              <button onClick={handleSmartFinish} className="h-16 rounded-2xl bg-slate-100 text-slate-500 font-bold active:scale-95 transition-all flex items-center justify-center">
-                <span className="text-xs font-black uppercase text-blue-600">Done</span>
+              <button onClick={() => handleSmartCalcInput('*')} className="h-16 rounded-2xl bg-indigo-50 text-indigo-600 text-xl font-black hover:bg-indigo-100 active:scale-95 transition-all flex flex-col items-center justify-center leading-none">
+                <span>×</span>
+                <span className="text-[9px] uppercase tracking-widest">QTY</span>
               </button>
 
+              {/* Row 3: 1, 2, 3, ADD(+) */}
               {[1, 2, 3].map(n => (
                 <button key={n} onClick={() => handleSmartCalcInput(n.toString())} className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 text-2xl font-bold hover:bg-slate-100 active:scale-95 transition-all shadow-sm border border-slate-200 dark:border-slate-700">{n}</button>
               ))}
               <button onClick={() => handleSmartCalcInput('+')} className="row-span-2 h-full rounded-2xl bg-blue-600 text-white text-3xl font-black hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-500/30">+</button>
 
-              <button onClick={() => handleSmartCalcInput('0')} className="col-span-2 h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 text-2xl font-bold hover:bg-slate-100 active:scale-95 transition-all shadow-sm border border-slate-200 dark:border-slate-700">0</button>
+              {/* Row 4: 0, ., REMOVE(-) */}
+              <button onClick={() => handleSmartCalcInput('0')} className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 text-2xl font-bold hover:bg-slate-100 active:scale-95 transition-all shadow-sm border border-slate-200 dark:border-slate-700">0</button>
               <button onClick={() => handleSmartCalcInput('.')} className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 text-2xl font-bold hover:bg-slate-100 active:scale-95 transition-all shadow-sm border border-slate-200 dark:border-slate-700">.</button>
+              <button onClick={() => handleSmartCalcInput('-')} className="h-16 rounded-2xl bg-orange-50 text-orange-600 font-bold active:scale-95 transition-all flex flex-col items-center justify-center hover:bg-orange-100 leading-none">
+                <span className="text-xl">-</span>
+                <span className="text-[9px] uppercase tracking-widest">REM</span>
+              </button>
             </div>
+
+            <button onClick={handleSmartFinish} className="w-full mt-3 py-4 rounded-2xl bg-slate-100 text-slate-500 font-bold active:scale-95 transition-all flex items-center justify-center hover:bg-slate-200">
+              <span className="text-xs font-black uppercase text-blue-600">Save & Close</span>
+            </button>
           </div>
         </div>
       )}
@@ -1080,5 +1142,6 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     </div>
   );
 };
+
 
 export default CreateInvoice;

@@ -8,6 +8,7 @@ const KEYS = {
   INVOICES: 'app_invoices',
   PAYMENTS: 'app_payments',
   EXPENSES: 'app_expenses',
+  PURCHASES: 'app_purchases', // Added
   COMPANY: 'app_company',
   FIREBASE_CONFIG: 'app_firebase_config'
 };
@@ -46,6 +47,7 @@ let cache = {
   products: [] as Product[],
   customers: [] as Customer[],
   invoices: [] as Invoice[],
+  purchases: [] as Invoice[], // Added
   payments: [] as Payment[],
   expenses: [] as Expense[],
   company: DEFAULT_COMPANY,
@@ -60,7 +62,7 @@ export const StorageService = {
 
     if (cache.currentUserId !== userId) {
       cache = {
-        products: [], customers: [], invoices: [], payments: [], expenses: [],
+        products: [], customers: [], invoices: [], purchases: [], payments: [], expenses: [],
         company: DEFAULT_COMPANY, isLoaded: false, currentUserId: userId
       };
     }
@@ -79,10 +81,11 @@ export const StorageService = {
       // 3. Fetch Data from Firebase
       const userPath = `users/${userId}`;
 
-      const [fbProducts, fbCustomers, fbInvoices, fbPayments, fbExpenses, fbCompany] = await Promise.all([
+      const [fbProducts, fbCustomers, fbInvoices, fbPurchases, fbPayments, fbExpenses, fbCompany] = await Promise.all([
         FirebaseService.fetchCollection<Product>(`${userPath}/products`),
         FirebaseService.fetchCollection<Customer>(`${userPath}/customers`),
         FirebaseService.fetchCollection<Invoice>(`${userPath}/invoices`),
+        FirebaseService.fetchCollection<Invoice>(`${userPath}/purchases`), // Added
         FirebaseService.fetchCollection<Payment>(`${userPath}/payments`),
         FirebaseService.fetchCollection<Expense>(`${userPath}/expenses`),
         FirebaseService.fetchCollection<CompanyProfile>(`${userPath}/company`)
@@ -91,6 +94,7 @@ export const StorageService = {
       cache.products = fbProducts;
       cache.customers = fbCustomers;
       cache.invoices = fbInvoices;
+      cache.purchases = fbPurchases; // Added
       cache.payments = fbPayments;
       cache.expenses = fbExpenses;
       cache.company = fbCompany.length > 0 ? fbCompany[0] : DEFAULT_COMPANY;
@@ -109,6 +113,9 @@ export const StorageService = {
       const lsInvoices = localStorage.getItem(KEYS.INVOICES);
       cache.invoices = lsInvoices ? JSON.parse(lsInvoices) : [];
 
+      const lsPurchases = localStorage.getItem(KEYS.PURCHASES); // Added
+      cache.purchases = lsPurchases ? JSON.parse(lsPurchases) : [];
+
       const lsPayments = localStorage.getItem(KEYS.PAYMENTS);
       cache.payments = lsPayments ? JSON.parse(lsPayments) : [];
 
@@ -124,6 +131,7 @@ export const StorageService = {
       cache.products = [];
       cache.customers = [];
       cache.invoices = [];
+      cache.purchases = []; // Added
       cache.payments = [];
       cache.expenses = [];
       cache.company = DEFAULT_COMPANY;
@@ -141,6 +149,7 @@ export const StorageService = {
       localStorage.setItem(KEYS.PRODUCTS, JSON.stringify(cache.products));
       localStorage.setItem(KEYS.CUSTOMERS, JSON.stringify(cache.customers));
       localStorage.setItem(KEYS.INVOICES, JSON.stringify(cache.invoices));
+      localStorage.setItem(KEYS.PURCHASES, JSON.stringify(cache.purchases)); // Added
       localStorage.setItem(KEYS.PAYMENTS, JSON.stringify(cache.payments));
       localStorage.setItem(KEYS.EXPENSES, JSON.stringify(cache.expenses));
       localStorage.setItem(KEYS.COMPANY, JSON.stringify(cache.company));
@@ -151,6 +160,7 @@ export const StorageService = {
   getProducts: (): Product[] => [...cache.products],
   getCustomers: (): Customer[] => [...cache.customers],
   getInvoices: (): Invoice[] => [...cache.invoices],
+  getPurchases: (): Invoice[] => [...cache.purchases], // Added
   getPayments: (): Payment[] => [...cache.payments],
   getExpenses: (): Expense[] => [...cache.expenses],
   getCompanyProfile: (): CompanyProfile => cache.company,
@@ -365,6 +375,152 @@ export const StorageService = {
     StorageService.persistToLocalStorage();
 
     if (FirebaseService.isReady()) FirebaseService.deleteDocument(StorageService.getCollectionPath('invoices'), invoiceId);
+  },
+
+  // --- Purchase Logic ---
+  savePurchase: (purchase: Invoice) => {
+    purchase.type = 'PURCHASE'; // Ensure Type
+    const newProducts = [...cache.products];
+
+    // 1. Update Stock & Purchase Price & GST
+    purchase.items.forEach(item => {
+      const pIndex = newProducts.findIndex(p => p.id === item.productId);
+      if (pIndex >= 0) {
+        const product = { ...newProducts[pIndex] };
+
+        // Increase Stock
+        if (product.category !== 'Services') {
+          product.stock += item.quantity;
+        }
+
+        // Update Purchase Price (Weighted Avg could be better, but simple update for now or just last purchase price)
+        // Let's just update the "purchasePrice" field if we added it, or just keep it simple.
+        if (item.rate > 0) product.purchasePrice = item.rate;
+
+        // Update GST Rate if different (and enabled) - User requirement: "sale me bhi vhi gst % use ho"
+        if (purchase.gstEnabled && item.gstRate !== undefined && item.gstRate > 0) {
+          product.gstRate = item.gstRate;
+        }
+
+        newProducts[pIndex] = product;
+        if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('products'), product.id, product);
+      }
+    });
+    cache.products = newProducts;
+
+    // 2. Update Vendor Balance (Creditor Logic)
+    // If we buy on credit, we OWE money. Balance should be NEGATIVE (Credit) or we track 'Payable'.
+    // In this app, Customer Balance > 0 usually means they owe us (Receivable).
+    // So if we buy on credit, we should DECREASE their balance (make it negative).
+
+    const newCustomers = [...cache.customers];
+    const cIndex = newCustomers.findIndex(c => c.id === purchase.customerId);
+    if (cIndex >= 0 && purchase.status === 'PENDING') {
+      const vendor = { ...newCustomers[cIndex] };
+      // Decrement because we OWE them.
+      vendor.balance -= purchase.total;
+      vendor.type = vendor.type === 'CUSTOMER' ? 'BOTH' : (vendor.type || 'VENDOR');
+      newCustomers[cIndex] = vendor;
+      if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), vendor.id, vendor);
+    }
+    cache.customers = newCustomers;
+
+    cache.purchases = [purchase, ...cache.purchases];
+
+    StorageService.persistToLocalStorage();
+    if (FirebaseService.isReady()) {
+      FirebaseService.saveDocument(StorageService.getCollectionPath('purchases'), purchase.id, purchase);
+    }
+  },
+
+  deletePurchase: (purchaseId: string) => {
+    const index = cache.purchases.findIndex(p => p.id === purchaseId);
+    if (index === -1) return;
+    const purchase = cache.purchases[index];
+
+    // 1. Revert Stock (Decrease)
+    purchase.items.forEach(item => {
+      const pIndex = cache.products.findIndex(p => p.id === item.productId);
+      if (pIndex >= 0 && cache.products[pIndex].category !== 'Services') {
+        cache.products[pIndex].stock -= item.quantity;
+        if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('products'), cache.products[pIndex].id, cache.products[pIndex]);
+      }
+    });
+
+    // 2. Revert Vendor Balance (Increase - remove debt)
+    const cIndex = cache.customers.findIndex(c => c.id === purchase.customerId);
+    if (cIndex >= 0 && purchase.status === 'PENDING') {
+      cache.customers[cIndex].balance += purchase.total;
+      if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), cache.customers[cIndex].id, cache.customers[cIndex]);
+    }
+
+    cache.purchases.splice(index, 1);
+    StorageService.persistToLocalStorage();
+
+    if (FirebaseService.isReady()) FirebaseService.deleteDocument(StorageService.getCollectionPath('purchases'), purchaseId);
+  },
+
+  updatePurchase: (updatedPurchase: Invoice) => {
+    // Simplistic approach: delete old, save new. 
+    // This is safer for complex stock/balance logic than diffing manually, though slightly less efficient.
+    // But we need to keep the ID same.
+    const oldIndex = cache.purchases.findIndex(p => p.id === updatedPurchase.id);
+    if (oldIndex === -1) return;
+
+    const oldPurchase = cache.purchases[oldIndex];
+
+    // 1. Revert Old Stock
+    oldPurchase.items.forEach(item => {
+      const pIndex = cache.products.findIndex(p => p.id === item.productId);
+      if (pIndex >= 0 && cache.products[pIndex].category !== 'Services') {
+        cache.products[pIndex].stock -= item.quantity;
+      }
+    });
+    // 2. Revert Old Balance
+    const oldCIndex = cache.customers.findIndex(c => c.id === oldPurchase.customerId);
+    if (oldCIndex >= 0 && oldPurchase.status === 'PENDING') {
+      cache.customers[oldCIndex].balance += oldPurchase.total;
+    }
+
+    // 3. Apply New Stock
+    updatedPurchase.items.forEach(item => {
+      const pIndex = cache.products.findIndex(p => p.id === item.productId);
+      if (pIndex >= 0 && cache.products[pIndex].category !== 'Services') {
+        cache.products[pIndex].stock += item.quantity;
+        // Update Cost Price again? Yes
+        if (item.rate > 0) cache.products[pIndex].purchasePrice = item.rate;
+      }
+    });
+    // 4. Apply New Balance
+    const newCIndex = cache.customers.findIndex(c => c.id === updatedPurchase.customerId);
+    if (newCIndex >= 0 && updatedPurchase.status === 'PENDING') {
+      cache.customers[newCIndex].balance -= updatedPurchase.total;
+    }
+
+    // Save changes to Collections
+
+    // Update Products
+    if (FirebaseService.isReady()) {
+      // Saving all products might be too much, but needed if we touched multiple. 
+      // Optimization: only save modified products.
+      const affectedProductIds = new Set([...oldPurchase.items, ...updatedPurchase.items].map(i => i.productId));
+      affectedProductIds.forEach(pid => {
+        const p = cache.products.find(prod => prod.id === pid);
+        if (p) FirebaseService.saveDocument(StorageService.getCollectionPath('products'), p.id, p);
+      });
+
+      const oldC = cache.customers[oldCIndex];
+      if (oldC) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), oldC.id, oldC);
+
+      if (oldCIndex !== newCIndex) {
+        const newC = cache.customers[newCIndex];
+        if (newC) FirebaseService.saveDocument(StorageService.getCollectionPath('customers'), newC.id, newC);
+      }
+    }
+
+    cache.purchases[oldIndex] = updatedPurchase;
+    StorageService.persistToLocalStorage();
+    if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('purchases'), updatedPurchase.id, updatedPurchase);
   },
 
   updateInvoice: (updatedInvoice: Invoice) => {

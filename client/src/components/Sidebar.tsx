@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ViewState } from '../types';
-import { LayoutDashboard, FileText, Users, Package, PlusCircle, Receipt, Settings, Cloud, CloudOff, LogOut, Upload, ArrowDownLeft, Sun, Moon, X, ArrowLeftRight } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, Package, PlusCircle, Receipt, Settings, Cloud, CloudOff, LogOut, Upload, ArrowDownLeft, Sun, Moon, X, ArrowLeftRight, ShoppingBag } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from 'next-themes';
 import { HapticService } from '@/services/hapticService';
@@ -21,6 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCloudCon
   const navItems = [
     { id: ViewState.DASHBOARD, label: 'Home', icon: LayoutDashboard },
     { id: ViewState.INVOICES, label: 'Invoices', icon: FileText },
+    { id: ViewState.PURCHASES, label: 'Purchases', icon: ShoppingBag }, // Added
     { id: ViewState.INVENTORY, label: 'Inventory', icon: Package },
     { id: ViewState.CREATE_INVOICE, label: 'Create', icon: PlusCircle },
     { id: ViewState.EXPENSES, label: 'Expenses', icon: Receipt },

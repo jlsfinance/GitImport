@@ -5,6 +5,9 @@ export enum ViewState {
   ALL_INVOICES = 'ALL_INVOICES',
   CREATE_INVOICE = 'CREATE_INVOICE',
   EDIT_INVOICE = 'EDIT_INVOICE',
+  CREATE_PURCHASE = 'CREATE_PURCHASE',
+  EDIT_PURCHASE = 'EDIT_PURCHASE',
+  PURCHASES = 'PURCHASES',
   INVENTORY = 'INVENTORY',
   CUSTOMERS = 'CUSTOMERS',
   VIEW_INVOICE = 'VIEW_INVOICE',
@@ -41,6 +44,7 @@ export interface Product {
   id: string;
   name: string;
   price: number;
+  purchasePrice?: number; // Added for Purchase
   stock: number;
   category: string;
   hsn?: string;
@@ -66,6 +70,7 @@ export interface Customer {
   state?: string;
   gstin?: string;
   balance: number;
+  type?: 'CUSTOMER' | 'VENDOR' | 'BOTH'; // Added to distinguish
   notifications: CustomerNotification[];
   behaviorScore?: number; // 0-100
   followUpHistory?: { date: string, note: string }[];
@@ -87,6 +92,9 @@ export interface InvoiceItem {
   quantity: number;
   rate: number;
   baseAmount: number;
+  discountType?: 'PERCENTAGE' | 'AMOUNT';
+  discountValue?: number;
+  discountAmount?: number; // The actual subtracted amount
   hsn?: string;
   gstRate?: number;
   cgstAmount?: number;
@@ -97,6 +105,7 @@ export interface InvoiceItem {
 
 export interface Invoice {
   id: string;
+  type?: 'SALE' | 'PURCHASE'; // Added to distinguish
   invoiceNumber: string;
   customerId: string;
   customerName: string;
