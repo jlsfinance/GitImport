@@ -170,11 +170,19 @@ const AppContent: React.FC = () => {
     return <PermissionErrorModal />;
   }
 
-  if (!user) {
+  // --- PUBLIC ACCESS BYPASS ---
+  const isPublicView = window.location.pathname.startsWith('/view/');
+
+  if (!user && !isPublicView) {
     return <Auth />;
   }
 
-  if (!company) {
+  // If public view and no user, we might need a dummy company context or handle it gracefully
+  // But for now, let's just let it fall through.
+  // Note: CompanyProvider might block if no company is set.
+  // We need to check useCompany which returns <CompanyForm /> if !company.
+
+  if (!company && !isPublicView) {
     return <CompanyForm />;
   }
 
