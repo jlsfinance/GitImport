@@ -7,9 +7,7 @@ import { GeminiService } from '../services/geminiService';
 import { WhatsAppService } from '../services/whatsappService';
 import { Printer, ArrowLeft, Play, Loader2, Download, Edit, Trash2, MoreVertical, MessageCircle, Check, FilePlus, History, UserPlus, Users, ChevronRight } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
-
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 import QRCode from 'qrcode';
@@ -83,7 +81,6 @@ const numberToWords = (num: number): string => {
 };
 
 const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onViewLedger, showPostSaveActions, onClosePostSaveActions }) => {
-  const { user } = useAuth();
   const { company: firebaseCompany } = useCompany();
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -294,13 +291,13 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
     setIsLoadingAudio(true);
     const amountInWords = numberToWords(invoice.total);
     const textToRead = `
-              Invoice number ${invoice.invoiceNumber}.
-              Dated ${invoice.date}.
-              Billed to ${invoice.customerName}.
-              Total amount is ${invoice.total} Rupees.
-              ${amountInWords}.
-              Thank you for your business.
-              `;
+      Invoice number ${invoice.invoiceNumber}.
+      Dated ${invoice.date}.
+      Billed to ${invoice.customerName}.
+      Total amount is ${invoice.total} Rupees.
+      ${amountInWords}.
+      Thank you for your business.
+    `;
     await GeminiService.generateSpeech(textToRead);
     setIsLoadingAudio(false);
   };
@@ -681,15 +678,13 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
         </div>
 
         <div className="flex items-center gap-2">
-          {user && (
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => onEdit(invoice)}
-              className="w-11 h-11 flex items-center justify-center rounded-full bg-surface-container-high text-google-blue border border-border hover:shadow-google transition-all"
-            >
-              <Edit className="w-5 h-5" />
-            </motion.button>
-          )}
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => onEdit(invoice)}
+            className="w-11 h-11 flex items-center justify-center rounded-full bg-surface-container-high text-google-blue border border-border hover:shadow-google transition-all"
+          >
+            <Edit className="w-5 h-5" />
+          </motion.button>
 
           <div className="relative">
             <motion.button
@@ -779,7 +774,9 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
       {/* Main Content - Expressive Material View */}
       <div className={`flex-1 overflow-y-auto overflow-x-hidden bg-surface-container-low p-4 md:p-8 pb-32 print:p-0 print:bg-white ${isPosView ? 'print:hidden' : ''}`}>
 
-        <div
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           className="max-w-5xl mx-auto bg-surface rounded-[40px] shadow-google-lg print:shadow-none border border-border print:border-none overflow-hidden">
           <div id="invoice-print" className="p-8 md:p-16 text-foreground print:text-black">
 
@@ -924,7 +921,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
             </div>
 
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* POS VIEW RENDERER (Absolute Overlay or Conditional) */}

@@ -28,8 +28,6 @@ import { HapticService } from '@/services/hapticService';
 import { CompanyForm } from '@/components/CompanyForm';
 import Auth from '@/components/Auth';
 import { PermissionErrorModal } from '@/components/PermissionErrorModal';
-const PrivacyPolicy = React.lazy(() => import('./pages/public/PrivacyPolicy'));
-const TermsOfService = React.lazy(() => import('./pages/public/TermsOfService'));
 
 const AppContent: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -51,8 +49,6 @@ const AppContent: React.FC = () => {
   const [startSmartCalc, setStartSmartCalc] = useState(false);
   const [showPostSaveActions, setShowPostSaveActions] = useState(false);
 
-  const [isNotFound, setIsNotFound] = useState(false);
-
   useEffect(() => {
     const initApp = async () => {
       await StorageService.init(user?.uid || null);
@@ -67,44 +63,10 @@ const AppContent: React.FC = () => {
       const path = window.location.pathname;
       if (path.startsWith('/view/')) {
         const invoiceId = path.split('/')[2];
-        let foundInvoice = StorageService.getInvoices().find(inv => inv.id === invoiceId);
-
+        const foundInvoice = StorageService.getInvoices().find(inv => inv.id === invoiceId);
         if (foundInvoice) {
           setSelectedInvoice(foundInvoice);
           setCurrentView(ViewState.VIEW_INVOICE);
-        } else {
-          try {
-            if (invoiceId && invoiceId.trim() !== '') {
-              // Primary: Try Public Collection (No Auth Required)
-              let fetchedInvoice = await FirebaseService.getDocument<Invoice>('publicBills', invoiceId);
-
-              // Fallback: Try straight invoices collection (Legacy/Open Rules) or if user happens to be logged in? 
-              // Actually, standard invoices are nested in users/{uid}/invoices, so we can't easily find them by ID alone without knowing UID 
-              // UNLESS there is a root 'invoices' collection (which my StorageService doesn't seem to use for mains).
-              // StorageService uses `users/${userId}/invoices`. 
-              // So `publicBills` is the ONLY viable path for a global ID lookup without auth.
-
-              if (fetchedInvoice) {
-                // Manually inject company profile into storage cache if present in bill, so InvoiceView can read it?
-                // Or better, InvoiceView should read from the invoice object if possible.
-                // For now, let's set it.
-                if ((fetchedInvoice as any).companyData) {
-                  StorageService.saveCompanyProfile((fetchedInvoice as any).companyData);
-                }
-
-                setSelectedInvoice(fetchedInvoice);
-                setCurrentView(ViewState.VIEW_INVOICE);
-              } else {
-                console.warn("Invoice not found in public cloud.");
-                setIsNotFound(true);
-              }
-            } else {
-              setIsNotFound(true);
-            }
-          } catch (err) {
-            console.error("Error fetching public invoice:", err);
-            setIsNotFound(true);
-          }
         }
       } else if (path.startsWith('/customer/')) {
         const parts = path.split('/');
@@ -204,45 +166,12 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // --- PUBLIC ACCESS BYPASS ---
-  const isPublicView = window.location.pathname.startsWith('/view/');
-  const isPrivacyPage = window.location.pathname === '/privacy';
-  const isTermsPage = window.location.pathname === '/terms';
-
-  if (permissionError && !isPublicView) {
+  if (permissionError) {
     return <PermissionErrorModal />;
   }
 
-  // Early return for pure public pages to avoid Auth/Company checks and main APP UI wrappers
-  if (isPrivacyPage) {
-    return <React.Suspense fallback={<div>Loading...</div>}><PrivacyPolicy /></React.Suspense>;
-  }
-  if (isTermsPage) {
-    return <React.Suspense fallback={<div>Loading...</div>}><TermsOfService /></React.Suspense>;
-  }
-
-  // 404 STATE
-  if (isNotFound) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-slate-50 flex-col gap-4 text-center p-4">
-        <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mb-4">
-          <span className="text-3xl">?</span>
-        </div>
-        <h1 className="text-xl font-bold text-slate-800">Invoice Not Found</h1>
-        <p className="text-slate-500 max-w-sm">The invoice you are looking for does not exist or has been deleted.</p>
-        <a href="/" className="px-6 py-2 bg-blue-600 text-white rounded-full font-bold text-sm mt-4">Go to Home</a>
-      </div>
-    )
-  }
-
-  if (isPublicView && !selectedInvoice) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-slate-50 flex-col gap-4">
-        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-        <p className="text-slate-500 font-medium">Fetching Invoice...</p>
-      </div>
-    )
-  }
+  // --- PUBLIC ACCESS BYPASS ---
+  const isPublicView = window.location.pathname.startsWith('/view/');
 
   if (!user && !isPublicView) {
     return <Auth />;
@@ -349,106 +278,115 @@ const AppContent: React.FC = () => {
           </div>
         )}
 
-        <div className="w-full h-full">
-          {currentView === ViewState.DASHBOARD && (
-            <Dashboard
-              invoices={invoices}
-              onViewInvoice={handleViewInvoice}
-              onViewCustomerLedger={handleViewCustomerLedger}
-              onViewDaybook={handleViewDaybook}
-              onQuickShare={handleQuickShare}
-              onCreateInvoice={handleCreateNew}
-              onOpenReports={() => setCurrentView(ViewState.REPORTS)}
-              onAddCustomer={() => setCurrentView(ViewState.CUSTOMERS)}
-              onOpenSmartCalc={handleOpenSmartCalc}
-            />
-          )}
-          {currentView === ViewState.INVOICES && (
-            <AllInvoices
-              invoices={invoices}
-              onView={handleViewInvoice}
-              onEdit={handleEditInvoice}
-              onViewLedger={handleViewCustomerLedger}
-              onDelete={(inv) => {
-                StorageService.deleteInvoice(inv.id);
-                setInvoices(StorageService.getInvoices());
-              }}
-            />
-          )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentView}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="w-full h-full"
+          >
+            {currentView === ViewState.DASHBOARD && (
+              <Dashboard
+                invoices={invoices}
+                onViewInvoice={handleViewInvoice}
+                onViewCustomerLedger={handleViewCustomerLedger}
+                onViewDaybook={handleViewDaybook}
+                onQuickShare={handleQuickShare}
+                onCreateInvoice={handleCreateNew}
+                onOpenReports={() => setCurrentView(ViewState.REPORTS)}
+                onAddCustomer={() => setCurrentView(ViewState.CUSTOMERS)}
+                onOpenSmartCalc={handleOpenSmartCalc}
+              />
+            )}
+            {currentView === ViewState.INVOICES && (
+              <AllInvoices
+                invoices={invoices}
+                onView={handleViewInvoice}
+                onEdit={handleEditInvoice}
+                onViewLedger={handleViewCustomerLedger}
+                onDelete={(inv) => {
+                  StorageService.deleteInvoice(inv.id);
+                  setInvoices(StorageService.getInvoices());
+                }}
+              />
+            )}
 
-          {currentView === ViewState.ALL_INVOICES && (
-            <AllInvoices
-              invoices={invoices}
-              onView={handleViewInvoice}
-              onEdit={handleEditInvoice}
-              onViewLedger={handleViewCustomerLedger}
-              onDelete={(inv) => {
-                StorageService.deleteInvoice(inv.id);
-                setInvoices(StorageService.getInvoices());
-              }}
-            />
-          )}
-          {currentView === ViewState.DAYBOOK && <Daybook initialDate={selectedDaybookDate} />}
-          {currentView === ViewState.INVENTORY && <Inventory />}
-          {currentView === ViewState.EXPENSES && <Expenses onBack={() => setCurrentView(ViewState.DASHBOARD)} />}
-          {currentView === ViewState.PAYMENTS && (
-            <Payments
-              onBack={() => {
-                setCurrentView(ViewState.DASHBOARD);
-                setSelectedPaymentToEdit(null);
-              }}
-              initialPayment={selectedPaymentToEdit}
-            />
-          )}
-          {currentView === ViewState.REPORTS && (
-            <Reports
-              onBack={() => setCurrentView(ViewState.DASHBOARD)}
-              onViewLedger={handleViewCustomerLedger}
-            />
-          )}
-          {currentView === ViewState.CUSTOMERS && <Customers onEditInvoice={handleEditInvoice} onBack={() => setCurrentView(ViewState.DASHBOARD)} />}
-          {currentView === ViewState.SETTINGS && <Settings />}
-          {currentView === ViewState.IMPORT && <Import onClose={() => setCurrentView(ViewState.DASHBOARD)} onImportComplete={() => { }} />}
+            {currentView === ViewState.ALL_INVOICES && (
+              <AllInvoices
+                invoices={invoices}
+                onView={handleViewInvoice}
+                onEdit={handleEditInvoice}
+                onViewLedger={handleViewCustomerLedger}
+                onDelete={(inv) => {
+                  StorageService.deleteInvoice(inv.id);
+                  setInvoices(StorageService.getInvoices());
+                }}
+              />
+            )}
+            {currentView === ViewState.DAYBOOK && <Daybook initialDate={selectedDaybookDate} />}
+            {currentView === ViewState.INVENTORY && <Inventory />}
+            {currentView === ViewState.EXPENSES && <Expenses onBack={() => setCurrentView(ViewState.DASHBOARD)} />}
+            {currentView === ViewState.PAYMENTS && (
+              <Payments
+                onBack={() => {
+                  setCurrentView(ViewState.DASHBOARD);
+                  setSelectedPaymentToEdit(null);
+                }}
+                initialPayment={selectedPaymentToEdit}
+              />
+            )}
+            {currentView === ViewState.REPORTS && (
+              <Reports
+                onBack={() => setCurrentView(ViewState.DASHBOARD)}
+                onViewLedger={handleViewCustomerLedger}
+              />
+            )}
+            {currentView === ViewState.CUSTOMERS && <Customers onEditInvoice={handleEditInvoice} onBack={() => setCurrentView(ViewState.DASHBOARD)} />}
+            {currentView === ViewState.SETTINGS && <Settings />}
+            {currentView === ViewState.IMPORT && <Import onClose={() => setCurrentView(ViewState.DASHBOARD)} onImportComplete={() => { }} />}
 
-          {currentView === ViewState.CUSTOMER_LEDGER && selectedCustomerId && (
-            <CustomerLedger
-              customerId={selectedCustomerId}
-              onBack={() => setCurrentView(ViewState.DASHBOARD)}
-              onViewInvoice={handleViewInvoice}
-              onEditPayment={(payment) => {
-                setSelectedPaymentToEdit(payment);
-                setCurrentView(ViewState.PAYMENTS);
-              }}
-            />
-          )}
+            {currentView === ViewState.CUSTOMER_LEDGER && selectedCustomerId && (
+              <CustomerLedger
+                customerId={selectedCustomerId}
+                onBack={() => setCurrentView(ViewState.DASHBOARD)}
+                onViewInvoice={handleViewInvoice}
+                onEditPayment={(payment) => {
+                  setSelectedPaymentToEdit(payment);
+                  setCurrentView(ViewState.PAYMENTS);
+                }}
+              />
+            )}
 
-          {currentView === ViewState.CREATE_INVOICE && (
-            <CreateInvoice
-              onSave={handleSaveInvoice}
-              onCancel={() => setCurrentView(ViewState.INVOICES)}
-              startSmartCalc={startSmartCalc}
-            />
-          )}
+            {currentView === ViewState.CREATE_INVOICE && (
+              <CreateInvoice
+                onSave={handleSaveInvoice}
+                onCancel={() => setCurrentView(ViewState.INVOICES)}
+                startSmartCalc={startSmartCalc}
+              />
+            )}
 
-          {currentView === ViewState.EDIT_INVOICE && invoiceToEdit && (
-            <CreateInvoice
-              onSave={handleSaveInvoice}
-              onCancel={() => setCurrentView(ViewState.INVOICES)}
-              initialInvoice={invoiceToEdit}
-            />
-          )}
+            {currentView === ViewState.EDIT_INVOICE && invoiceToEdit && (
+              <CreateInvoice
+                onSave={handleSaveInvoice}
+                onCancel={() => setCurrentView(ViewState.INVOICES)}
+                initialInvoice={invoiceToEdit}
+              />
+            )}
 
-          {currentView === ViewState.VIEW_INVOICE && selectedInvoice && (
-            <InvoiceView
-              invoice={selectedInvoice}
-              onBack={() => setCurrentView(ViewState.INVOICES)}
-              onEdit={handleEditInvoice}
-              onViewLedger={handleViewCustomerLedger}
-              showPostSaveActions={showPostSaveActions}
-              onClosePostSaveActions={() => setShowPostSaveActions(false)}
-            />
-          )}
-        </div>
+            {currentView === ViewState.VIEW_INVOICE && selectedInvoice && (
+              <InvoiceView
+                invoice={selectedInvoice}
+                onBack={() => setCurrentView(ViewState.INVOICES)}
+                onEdit={handleEditInvoice}
+                onViewLedger={handleViewCustomerLedger}
+                showPostSaveActions={showPostSaveActions}
+                onClosePostSaveActions={() => setShowPostSaveActions(false)}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Mobile Bottom Navigation - Visible only on Mobile and non-focused views */}
@@ -481,34 +419,12 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
-  // Basic Error Boundary for Safety
-  class ErrorBoundary extends React.Component<any, { hasError: boolean }> {
-    constructor(props: any) {
-      super(props);
-      this.state = { hasError: false };
-    }
-    static getDerivedStateFromError(error: any) {
-      return { hasError: true };
-    }
-    componentDidCatch(error: any, errorInfo: any) {
-      console.error("App Error:", error, errorInfo);
-    }
-    render() {
-      if (this.state.hasError) {
-        return <div className="p-8 text-center">Something went wrong. Please reload.</div>;
-      }
-      return this.props.children;
-    }
-  }
-
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <CompanyProvider>
-          <AppContent />
-        </CompanyProvider>
-      </AuthProvider>
-    </ErrorBoundary>
+    <AuthProvider>
+      <CompanyProvider>
+        <AppContent />
+      </CompanyProvider>
+    </AuthProvider>
   );
 };
 

@@ -58,23 +58,6 @@ export const FirebaseService = {
     }
   },
 
-  // Get Single Document
-  getDocument: async <T>(collectionName: string, id: string): Promise<T | null> => {
-    try {
-      const docRef = doc(db, collectionName, id);
-      const docSnap = await import('firebase/firestore').then(m => m.getDoc(docRef));
-      if (docSnap.exists()) {
-        return docSnap.data() as T;
-      } else {
-        console.log("No such document!");
-        return null;
-      }
-    } catch (error) {
-      console.error("Error getting document:", error);
-      return null;
-    }
-  },
-
   // Batch Save (for initial sync)
   batchSave: async (collectionName: string, items: any[]) => {
     try {
