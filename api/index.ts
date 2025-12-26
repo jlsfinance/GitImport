@@ -10,7 +10,7 @@ import runApp from "../server/app";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export async function serveStatic(app: Express, server: Server) {
-  const distPath = path.resolve(__dirname, "../client/dist");
+  const distPath = path.resolve(__dirname, "../dist");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
