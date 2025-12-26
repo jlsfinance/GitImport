@@ -15,6 +15,7 @@ export enum ViewState {
   EXPENSES = 'EXPENSES',
   REPORTS = 'REPORTS',
   PAYMENTS = 'PAYMENTS',
+  PUBLIC_VIEW_INVOICE = 'PUBLIC_VIEW_INVOICE',
 }
 
 export interface Expense {

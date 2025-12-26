@@ -244,7 +244,15 @@ export const StorageService = {
     cache.invoices = [invoice, ...cache.invoices];
 
     StorageService.persistToLocalStorage();
-    if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('invoices'), invoice.id, invoice);
+    if (FirebaseService.isReady()) {
+      FirebaseService.saveDocument(StorageService.getCollectionPath('invoices'), invoice.id, invoice);
+      // Save a public copy for deep-linking (no-auth access)
+      // We include company profile so the public view has supplier details
+      FirebaseService.saveDocument('publicBills', invoice.id, {
+        ...invoice,
+        _company: cache.company
+      });
+    }
 
     StorageService.addNotification(invoice.customerId, {
       type: 'INVOICE',
@@ -390,7 +398,14 @@ export const StorageService = {
     cache.invoices[oldInvoiceIndex] = updatedInvoice;
 
     StorageService.persistToLocalStorage();
-    if (FirebaseService.isReady()) FirebaseService.saveDocument(StorageService.getCollectionPath('invoices'), updatedInvoice.id, updatedInvoice);
+    if (FirebaseService.isReady()) {
+      FirebaseService.saveDocument(StorageService.getCollectionPath('invoices'), updatedInvoice.id, updatedInvoice);
+      // Update public copy
+      FirebaseService.saveDocument('publicBills', updatedInvoice.id, {
+        ...updatedInvoice,
+        _company: cache.company
+      });
+    }
 
     if (oldInvoice.total !== updatedInvoice.total) {
       StorageService.addNotification(updatedInvoice.customerId, {

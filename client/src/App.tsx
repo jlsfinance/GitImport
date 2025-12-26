@@ -15,6 +15,7 @@ import Import from './components/Import';
 import CustomerLedger from './components/CustomerLedger';
 import Dashboard from './components/Dashboard';
 import Reports from './components/Reports';
+import { PublicBillView } from './components/PublicBillView';
 import { ViewState, Invoice } from './types';
 import { StorageService } from './services/storageService';
 import { FirebaseService } from './services/firebaseService';
@@ -39,6 +40,7 @@ const AppContent: React.FC = () => {
   const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [publicBillId, setPublicBillId] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isCloudConnected, setIsCloudConnected] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -63,10 +65,9 @@ const AppContent: React.FC = () => {
       const path = window.location.pathname;
       if (path.startsWith('/view/')) {
         const invoiceId = path.split('/')[2];
-        const foundInvoice = StorageService.getInvoices().find(inv => inv.id === invoiceId);
-        if (foundInvoice) {
-          setSelectedInvoice(foundInvoice);
-          setCurrentView(ViewState.VIEW_INVOICE);
+        if (invoiceId) {
+          setPublicBillId(invoiceId);
+          setCurrentView(ViewState.PUBLIC_VIEW_INVOICE);
         }
       } else if (path.startsWith('/customer/')) {
         const parts = path.split('/');
@@ -170,11 +171,11 @@ const AppContent: React.FC = () => {
     return <PermissionErrorModal />;
   }
 
-  if (!user) {
+  if (!user && currentView !== ViewState.PUBLIC_VIEW_INVOICE) {
     return <Auth />;
   }
 
-  if (!company) {
+  if (!company && currentView !== ViewState.PUBLIC_VIEW_INVOICE) {
     return <CompanyForm />;
   }
 
@@ -207,7 +208,7 @@ const AppContent: React.FC = () => {
       <div
         className={`
           fixed inset-0 z-[100] md:relative md:z-auto
-          ${isSidebarOpen ? 'flex' : (['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE'].includes(currentView) ? 'hidden' : 'hidden md:flex')}
+          ${isSidebarOpen ? 'flex' : (['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE', 'PUBLIC_VIEW_INVOICE'].includes(currentView) ? 'hidden' : 'hidden md:flex')}
         `}
       >
         {/* Backdrop for Mobile */}
@@ -242,7 +243,7 @@ const AppContent: React.FC = () => {
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto h-full relative w-full scroll-smooth bg-slate-50 dark:bg-slate-900">
         {/* Mobile Header with Hamburger (Visible only on mobile and when not in a detailed view) */}
-        {!['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE'].includes(currentView) && (
+        {!['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE', 'PUBLIC_VIEW_INVOICE'].includes(currentView) && (
           <div className="md:hidden sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-4 h-16 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/50 shadow-sm">
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -377,12 +378,16 @@ const AppContent: React.FC = () => {
                 onClosePostSaveActions={() => setShowPostSaveActions(false)}
               />
             )}
+
+            {currentView === ViewState.PUBLIC_VIEW_INVOICE && publicBillId && (
+              <PublicBillView billId={publicBillId} />
+            )}
           </motion.div>
         </AnimatePresence>
       </main>
 
       {/* Mobile Bottom Navigation - Visible only on Mobile and non-focused views */}
-      {!['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE'].includes(currentView) && (
+      {!['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE', 'PUBLIC_VIEW_INVOICE'].includes(currentView) && (
         <div className="md:hidden">
           <MobileBottomNav currentView={currentView} onChangeView={(view) => {
             if (view === ViewState.CREATE_INVOICE) {
