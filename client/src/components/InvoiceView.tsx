@@ -8,6 +8,7 @@ import { WhatsAppService } from '../services/whatsappService';
 import { Printer, ArrowLeft, Play, Loader2, Download, Edit, Trash2, MoreVertical, MessageCircle, Check, FilePlus, History, UserPlus, Users, ChevronRight } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/contexts/CompanyContext';
 
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
