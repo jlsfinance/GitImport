@@ -31,16 +31,15 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
     };
 
     return (
-        // Main Container is Green (Emerald-50). The Pink (Rose-50) overlays it.
         <div className="fixed inset-0 w-full h-full bg-emerald-50 overflow-hidden font-sans select-none flex flex-col">
 
-            {/* TOP SECTION: BILLING (Rose) - Covers Top Half + Wave */}
+            {/* TOP SECTION: BILLING (Rose) */}
             <motion.div
                 style={{ height: topHeight }}
                 className="absolute top-0 left-0 right-0 z-10 flex flex-col"
             >
-                {/* Solid Pink Part (Fills space above wave) */}
-                <div className="bg-rose-50 flex-grow w-full flex flex-col items-center justify-start pt-12 relative overflow-hidden">
+                {/* Solid Pink Part (Fills entire height) */}
+                <div className="h-full w-full bg-rose-50 flex flex-col items-center justify-start pt-12 relative overflow-hidden">
                     <div className="text-center opacity-80">
                         <h2 className="text-xs font-bold text-rose-400 tracking-widest uppercase mb-1">Accounting</h2>
                         <h1 className="text-4xl font-black text-rose-900 tracking-tighter">BILLING</h1>
@@ -52,28 +51,27 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
                     </div>
                 </div>
 
-                {/* ANIMATED WAVE BOTTOM EDGE */}
-                <div className="relative h-24 w-full overflow-hidden -mt-[1px]"> {/* Negative margin to ensure no gap */}
+                {/* ANIMATED WAVE (ABSOLUTE BOTTOM + TRANSLATED DOWN TO CENTER) */}
+                <div className="absolute bottom-0 w-full h-24 z-20 translate-y-1/2 pointer-events-none">
                     <motion.div
-                        className="flex w-[200%] h-full absolute bottom-0"
+                        className="flex w-[200%] h-full"
                         animate={{ x: ["0%", "-50%"] }}
                         transition={{ repeat: Infinity, ease: "linear", duration: 3 }}
                     >
                         {[0, 1].map((i) => (
                             <div key={i} className="w-1/2 h-full flex-shrink-0 relative">
-                                {/* Combined SVG: Pink Fill + Blue Stroke */}
                                 <svg
-                                    className="w-full h-full block transform scale-y-110" // Slight scale to ensure coverage
+                                    className="w-full h-full block"
                                     viewBox="0 0 100 40"
                                     preserveAspectRatio="none"
                                 >
-                                    {/* Pink Fill Area (Fills TOP part of svg) */}
+                                    {/* Pink Fill Area (Top half covers the Solid Pink bottom edge) */}
                                     <path
                                         d="M0 0 L0 20 Q 25 0, 50 20 T 100 20 L 100 0 Z"
-                                        fill="#fff1f2" // Matching bg-rose-50
+                                        fill="#fff1f2"
                                         stroke="none"
                                     />
-                                    {/* Blue Stroke Line (The Wave) */}
+                                    {/* Blue Stroke Line (Centered vertically in SVG at Y=20) */}
                                     <path
                                         d="M0 20 Q 25 0, 50 20 T 100 20"
                                         fill="none"
@@ -90,7 +88,6 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
             </motion.div>
 
             {/* BOTTOM SECTION CONTENT (Green) */}
-            {/* The Green background is the main container. This div just holds the content. */}
             <div className="absolute bottom-0 inset-x-0 h-1/2 flex flex-col items-center justify-end pb-12 z-0 pointer-events-none">
                 <div className="mb-8 flex flex-col items-center animate-bounce opacity-60">
                     <ChevronUp className="text-emerald-400" size={20} />
