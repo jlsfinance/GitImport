@@ -51,6 +51,8 @@ const AppContent: React.FC = () => {
   const [startSmartCalc, setStartSmartCalc] = useState(false);
   const [showPostSaveActions, setShowPostSaveActions] = useState(false);
 
+  const [isNotFound, setIsNotFound] = useState(false);
+
   useEffect(() => {
     const initApp = async () => {
       await StorageService.init(user?.uid || null);
@@ -71,21 +73,22 @@ const AppContent: React.FC = () => {
           setSelectedInvoice(foundInvoice);
           setCurrentView(ViewState.VIEW_INVOICE);
         } else {
-          // New: Try fetching from Cloud
           try {
-            // Basic structure check before we assume it's valid
             if (invoiceId && invoiceId.trim() !== '') {
               const fetchedInvoice = await FirebaseService.getDocument<Invoice>('invoices', invoiceId);
               if (fetchedInvoice) {
                 setSelectedInvoice(fetchedInvoice);
                 setCurrentView(ViewState.VIEW_INVOICE);
               } else {
-                console.warn("Invoice not found in cloud either.");
-                // Optional: Show 404 state? For now, we leave it blank or user will see dashboard
+                console.warn("Invoice not found in cloud.");
+                setIsNotFound(true);
               }
+            } else {
+              setIsNotFound(true);
             }
           } catch (err) {
             console.error("Error fetching public invoice:", err);
+            setIsNotFound(true);
           }
         }
       } else if (path.startsWith('/customer/')) {
@@ -201,6 +204,29 @@ const AppContent: React.FC = () => {
   }
   if (isTermsPage) {
     return <React.Suspense fallback={<div>Loading...</div>}><TermsOfService /></React.Suspense>;
+  }
+
+  // 404 STATE
+  if (isNotFound) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-slate-50 flex-col gap-4 text-center p-4">
+        <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mb-4">
+          <span className="text-3xl">?</span>
+        </div>
+        <h1 className="text-xl font-bold text-slate-800">Invoice Not Found</h1>
+        <p className="text-slate-500 max-w-sm">The invoice you are looking for does not exist or has been deleted.</p>
+        <a href="/" className="px-6 py-2 bg-blue-600 text-white rounded-full font-bold text-sm mt-4">Go to Home</a>
+      </div>
+    )
+  }
+
+  if (isPublicView && !selectedInvoice) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-slate-50 flex-col gap-4">
+        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+        <p className="text-slate-500 font-medium">Fetching Invoice...</p>
+      </div>
+    )
   }
 
   if (!user && !isPublicView) {
@@ -449,12 +475,34 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  // Basic Error Boundary for Safety
+  class ErrorBoundary extends React.Component<any, { hasError: boolean }> {
+    constructor(props: any) {
+      super(props);
+      this.state = { hasError: false };
+    }
+    static getDerivedStateFromError(error: any) {
+      return { hasError: true };
+    }
+    componentDidCatch(error: any, errorInfo: any) {
+      console.error("App Error:", error, errorInfo);
+    }
+    render() {
+      if (this.state.hasError) {
+        return <div className="p-8 text-center">Something went wrong. Please reload.</div>;
+      }
+      return this.props.children;
+    }
+  }
+
   return (
-    <AuthProvider>
-      <CompanyProvider>
-        <AppContent />
-      </CompanyProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <CompanyProvider>
+          <AppContent />
+        </CompanyProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 };
 
