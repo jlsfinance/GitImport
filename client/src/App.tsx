@@ -75,12 +75,27 @@ const AppContent: React.FC = () => {
         } else {
           try {
             if (invoiceId && invoiceId.trim() !== '') {
-              const fetchedInvoice = await FirebaseService.getDocument<Invoice>('invoices', invoiceId);
+              // Primary: Try Public Collection (No Auth Required)
+              let fetchedInvoice = await FirebaseService.getDocument<Invoice>('publicBills', invoiceId);
+
+              // Fallback: Try straight invoices collection (Legacy/Open Rules) or if user happens to be logged in? 
+              // Actually, standard invoices are nested in users/{uid}/invoices, so we can't easily find them by ID alone without knowing UID 
+              // UNLESS there is a root 'invoices' collection (which my StorageService doesn't seem to use for mains).
+              // StorageService uses `users/${userId}/invoices`. 
+              // So `publicBills` is the ONLY viable path for a global ID lookup without auth.
+
               if (fetchedInvoice) {
+                // Manually inject company profile into storage cache if present in bill, so InvoiceView can read it?
+                // Or better, InvoiceView should read from the invoice object if possible.
+                // For now, let's set it.
+                if ((fetchedInvoice as any).companyData) {
+                  StorageService.saveCompanyProfile((fetchedInvoice as any).companyData);
+                }
+
                 setSelectedInvoice(fetchedInvoice);
                 setCurrentView(ViewState.VIEW_INVOICE);
               } else {
-                console.warn("Invoice not found in cloud.");
+                console.warn("Invoice not found in public cloud.");
                 setIsNotFound(true);
               }
             } else {
