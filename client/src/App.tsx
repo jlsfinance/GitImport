@@ -28,6 +28,8 @@ import { HapticService } from '@/services/hapticService';
 import { CompanyForm } from '@/components/CompanyForm';
 import Auth from '@/components/Auth';
 import { PermissionErrorModal } from '@/components/PermissionErrorModal';
+const PrivacyPolicy = React.lazy(() => import('./pages/public/PrivacyPolicy'));
+const TermsOfService = React.lazy(() => import('./pages/public/TermsOfService'));
 
 const AppContent: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -172,6 +174,16 @@ const AppContent: React.FC = () => {
 
   // --- PUBLIC ACCESS BYPASS ---
   const isPublicView = window.location.pathname.startsWith('/view/');
+  const isPrivacyPage = window.location.pathname === '/privacy';
+  const isTermsPage = window.location.pathname === '/terms';
+
+  // Early return for pure public pages to avoid Auth/Company checks and main APP UI wrappers
+  if (isPrivacyPage) {
+    return <React.Suspense fallback={<div>Loading...</div>}><PrivacyPolicy /></React.Suspense>;
+  }
+  if (isTermsPage) {
+    return <React.Suspense fallback={<div>Loading...</div>}><TermsOfService /></React.Suspense>;
+  }
 
   if (!user && !isPublicView) {
     return <Auth />;
