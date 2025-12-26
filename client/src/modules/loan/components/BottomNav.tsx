@@ -36,11 +36,11 @@ const BottomNav: React.FC = () => {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-surface-light dark:bg-surface-dark border-t border-outline-light/10 dark:border-outline-dark/10 pb-safe pt-3">
       <div className="flex justify-around items-end h-16 max-w-md mx-auto px-2 pb-2">
-        <NavItem path="/" icon="dashboard" label="Home" />
-        <NavItem path="/customers" icon="group" label="Clients" />
-        <NavItem path="/loans" icon="credit_score" isFab />
-        <NavItem path="/finance" icon="account_balance_wallet" label="Finance" />
-        <NavItem path="/tools" icon="grid_view" label="Tools" />
+        <NavItem path="/loan" icon="dashboard" label="Home" />
+        <NavItem path="/loan/customers" icon="group" label="Clients" />
+        <NavItem path="/loan/loans" icon="credit_score" isFab />
+        <NavItem path="/loan/finance" icon="account_balance_wallet" label="Finance" />
+        <NavItem path="/loan/tools" icon="grid_view" label="Tools" />
       </div>
     </nav>
   );

@@ -44,32 +44,32 @@ const Sidebar: React.FC = () => {
     };
 
     const menuItems: MenuItem[] = [
-        { title: 'Dashboard', path: '/', icon: 'dashboard' },
+        { title: 'Dashboard', path: '/loan', icon: 'dashboard' },
         {
             title: 'Loans',
             icon: 'account_balance',
             submenu: [
-                { title: 'All Loans', path: '/loans', icon: 'list_alt' },
-                { title: 'New Loan', path: '/loans/new', icon: 'add_circle' },
-                { title: 'EMI Calculator', path: '/tools/emi', icon: 'calculate' },
+                { title: 'All Loans', path: '/loan/loans', icon: 'list_alt' },
+                { title: 'New Loan', path: '/loan/loans/new', icon: 'add_circle' },
+                { title: 'EMI Calculator', path: '/loan/tools/emi', icon: 'calculate' },
             ]
         },
         {
             title: 'Finance',
             icon: 'payments',
             submenu: [
-                { title: 'Overview', path: '/finance', icon: 'finance' },
-                { title: 'Receipts', path: '/receipts', icon: 'receipt_long' },
-                { title: 'Approvals', path: '/approvals', icon: 'verified' },
-                { title: 'Disbursal', path: '/disbursal', icon: 'monetization_on' },
-                { title: 'Due List', path: '/due-list', icon: 'pending_actions' },
+                { title: 'Overview', path: '/loan/finance', icon: 'finance' },
+                { title: 'Receipts', path: '/loan/receipts', icon: 'receipt_long' },
+                { title: 'Approvals', path: '/loan/approvals', icon: 'verified' },
+                { title: 'Disbursal', path: '/loan/disbursal', icon: 'monetization_on' },
+                { title: 'Due List', path: '/loan/due-list', icon: 'pending_actions' },
             ]
         },
-        { title: 'Customers', path: '/customers', icon: 'group' },
-        { title: 'Partners', path: '/partners', icon: 'handshake' },
-        { title: 'Tools', path: '/tools', icon: 'construction' },
-        { title: 'Downloads', path: '/downloads', icon: 'folder_open' },
-        { title: 'Settings', path: '/settings', icon: 'settings' },
+        { title: 'Customers', path: '/loan/customers', icon: 'group' },
+        { title: 'Partners', path: '/loan/partners', icon: 'handshake' },
+        { title: 'Tools', path: '/loan/tools', icon: 'construction' },
+        { title: 'Downloads', path: '/loan/downloads', icon: 'folder_open' },
+        { title: 'Settings', path: '/loan/settings', icon: 'settings' },
     ];
 
     const handleLinkClick = () => {
