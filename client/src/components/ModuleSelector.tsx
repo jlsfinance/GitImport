@@ -8,117 +8,116 @@ interface ModuleSelectorProps {
 
 const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
     const y = useMotionValue(0);
-    const [selected, setSelected] = useState<'accounting' | 'loan' | null>(null);
 
-    // Dynamic transforms based on drag
-    const manScale = useTransform(y, [0, 200], [1, 1.5]);
-    const lionScale = useTransform(y, [0, -200], [1, 1.5]);
+    // Google-style springy transforms
+    const ropeRotate = useTransform(y, [-200, 200], [-5, 5]);
+    const manScale = useTransform(y, [0, 200], [1, 1.3]);
+    const lionScale = useTransform(y, [0, -200], [1, 1.3]);
+
+    // Background heights based on drag
+    const topHeight = useTransform(y, (latest) => `calc(50% + ${latest}px)`);
+    const bottomHeight = useTransform(y, (latest) => `calc(50% - ${latest}px)`);
 
     const handleDragEnd = () => {
         const currentY = y.get();
-        if (currentY > 100) {
-            // Billing Wins
-            setSelected('accounting');
-            // Animate completion
-            animate(y, window.innerHeight, { duration: 0.5 });
-            setTimeout(() => onSelect('accounting'), 500);
-        } else if (currentY < -100) {
-            // Loans Wins
-            setSelected('loan');
-            animate(y, -window.innerHeight, { duration: 0.5 });
-            setTimeout(() => onSelect('loan'), 500);
+        if (currentY > 120) {
+            animate(y, window.innerHeight, { type: 'spring', stiffness: 200, damping: 25 });
+            setTimeout(() => onSelect('accounting'), 400);
+        } else if (currentY < -120) {
+            animate(y, -window.innerHeight, { type: 'spring', stiffness: 200, damping: 25 });
+            setTimeout(() => onSelect('loan'), 400);
         } else {
-            // Reset
-            animate(y, 0, { type: 'spring' });
+            animate(y, 0, { type: 'spring', stiffness: 300, damping: 25 });
         }
     };
 
     return (
-        <div className="fixed inset-0 w-full h-full bg-slate-100 overflow-hidden font-sans flex flex-col select-none">
+        <div className="fixed inset-0 w-full h-full bg-slate-900 overflow-hidden font-sans select-none flex flex-col">
 
-            {/* Background Split */}
-            <motion.div style={{ height: useTransform(y, (latest) => `calc(50% + ${latest}px)`) }} className="absolute top-0 inset-x-0 bg-rose-50 border-b border-slate-200" />
-            <motion.div style={{ height: useTransform(y, (latest) => `calc(50% - ${latest}px)`) }} className="absolute bottom-0 inset-x-0 bg-emerald-50" />
-
-            {/* Central Interactive Layer */}
+            {/* TOP SECTION: BILLING (Google Red/Pink) */}
             <motion.div
-                className="relative w-full h-full flex flex-col items-center justify-center cursor-grab active:cursor-grabbing z-20"
-                drag="y"
-                dragConstraints={{ top: 0, bottom: 0 }} // Elastic drag
-                dragElastic={0.6}
-                style={{ y }}
-                onDragEnd={handleDragEnd}
+                style={{ height: topHeight }}
+                className="relative w-full bg-rose-50 flex flex-col items-center justify-center border-b-0 z-10"
             >
-
-                {/* ROPE SVG */}
-                <div className="absolute top-0 bottom-0 w-2 bg-transparent flex flex-col items-center justify-center pointer-events-none">
-                    <div className="w-1 h-full bg-amber-700/80 shadow-sm relative">
-                        {/* Knot */}
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-amber-800 rounded-full shadow-lg border-2 border-amber-600" />
-                    </div>
+                <div className="absolute top-10 text-center opacity-60">
+                    <h2 className="text-sm font-bold text-rose-400 tracking-widest uppercase mb-1">Accounting</h2>
+                    <h1 className="text-3xl font-black text-rose-900 tracking-tighter">BILLING</h1>
                 </div>
 
-                {/* Top Player: Businessman (Billing) */}
+                <div className="absolute bottom-4 flex flex-col items-center animate-bounce opacity-50">
+                    <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-1">Swipe Down</p>
+                    <ChevronDown className="text-rose-400" size={16} />
+                </div>
+            </motion.div>
+
+            {/* ZIGZAG DIVIDER */}
+            <motion.div
+                className="absolute left-0 right-0 z-20 h-6 -mt-3 flex items-center justify-center pointer-events-none"
+                style={{ top: '50%', y }}
+            >
+                <div className="w-[120%] -ml-[10%] h-12 bg-transparent relative flex items-center">
+                    {/* The ZigZag shape (Rose color pointing down) */}
+                    <svg className="w-full h-full text-rose-50 drop-shadow-sm" preserveAspectRatio="none" viewBox="0 0 100 10">
+                        <polygon points="0,0 2,10 4,0 6,10 8,0 10,10 12,0 14,10 16,0 18,10 20,0 22,10 24,0 26,10 28,0 30,10 32,0 34,10 36,0 38,10 40,0 42,10 44,0 46,10 48,0 50,10 52,0 54,10 56,0 58,10 60,0 62,10 64,0 66,10 68,0 70,10 72,0 74,10 76,0 78,10 80,0 82,10 84,0 86,10 88,0 90,10 92,0 94,10 96,0 98,10 100,0 100,0 0,0" fill="currentColor" />
+                    </svg>
+                </div>
+            </motion.div>
+
+            {/* BOTTOM SECTION: LOANS (Google Green) */}
+            <motion.div
+                style={{ height: bottomHeight }}
+                className="relative w-full bg-emerald-50 flex flex-col items-center justify-center z-10"
+            >
+                <div className="absolute bottom-10 text-center opacity-60">
+                    <h1 className="text-3xl font-black text-emerald-900 tracking-tighter">LOANS</h1>
+                    <h2 className="text-sm font-bold text-emerald-400 tracking-widest uppercase mt-1">Management</h2>
+                </div>
+
+                <div className="absolute top-4 flex flex-col items-center animate-bounce opacity-50">
+                    <ChevronUp className="text-emerald-400" size={16} />
+                    <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mt-1">Swipe Up</p>
+                </div>
+            </motion.div>
+
+
+            {/* INTERACTIVE DRAG LAYER */}
+            <motion.div
+                className="absolute inset-x-0 top-0 bottom-0 z-30 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing"
+                drag="y"
+                dragConstraints={{ top: 0, bottom: 0 }}
+                dragElastic={0.7}
+                style={{ y, rotate: ropeRotate }}
+                onDragEnd={handleDragEnd}
+            >
+                {/* The Rope */}
+                <div className="w-1.5 h-64 bg-amber-800/80 rounded-full relative shadow-sm">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-8 bg-amber-700 rounded-md shadow-md border border-amber-900/30" />
+                </div>
+
+                {/* Top Character (Billing Businessman) */}
                 <motion.div
-                    className="absolute top-[15%] flex flex-col items-center gap-4 p-4"
+                    className="absolute -top-16 bg-white p-4 rounded-3xl shadow-xl shadow-rose-900/10 border-4 border-rose-100 flex flex-col items-center gap-2"
                     style={{ scale: manScale }}
+                    onClick={() => onSelect('accounting')}
                 >
-                    <div
-                        onClick={() => onSelect('accounting')}
-                        className="w-32 h-32 bg-white rounded-full shadow-2xl shadow-rose-900/20 border-4 border-rose-500 flex items-center justify-center text-7xl relative z-10 hover:scale-105 transition-transform cursor-pointer"
-                    >
-                        👨‍💼
-                        <div className="absolute -bottom-4 bg-rose-600 text-white text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">
-                            Billing
-                        </div>
+                    <span className="text-6xl filter drop-shadow-md">👨‍💼</span>
+                    <div className="bg-rose-100 px-3 py-1 rounded-full">
+                        <span className="text-[10px] font-black uppercase text-rose-600 tracking-wider">Billing</span>
                     </div>
                 </motion.div>
 
-                {/* VISUAL HINT */}
-                {!selected && (
-                    <motion.div
-                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-xl border border-white/50"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 1 }}
-                    >
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                            <ChevronUp size={12} /> VS <ChevronDown size={12} />
-                        </p>
-                    </motion.div>
-                )}
-
-
-                {/* Bottom Player: Lion (Loans) */}
+                {/* Bottom Character (Loan Lion) */}
                 <motion.div
-                    className="absolute bottom-[15%] flex flex-col items-center gap-4 p-4"
+                    className="absolute -bottom-16 bg-white p-4 rounded-3xl shadow-xl shadow-emerald-900/10 border-4 border-emerald-100 flex flex-col items-center gap-2"
                     style={{ scale: lionScale }}
+                    onClick={() => onSelect('loan')}
                 >
-                    <div
-                        onClick={() => onSelect('loan')}
-                        className="w-32 h-32 bg-white rounded-full shadow-2xl shadow-emerald-900/20 border-4 border-emerald-500 flex items-center justify-center text-7xl relative z-10 hover:scale-105 transition-transform cursor-pointer"
-                    >
-                        🦁
-                        <div className="absolute -top-4 bg-emerald-600 text-white text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">
-                            Loans
-                        </div>
+                    <div className="bg-emerald-100 px-3 py-1 rounded-full mb-1">
+                        <span className="text-[10px] font-black uppercase text-emerald-600 tracking-wider">Loans</span>
                     </div>
+                    <span className="text-6xl filter drop-shadow-md">🦁</span>
                 </motion.div>
-            </motion.div>
 
-            {/* Victory/Defeat Messages */}
-            <motion.div
-                className="absolute top-10 w-full text-center pointer-events-none"
-                style={{ opacity: useTransform(y, [50, 200], [0, 1]) }}
-            >
-                <h1 className="text-4xl font-black text-rose-500 scale-125 transition-transform">BILLING WINS!</h1>
-            </motion.div>
-
-            <motion.div
-                className="absolute bottom-10 w-full text-center pointer-events-none"
-                style={{ opacity: useTransform(y, [-50, -200], [0, 1]) }}
-            >
-                <h1 className="text-4xl font-black text-emerald-500 scale-125 transition-transform">LOANS WIN!</h1>
             </motion.div>
 
         </div>
