@@ -244,7 +244,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
     // --------------------------------
 
     // Construct Link
-    const link = `https://git-import.vercel.app/view/${invoice.id}`;
+    const link = `https://git-import.vercel.app/v/${invoice.id}`;
 
     // Format Message
     const companyName = company.name || "My Business";

@@ -15,6 +15,7 @@ import Import from './components/Import';
 import CustomerLedger from './components/CustomerLedger';
 import Dashboard from './components/Dashboard';
 import Reports from './components/Reports';
+import { PublicBillView } from './components/PublicBillView';
 import { ViewState, Invoice } from './types';
 import { StorageService } from './services/storageService';
 import { FirebaseService } from './services/firebaseService';
@@ -45,6 +46,7 @@ const AppContent: React.FC = () => {
   const [selectedDaybookDate, setSelectedDaybookDate] = useState<string | null>(null);
   const [selectedPaymentToEdit, setSelectedPaymentToEdit] = useState<any | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [publicBillId, setPublicBillId] = useState<string | null>(null);
 
   const [startSmartCalc, setStartSmartCalc] = useState(false);
   const [showPostSaveActions, setShowPostSaveActions] = useState(false);
@@ -61,12 +63,14 @@ const AppContent: React.FC = () => {
 
       // Handle Deep Links
       const path = window.location.pathname;
-      if (path.startsWith('/view/')) {
-        const invoiceId = path.split('/')[2];
-        const foundInvoice = StorageService.getInvoices().find(inv => inv.id === invoiceId);
-        if (foundInvoice) {
-          setSelectedInvoice(foundInvoice);
-          setCurrentView(ViewState.VIEW_INVOICE);
+      if (path.startsWith('/view/') || path.startsWith('/v/')) {
+        const parts = path.split('/');
+        const invoiceId = parts[2] || parts[3]; // Adjust for /v/:id vs /view/:id
+        const idToUse = path.startsWith('/v/') ? parts[2] : parts[2]; // Usually parts[2]
+
+        if (idToUse) {
+          setPublicBillId(idToUse);
+          setCurrentView(ViewState.PUBLIC_VIEW_INVOICE);
         }
       } else if (path.startsWith('/customer/')) {
         const parts = path.split('/');
@@ -171,7 +175,7 @@ const AppContent: React.FC = () => {
   }
 
   // --- PUBLIC ACCESS BYPASS ---
-  const isPublicView = window.location.pathname.startsWith('/view/');
+  const isPublicView = window.location.pathname.startsWith('/view/') || window.location.pathname.startsWith('/v/');
 
   if (!user && !isPublicView) {
     return <Auth />;
@@ -180,19 +184,8 @@ const AppContent: React.FC = () => {
   // If public view and no user, we might need a dummy company context or handle it gracefully
   // But for now, let's just let it fall through.
   // Note: CompanyProvider might block if no company is set.
-  // We need to check useCompany which returns <CompanyForm /> if !company.
-
   if (!company && !isPublicView) {
     return <CompanyForm />;
-  }
-
-  if (isInitializing) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-slate-50 flex-col gap-4">
-        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-        <p className="text-slate-500 font-medium">Loading Data...</p>
-      </div>
-    )
   }
 
   // View Handler Logic
@@ -215,7 +208,7 @@ const AppContent: React.FC = () => {
       <div
         className={`
           fixed inset-0 z-[100] md:relative md:z-auto
-          ${isSidebarOpen ? 'flex' : (['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE'].includes(currentView) ? 'hidden' : 'hidden md:flex')}
+          ${isSidebarOpen ? 'flex' : (['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE', 'PUBLIC_VIEW_INVOICE'].includes(currentView) ? 'hidden' : 'hidden md:flex')}
         `}
       >
         {/* Backdrop for Mobile */}
@@ -250,7 +243,7 @@ const AppContent: React.FC = () => {
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto h-full relative w-full scroll-smooth bg-slate-50 dark:bg-slate-900">
         {/* Mobile Header with Hamburger (Visible only on mobile and when not in a detailed view) */}
-        {!['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE'].includes(currentView) && (
+        {!['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE', 'PUBLIC_VIEW_INVOICE'].includes(currentView) && (
           <div className="md:hidden sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-4 h-16 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/50 shadow-sm">
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -385,12 +378,16 @@ const AppContent: React.FC = () => {
                 onClosePostSaveActions={() => setShowPostSaveActions(false)}
               />
             )}
+
+            {currentView === ViewState.PUBLIC_VIEW_INVOICE && publicBillId && (
+              <PublicBillView billId={publicBillId} />
+            )}
           </motion.div>
         </AnimatePresence>
       </main>
 
       {/* Mobile Bottom Navigation - Visible only on Mobile and non-focused views */}
-      {!['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE'].includes(currentView) && (
+      {!['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE', 'PUBLIC_VIEW_INVOICE'].includes(currentView) && (
         <div className="md:hidden">
           <MobileBottomNav currentView={currentView} onChangeView={(view) => {
             if (view === ViewState.CREATE_INVOICE) {
