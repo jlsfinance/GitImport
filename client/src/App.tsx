@@ -204,14 +204,14 @@ const AppContent: React.FC = () => {
     );
   }
 
-  if (permissionError) {
-    return <PermissionErrorModal />;
-  }
-
   // --- PUBLIC ACCESS BYPASS ---
   const isPublicView = window.location.pathname.startsWith('/view/');
   const isPrivacyPage = window.location.pathname === '/privacy';
   const isTermsPage = window.location.pathname === '/terms';
+
+  if (permissionError && !isPublicView) {
+    return <PermissionErrorModal />;
+  }
 
   // Early return for pure public pages to avoid Auth/Company checks and main APP UI wrappers
   if (isPrivacyPage) {
