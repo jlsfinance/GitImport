@@ -923,7 +923,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
             </div>
 
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* POS VIEW RENDERER (Absolute Overlay or Conditional) */}
