@@ -774,9 +774,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
       {/* Main Content - Expressive Material View */}
       <div className={`flex-1 overflow-y-auto overflow-x-hidden bg-surface-container-low p-4 md:p-8 pb-32 print:p-0 print:bg-white ${isPosView ? 'print:hidden' : ''}`}>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+        <div
           className="max-w-5xl mx-auto bg-surface rounded-[40px] shadow-google-lg print:shadow-none border border-border print:border-none overflow-hidden">
           <div id="invoice-print" className="p-8 md:p-16 text-foreground print:text-black">
 

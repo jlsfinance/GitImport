@@ -334,115 +334,106 @@ const AppContent: React.FC = () => {
           </div>
         )}
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentView}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="w-full h-full"
-          >
-            {currentView === ViewState.DASHBOARD && (
-              <Dashboard
-                invoices={invoices}
-                onViewInvoice={handleViewInvoice}
-                onViewCustomerLedger={handleViewCustomerLedger}
-                onViewDaybook={handleViewDaybook}
-                onQuickShare={handleQuickShare}
-                onCreateInvoice={handleCreateNew}
-                onOpenReports={() => setCurrentView(ViewState.REPORTS)}
-                onAddCustomer={() => setCurrentView(ViewState.CUSTOMERS)}
-                onOpenSmartCalc={handleOpenSmartCalc}
-              />
-            )}
-            {currentView === ViewState.INVOICES && (
-              <AllInvoices
-                invoices={invoices}
-                onView={handleViewInvoice}
-                onEdit={handleEditInvoice}
-                onViewLedger={handleViewCustomerLedger}
-                onDelete={(inv) => {
-                  StorageService.deleteInvoice(inv.id);
-                  setInvoices(StorageService.getInvoices());
-                }}
-              />
-            )}
+        <div className="w-full h-full">
+          {currentView === ViewState.DASHBOARD && (
+            <Dashboard
+              invoices={invoices}
+              onViewInvoice={handleViewInvoice}
+              onViewCustomerLedger={handleViewCustomerLedger}
+              onViewDaybook={handleViewDaybook}
+              onQuickShare={handleQuickShare}
+              onCreateInvoice={handleCreateNew}
+              onOpenReports={() => setCurrentView(ViewState.REPORTS)}
+              onAddCustomer={() => setCurrentView(ViewState.CUSTOMERS)}
+              onOpenSmartCalc={handleOpenSmartCalc}
+            />
+          )}
+          {currentView === ViewState.INVOICES && (
+            <AllInvoices
+              invoices={invoices}
+              onView={handleViewInvoice}
+              onEdit={handleEditInvoice}
+              onViewLedger={handleViewCustomerLedger}
+              onDelete={(inv) => {
+                StorageService.deleteInvoice(inv.id);
+                setInvoices(StorageService.getInvoices());
+              }}
+            />
+          )}
 
-            {currentView === ViewState.ALL_INVOICES && (
-              <AllInvoices
-                invoices={invoices}
-                onView={handleViewInvoice}
-                onEdit={handleEditInvoice}
-                onViewLedger={handleViewCustomerLedger}
-                onDelete={(inv) => {
-                  StorageService.deleteInvoice(inv.id);
-                  setInvoices(StorageService.getInvoices());
-                }}
-              />
-            )}
-            {currentView === ViewState.DAYBOOK && <Daybook initialDate={selectedDaybookDate} />}
-            {currentView === ViewState.INVENTORY && <Inventory />}
-            {currentView === ViewState.EXPENSES && <Expenses onBack={() => setCurrentView(ViewState.DASHBOARD)} />}
-            {currentView === ViewState.PAYMENTS && (
-              <Payments
-                onBack={() => {
-                  setCurrentView(ViewState.DASHBOARD);
-                  setSelectedPaymentToEdit(null);
-                }}
-                initialPayment={selectedPaymentToEdit}
-              />
-            )}
-            {currentView === ViewState.REPORTS && (
-              <Reports
-                onBack={() => setCurrentView(ViewState.DASHBOARD)}
-                onViewLedger={handleViewCustomerLedger}
-              />
-            )}
-            {currentView === ViewState.CUSTOMERS && <Customers onEditInvoice={handleEditInvoice} onBack={() => setCurrentView(ViewState.DASHBOARD)} />}
-            {currentView === ViewState.SETTINGS && <Settings />}
-            {currentView === ViewState.IMPORT && <Import onClose={() => setCurrentView(ViewState.DASHBOARD)} onImportComplete={() => { }} />}
+          {currentView === ViewState.ALL_INVOICES && (
+            <AllInvoices
+              invoices={invoices}
+              onView={handleViewInvoice}
+              onEdit={handleEditInvoice}
+              onViewLedger={handleViewCustomerLedger}
+              onDelete={(inv) => {
+                StorageService.deleteInvoice(inv.id);
+                setInvoices(StorageService.getInvoices());
+              }}
+            />
+          )}
+          {currentView === ViewState.DAYBOOK && <Daybook initialDate={selectedDaybookDate} />}
+          {currentView === ViewState.INVENTORY && <Inventory />}
+          {currentView === ViewState.EXPENSES && <Expenses onBack={() => setCurrentView(ViewState.DASHBOARD)} />}
+          {currentView === ViewState.PAYMENTS && (
+            <Payments
+              onBack={() => {
+                setCurrentView(ViewState.DASHBOARD);
+                setSelectedPaymentToEdit(null);
+              }}
+              initialPayment={selectedPaymentToEdit}
+            />
+          )}
+          {currentView === ViewState.REPORTS && (
+            <Reports
+              onBack={() => setCurrentView(ViewState.DASHBOARD)}
+              onViewLedger={handleViewCustomerLedger}
+            />
+          )}
+          {currentView === ViewState.CUSTOMERS && <Customers onEditInvoice={handleEditInvoice} onBack={() => setCurrentView(ViewState.DASHBOARD)} />}
+          {currentView === ViewState.SETTINGS && <Settings />}
+          {currentView === ViewState.IMPORT && <Import onClose={() => setCurrentView(ViewState.DASHBOARD)} onImportComplete={() => { }} />}
 
-            {currentView === ViewState.CUSTOMER_LEDGER && selectedCustomerId && (
-              <CustomerLedger
-                customerId={selectedCustomerId}
-                onBack={() => setCurrentView(ViewState.DASHBOARD)}
-                onViewInvoice={handleViewInvoice}
-                onEditPayment={(payment) => {
-                  setSelectedPaymentToEdit(payment);
-                  setCurrentView(ViewState.PAYMENTS);
-                }}
-              />
-            )}
+          {currentView === ViewState.CUSTOMER_LEDGER && selectedCustomerId && (
+            <CustomerLedger
+              customerId={selectedCustomerId}
+              onBack={() => setCurrentView(ViewState.DASHBOARD)}
+              onViewInvoice={handleViewInvoice}
+              onEditPayment={(payment) => {
+                setSelectedPaymentToEdit(payment);
+                setCurrentView(ViewState.PAYMENTS);
+              }}
+            />
+          )}
 
-            {currentView === ViewState.CREATE_INVOICE && (
-              <CreateInvoice
-                onSave={handleSaveInvoice}
-                onCancel={() => setCurrentView(ViewState.INVOICES)}
-                startSmartCalc={startSmartCalc}
-              />
-            )}
+          {currentView === ViewState.CREATE_INVOICE && (
+            <CreateInvoice
+              onSave={handleSaveInvoice}
+              onCancel={() => setCurrentView(ViewState.INVOICES)}
+              startSmartCalc={startSmartCalc}
+            />
+          )}
 
-            {currentView === ViewState.EDIT_INVOICE && invoiceToEdit && (
-              <CreateInvoice
-                onSave={handleSaveInvoice}
-                onCancel={() => setCurrentView(ViewState.INVOICES)}
-                initialInvoice={invoiceToEdit}
-              />
-            )}
+          {currentView === ViewState.EDIT_INVOICE && invoiceToEdit && (
+            <CreateInvoice
+              onSave={handleSaveInvoice}
+              onCancel={() => setCurrentView(ViewState.INVOICES)}
+              initialInvoice={invoiceToEdit}
+            />
+          )}
 
-            {currentView === ViewState.VIEW_INVOICE && selectedInvoice && (
-              <InvoiceView
-                invoice={selectedInvoice}
-                onBack={() => setCurrentView(ViewState.INVOICES)}
-                onEdit={handleEditInvoice}
-                onViewLedger={handleViewCustomerLedger}
-                showPostSaveActions={showPostSaveActions}
-                onClosePostSaveActions={() => setShowPostSaveActions(false)}
-              />
-            )}
-          </motion.div>
-        </AnimatePresence>
+          {currentView === ViewState.VIEW_INVOICE && selectedInvoice && (
+            <InvoiceView
+              invoice={selectedInvoice}
+              onBack={() => setCurrentView(ViewState.INVOICES)}
+              onEdit={handleEditInvoice}
+              onViewLedger={handleViewCustomerLedger}
+              showPostSaveActions={showPostSaveActions}
+              onClosePostSaveActions={() => setShowPostSaveActions(false)}
+            />
+          )}
+        </div>
       </main>
 
       {/* Mobile Bottom Navigation - Visible only on Mobile and non-focused views */}
