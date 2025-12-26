@@ -243,8 +243,32 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
     }
     // --------------------------------
 
-    // Construct Link
-    const link = `https://git-import.vercel.app/view/${invoice.id}`;
+    // 📌 BULLETPROOF DATA (Fallback in case Firestore is slow/not synced)
+    const sanitizedData = {
+      invoiceNumber: invoice.invoiceNumber,
+      customerName: invoice.customerName,
+      customerAddress: invoice.customerAddress,
+      customerGstin: invoice.customerGstin,
+      date: invoice.date,
+      items: invoice.items,
+      subtotal: invoice.subtotal,
+      total: invoice.total,
+      totalCgst: invoice.totalCgst || 0,
+      totalSgst: invoice.totalSgst || 0,
+      totalIgst: invoice.totalIgst || 0,
+      gstEnabled: invoice.gstEnabled,
+      status: invoice.status,
+      notes: invoice.notes,
+      _company: {
+        name: company.name,
+        address: company.address,
+        phone: company.phone,
+        gstin: company.gstin || company.gst
+      }
+    };
+
+    const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(sanitizedData))));
+    const link = `https://git-import.vercel.app/view/${invoice.id}#d=${encodedData}`;
 
     // Format Message
     const companyName = company.name || "My Business";
