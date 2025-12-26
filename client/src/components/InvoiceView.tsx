@@ -7,7 +7,8 @@ import { GeminiService } from '../services/geminiService';
 import { WhatsAppService } from '../services/whatsappService';
 import { Printer, ArrowLeft, Play, Loader2, Download, Edit, Trash2, MoreVertical, MessageCircle, Check, FilePlus, History, UserPlus, Users, ChevronRight } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import { useCompany } from '@/contexts/CompanyContext';
+import { useAuth } from '@/contexts/AuthContext';
+
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 import QRCode from 'qrcode';
@@ -81,6 +82,7 @@ const numberToWords = (num: number): string => {
 };
 
 const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onViewLedger, showPostSaveActions, onClosePostSaveActions }) => {
+  const { user } = useAuth();
   const { company: firebaseCompany } = useCompany();
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -291,13 +293,13 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
     setIsLoadingAudio(true);
     const amountInWords = numberToWords(invoice.total);
     const textToRead = `
-      Invoice number ${invoice.invoiceNumber}.
-      Dated ${invoice.date}.
-      Billed to ${invoice.customerName}.
-      Total amount is ${invoice.total} Rupees.
-      ${amountInWords}.
-      Thank you for your business.
-    `;
+              Invoice number ${invoice.invoiceNumber}.
+              Dated ${invoice.date}.
+              Billed to ${invoice.customerName}.
+              Total amount is ${invoice.total} Rupees.
+              ${amountInWords}.
+              Thank you for your business.
+              `;
     await GeminiService.generateSpeech(textToRead);
     setIsLoadingAudio(false);
   };
@@ -678,13 +680,15 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
         </div>
 
         <div className="flex items-center gap-2">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => onEdit(invoice)}
-            className="w-11 h-11 flex items-center justify-center rounded-full bg-surface-container-high text-google-blue border border-border hover:shadow-google transition-all"
-          >
-            <Edit className="w-5 h-5" />
-          </motion.button>
+          {user && (
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onEdit(invoice)}
+              className="w-11 h-11 flex items-center justify-center rounded-full bg-surface-container-high text-google-blue border border-border hover:shadow-google transition-all"
+            >
+              <Edit className="w-5 h-5" />
+            </motion.button>
+          )}
 
           <div className="relative">
             <motion.button
