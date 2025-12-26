@@ -94,6 +94,8 @@ const Login: React.FC = () => {
                 <span className="material-symbols-outlined text-[18px]">mail</span>
               </div>
               <input
+                id="email"
+                name="email"
                 type="email"
                 required
                 value={email}
@@ -111,6 +113,8 @@ const Login: React.FC = () => {
                 <span className="material-symbols-outlined text-[18px]">lock</span>
               </div>
               <input
+                id="password"
+                name="password"
                 type="password"
                 required
                 value={password}
@@ -126,6 +130,8 @@ const Login: React.FC = () => {
 
           <div className="flex items-start gap-2 mt-1">
             <input
+              id="remember"
+              name="remember"
               type="checkbox"
               id="terms"
               checked={agreeToTerms}

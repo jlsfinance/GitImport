@@ -42,7 +42,7 @@ export class DownloadService {
 
           console.log('File saved to External:', result.uri);
 
-          // Notification (Keep it silent or minimal)
+          // Notification
           try {
             await LocalNotifications.schedule({
               notifications: [{
@@ -56,39 +56,47 @@ export class DownloadService {
             });
           } catch (nErr) { console.warn('Notification failed:', nErr); }
 
-          // Auto-Open Strategy: Use Share Sheet (Act as Opener)
-          // We save to cache to ensure Share API can access it easily via FileProvider
+          // Save to cache for easy access
           const cacheResult = await Filesystem.writeFile({
             path: filename,
             data: base64Data,
             directory: Directory.Cache
           });
 
-          // Short delay to ensure OS flushes the file to disk
+          // Short delay
           await new Promise(r => setTimeout(r, 200));
 
-          // Open directly via Share action which acts as an 'Open With' on Android
-          await Share.share({
-            title: filename,
-            url: cacheResult.uri,
-            dialogTitle: 'Open PDF with...'
-          });
+          // Ask user what to do
+          const action = confirm(`✅ ${filename} downloaded!\n\nTap OK to OPEN or Cancel to just SAVE.`);
+
+          if (action) {
+            // User wants to open - Use Share as opener
+            await Share.share({
+              title: filename,
+              url: cacheResult.uri,
+              dialogTitle: 'Open PDF with...'
+            });
+          }
+          // If cancelled, file is already saved, do nothing
 
         } catch (externalError: any) {
           console.error('App Storage failed:', externalError);
-          // Fallback if main save failed, still try to share from cache
+          // Fallback
           try {
             const cacheResult = await Filesystem.writeFile({
               path: filename,
               data: base64Data,
               directory: Directory.Cache
             });
-            await Share.share({
-              title: 'Open File',
-              text: `Open ${filename}`,
-              url: cacheResult.uri,
-              dialogTitle: 'Open PDF'
-            });
+
+            const action = confirm(`⚠️ Saved to temporary storage.\n\nTap OK to OPEN or Cancel to close.`);
+            if (action) {
+              await Share.share({
+                title: 'Open File',
+                url: cacheResult.uri,
+                dialogTitle: 'Open PDF'
+              });
+            }
           } catch (shareErr) {
             alert(`⚠️ Download Error: ${externalError.message}`);
           }

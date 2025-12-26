@@ -427,7 +427,7 @@ const DueList: React.FC = () => {
         }
     };
 
-    const handleDownloadReport = () => {
+    const handleDownloadReport = async () => {
         try {
             const doc = new jsPDF();
             const monthName = format(viewDate, 'MMMM yyyy');
@@ -461,7 +461,12 @@ const DueList: React.FC = () => {
                 headStyles: { fillColor: [41, 128, 185] },
             });
 
-            doc.save(`Due_List_${format(viewDate, 'yyyy_MM')}.pdf`);
+            const filename = `Due_List_${format(viewDate, 'yyyy_MM')}.pdf`;
+
+            // Use DownloadService for mobile compatibility
+            const { DownloadService } = await import('../services/DownloadService');
+            const pdfBase64 = doc.output('datauristring').split(',')[1];
+            await DownloadService.downloadPDF(filename, pdfBase64);
         } catch (error) {
             console.error("PDF Error", error);
             alert("Failed to download PDF");

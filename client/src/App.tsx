@@ -65,13 +65,6 @@ const RootApp: React.FC = () => {
         <CompanyProvider>
           <div className="relative h-screen w-full">
             <AccountingApp />
-            {/* Simple Floating Home Button to Switch Modules */}
-            <button
-              onClick={handleResetModule}
-              className="fixed top-4 right-4 z-[200] p-2 bg-white/20 hover:bg-white/40 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest border border-white/20 transition-all md:hidden"
-            >
-              Switch
-            </button>
           </div>
         </CompanyProvider>
       </AuthProvider>
@@ -82,13 +75,6 @@ const RootApp: React.FC = () => {
     return (
       <div className="relative h-screen w-full">
         <LoanApp />
-        {/* Simple Floating Home Button to Switch Modules */}
-        <button
-          onClick={handleResetModule}
-          className="fixed top-4 right-4 z-[200] p-2 bg-white/20 hover:bg-white/40 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest border border-white/20 transition-all md:hidden"
-        >
-          Switch
-        </button>
       </div>
     );
   }

@@ -49,36 +49,6 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
                         <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-1">Swipe Up</p>
                         <ChevronUp className="text-rose-400" size={20} />
                     </div>
-
-                    {/* Premium Curved Arrow - Left */}
-                    <div className="absolute left-6 top-1/2 -translate-y-1/2">
-                        <svg width="70" height="90" viewBox="0 0 70 90" className="drop-shadow-lg opacity-70 hover:opacity-100 transition-opacity">
-                            <defs>
-                                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" style={{ stopColor: '#fbbf24', stopOpacity: 0.9 }} />
-                                    <stop offset="100%" style={{ stopColor: '#f59e0b', stopOpacity: 1 }} />
-                                </linearGradient>
-                            </defs>
-                            <path d="M 35 75 Q 25 45, 35 15" stroke="url(#grad1)" strokeWidth="5" fill="none" strokeLinecap="round" className="animate-pulse" />
-                            <path d="M 35 15 L 25 30 M 35 15 L 45 30" stroke="url(#grad1)" strokeWidth="5" fill="none" strokeLinecap="round" />
-                            <text x="35" y="88" textAnchor="middle" fill="#fbbf24" className="text-[10px] font-black">UP</text>
-                        </svg>
-                    </div>
-
-                    {/* Premium Curved Arrow - Right */}
-                    <div className="absolute right-6 top-1/2 -translate-y-1/2">
-                        <svg width="70" height="90" viewBox="0 0 70 90" className="drop-shadow-lg opacity-70 hover:opacity-100 transition-opacity" style={{ animationDelay: '0.5s' }}>
-                            <defs>
-                                <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" style={{ stopColor: '#fbbf24', stopOpacity: 0.9 }} />
-                                    <stop offset="100%" style={{ stopColor: '#f59e0b', stopOpacity: 1 }} />
-                                </linearGradient>
-                            </defs>
-                            <path d="M 35 75 Q 45 45, 35 15" stroke="url(#grad2)" strokeWidth="5" fill="none" strokeLinecap="round" className="animate-pulse" />
-                            <path d="M 35 15 L 25 30 M 35 15 L 45 30" stroke="url(#grad2)" strokeWidth="5" fill="none" strokeLinecap="round" />
-                            <text x="35" y="88" textAnchor="middle" fill="#fbbf24" className="text-[10px] font-black">UP</text>
-                        </svg>
-                    </div>
                 </div>
 
                 {/* ANIMATED WAVE (ABSOLUTE BOTTOM + TRANSLATED DOWN TO CENTER) */}
@@ -134,36 +104,6 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
                 <div className="text-center opacity-80">
                     <h1 className="text-4xl font-black text-emerald-900 tracking-tighter">LOANS</h1>
                     <h2 className="text-xs font-bold text-emerald-400 tracking-widest uppercase mt-1">Management</h2>
-                </div>
-
-                {/* Premium Curved Arrow - Left */}
-                <div className="absolute left-6 bottom-1/2 translate-y-1/2">
-                    <svg width="70" height="90" viewBox="0 0 70 90" className="drop-shadow-lg opacity-70 hover:opacity-100 transition-opacity">
-                        <defs>
-                            <linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" style={{ stopColor: '#fbbf24', stopOpacity: 0.9 }} />
-                                <stop offset="100%" style={{ stopColor: '#f59e0b', stopOpacity: 1 }} />
-                            </linearGradient>
-                        </defs>
-                        <path d="M 35 15 Q 25 45, 35 75" stroke="url(#grad3)" strokeWidth="5" fill="none" strokeLinecap="round" className="animate-pulse" />
-                        <path d="M 35 75 L 25 60 M 35 75 L 45 60" stroke="url(#grad3)" strokeWidth="5" fill="none" strokeLinecap="round" />
-                        <text x="35" y="12" textAnchor="middle" fill="#fbbf24" className="text-[10px] font-black">DOWN</text>
-                    </svg>
-                </div>
-
-                {/* Premium Curved Arrow - Right */}
-                <div className="absolute right-6 bottom-1/2 translate-y-1/2">
-                    <svg width="70" height="90" viewBox="0 0 70 90" className="drop-shadow-lg opacity-70 hover:opacity-100 transition-opacity" style={{ animationDelay: '0.5s' }}>
-                        <defs>
-                            <linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" style={{ stopColor: '#fbbf24', stopOpacity: 0.9 }} />
-                                <stop offset="100%" style={{ stopColor: '#f59e0b', stopOpacity: 1 }} />
-                            </linearGradient>
-                        </defs>
-                        <path d="M 35 15 Q 45 45, 35 75" stroke="url(#grad4)" strokeWidth="5" fill="none" strokeLinecap="round" className="animate-pulse" />
-                        <path d="M 35 75 L 25 60 M 35 75 L 45 60" stroke="url(#grad4)" strokeWidth="5" fill="none" strokeLinecap="round" />
-                        <text x="35" y="12" textAnchor="middle" fill="#fbbf24" className="text-[10px] font-black">DOWN</text>
-                    </svg>
                 </div>
             </div>
 
