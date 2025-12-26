@@ -59,6 +59,24 @@ const AppContent: React.FC = () => {
       const isReady = FirebaseService.isReady();
       setIsCloudConnected(hasConfig && isReady);
 
+      // Handle Deep Links
+      const path = window.location.pathname;
+      if (path.startsWith('/view/')) {
+        const invoiceId = path.split('/')[2];
+        const foundInvoice = StorageService.getInvoices().find(inv => inv.id === invoiceId);
+        if (foundInvoice) {
+          setSelectedInvoice(foundInvoice);
+          setCurrentView(ViewState.VIEW_INVOICE);
+        }
+      } else if (path.startsWith('/customer/')) {
+        const parts = path.split('/');
+        const custId = parts[2];
+        if (custId && parts[3] === 'ledger') {
+          setSelectedCustomerId(custId);
+          setCurrentView(ViewState.CUSTOMER_LEDGER);
+        }
+      }
+
       setIsInitializing(false);
     };
     initApp();

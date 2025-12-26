@@ -249,6 +249,9 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     HapticService.light();
   };
 
+  // State to track if we are editing an existing product (to allow saving same ID)
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+
   const handleEditProduct = (productId: string) => {
     const product = products.find(p => p.id === productId);
     if (!product) return;
@@ -258,6 +261,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     setNewProductHSN(product.hsn || '');
     setNewProductGST(product.gstRate?.toString() || '0');
     setNewProductId(product.id);
+    setEditingProductId(product.id);
 
     // We need to know we are editing, not creating. 
     // Reuse saveNewProduct but we need to handle ID collision if it's an edit vs create.
@@ -454,11 +458,22 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     setNewProductName(nameQuery);
     setNewProductPrice('');
     setNewProductId('');
+    setEditingProductId(null);
     setPendingProductIndex(index);
     setShowProductModal(true);
   };
 
   const saveNewProduct = () => {
+    const idToCheck = newProductId.trim();
+    if (idToCheck) {
+      const existingProduct = products.find(p => p.id === idToCheck);
+      // If a product with this ID exists, AND we are not currently editing that specific product...
+      if (existingProduct && existingProduct.id !== editingProductId) {
+        alert("Warning: This Item ID already exists! Please use a unique ID.");
+        return;
+      }
+    }
+
     const newProduct: Product = {
       id: newProductId.trim() || crypto.randomUUID(),
       name: newProductName,
@@ -489,6 +504,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     setNewProductHSN('');
     setNewProductGST('0');
     setNewProductId('');
+    setEditingProductId(null);
     setPendingProductIndex(null);
   };
 

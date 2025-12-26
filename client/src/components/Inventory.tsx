@@ -31,6 +31,13 @@ const Inventory: React.FC = () => {
     // Use entered ID or preserve existing ID or generate new
     const finalId = newProduct.id?.trim() || crypto.randomUUID();
 
+    // Check for duplicate ID
+    const existingProduct = products.find(p => p.id === finalId);
+    if (existingProduct && originalId !== finalId) {
+      alert("Error: This Product ID already exists. Please use a unique ID.");
+      return;
+    }
+
     const product: Product = {
       id: finalId,
       name: newProduct.name!,
