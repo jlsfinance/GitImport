@@ -418,14 +418,14 @@ const FinanceOverview: React.FC = () => {
             {/* M3 Header */}
             <div className="sticky top-0 z-20 flex items-center bg-surface-light/95 dark:bg-surface-dark/95 backdrop-blur-sm p-4 pb-3 justify-between border-b border-outline-light/10 dark:border-outline-dark/10 transition-colors" style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}>
                 <div className="flex items-center gap-3">
-                    <Link to="/" className="flex items-center justify-center p-2 rounded-full hover:bg-surface-variant-light/30 dark:hover:bg-surface-variant-dark/30 transition-colors">
+                    <Link to="/loan" className="flex items-center justify-center p-2 rounded-full hover:bg-surface-variant-light/30 dark:hover:bg-surface-variant-dark/30 transition-colors">
                         <span className="material-symbols-outlined">arrow_back</span>
                     </Link>
                     <h2 className="text-xl font-normal">Cash Account</h2>
                 </div>
                 <div className="flex gap-2">
                     <Link
-                        to="/partners"
+                        to="/loan/partners"
                         className="flex items-center justify-center w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container hover:shadow-m3-1 transition-all"
                     >
                         <span className="material-symbols-outlined text-[20px]">group</span>

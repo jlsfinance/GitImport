@@ -609,7 +609,7 @@ const Loans: React.FC = () => {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <Link to="/loans/new" className="h-11 px-5 rounded-xl btn-kadak flex items-center gap-2 hover:brightness-110 active:scale-95 transition-all">
+                    <Link to="/loan/loans/new" className="h-11 px-5 rounded-xl btn-kadak flex items-center gap-2 hover:brightness-110 active:scale-95 transition-all">
                         <span className="material-symbols-outlined text-[20px] material-symbols-fill">add_circle</span>
                         <span className="hidden sm:inline">New Loan</span>
                     </Link>
@@ -626,7 +626,7 @@ const Loans: React.FC = () => {
                     filteredLoans.map((loan) => (
                         <div key={loan.id}>
                             <div
-                                onClick={() => navigate(`/ loans / ${loan.id} `)}
+                                onClick={() => navigate(`/loan/loans/${loan.id}`)}
                                 className="glass-card relative rounded-2xl p-5 hover:bg-white/90 dark:hover:bg-slate-800/90 hover:shadow-xl hover:shadow-indigo-500/10 cursor-pointer transition-all duration-300 group border border-white/40 dark:border-slate-700/40"
                             >
                                 <div className="absolute left-0 top-6 bottom-6 w-1 bg-gradient-to-b from-indigo-500 to-blue-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -724,7 +724,7 @@ const Loans: React.FC = () => {
 
                                         <div className="space-y-2">
                                             <Link
-                                                to={`/loans/${selectedLoan.id}`}
+                                                to={`/loan/loans/${selectedLoan.id}`}
                                                 className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                                             >
                                                 <div className="h-10 w-10 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center shrink-0">

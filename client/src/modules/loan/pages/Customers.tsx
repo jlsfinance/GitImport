@@ -95,12 +95,12 @@ const Customers: React.FC = () => {
       <header className="sticky top-0 z-10 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm transition-colors duration-200" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex items-center justify-between px-4 py-4">
           <div className="flex items-center gap-3">
-            <Link to="/" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all">
+            <Link to="/loan" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all">
               <span className="material-symbols-outlined">arrow_back</span>
             </Link>
             <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
           </div>
-          <Link to="/customers/new" className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 hover:bg-primary/90 active:scale-95 transition-all">
+          <Link to="/loan/customers/new" className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 hover:bg-primary/90 active:scale-95 transition-all">
             <span className="material-symbols-outlined">add</span>
           </Link>
         </div>
@@ -157,7 +157,7 @@ const Customers: React.FC = () => {
         ) : (
           filteredCustomers.map((customer) => (
             <Link
-              to={`/customers/${customer.id}`}
+              to={`/loan/customers/${customer.id}`}
               key={customer.id}
               className="group flex items-center justify-between rounded-xl bg-white dark:bg-[#1e2736] p-3 shadow-sm ring-1 ring-slate-900/5 dark:ring-white/5 transition-all hover:shadow-md active:scale-[0.99]"
             >
@@ -187,7 +187,7 @@ const Customers: React.FC = () => {
 
                   {/* Status Indicator Dot */}
                   <div className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-[#1e2736] ${customer.status === 'Active' ? 'bg-green-500' :
-                      customer.status === 'Overdue' ? 'bg-red-500' : 'bg-orange-500'
+                    customer.status === 'Overdue' ? 'bg-red-500' : 'bg-orange-500'
                     }`}></div>
                 </div>
 
@@ -202,8 +202,8 @@ const Customers: React.FC = () => {
 
               <div className="flex flex-col items-end gap-2 pl-2">
                 <span className={`inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold ring-1 ring-inset uppercase ${customer.status === 'Active' ? 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-green-600/20' :
-                    customer.status === 'Overdue' ? 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20' :
-                      'bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 ring-orange-600/20'
+                  customer.status === 'Overdue' ? 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20' :
+                    'bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 ring-orange-600/20'
                   }`}>{customer.status}</span>
 
                 {/* Phone Call Button - Stop propagation to allow clicking row for details without calling */}

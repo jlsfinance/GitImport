@@ -21,13 +21,13 @@ const Partners: React.FC = () => {
     const [loans, setLoans] = useState<Loan[]>([]);
     const [receipts, setReceipts] = useState<Receipt[]>([]);
     const [loading, setLoading] = useState(true);
-    
+
     // Form State
     const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPartnerModal, setShowPartnerModal] = useState(false);
     const [showTransactionModal, setShowTransactionModal] = useState(false);
-    
+
     const [partnerFormName, setPartnerFormName] = useState('');
     const [transactionForm, setTransactionForm] = useState({
         partnerId: '',
@@ -60,7 +60,7 @@ const Partners: React.FC = () => {
             const loansSnap = await getDocs(query(collection(db, "loans"), where("status", "in", ["Disbursed", "Completed", "Active", "Overdue"])));
             const loansData = loansSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Loan[];
             setLoans(loansData);
-            
+
             const receiptsSnap = await getDocs(query(collection(db, "receipts")));
             const validReceipts = receiptsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Receipt));
             setReceipts(validReceipts);
@@ -89,21 +89,21 @@ const Partners: React.FC = () => {
 
     const monthlyCalculations = useMemo(() => {
         if (!selectedMonth) return { totalProfit: 0, processingFees: 0, interestCollected: 0, profitSplits: [] };
-        
+
         const monthStart = startOfMonth(parseISO(`${selectedMonth}-01`));
         const monthEnd = endOfMonth(parseISO(`${selectedMonth}-01`));
 
         const processingFees = loans
             .filter(l => l.disbursalDate && isWithinInterval(parseISO(l.disbursalDate), { start: monthStart, end: monthEnd }))
             .reduce((sum, l) => sum + (Number(l.processingFee) || 0), 0);
-        
+
         const interestCollected = receipts
             .filter(r => r.paymentDate && isWithinInterval(parseISO(r.paymentDate), { start: monthStart, end: monthEnd }))
             .reduce((sum, receipt) => {
                 const loan = loans.find(l => l.id === receipt.loanId);
                 if (!loan) return sum;
                 const monthlyInterestRate = (loan.interestRate || 0) / 12 / 100;
-                
+
                 let balance = Number(loan.amount);
                 // Simplified Interest Calculation for Receipts
                 // Ideally this should use the exact principal outstanding at payment time from receipt/schedule
@@ -111,7 +111,7 @@ const Partners: React.FC = () => {
                 const interestComponent = (balance * monthlyInterestRate); // Rough estimate for display
                 return sum + interestComponent;
             }, 0);
-            
+
         // Simplified Total Profit = Fees + Estimated Interest
         const totalProfit = processingFees + interestCollected;
 
@@ -149,13 +149,13 @@ const Partners: React.FC = () => {
             type: t.type === 'investment' ? 'credit' : 'debit',
             amount: Number(t.amount),
         }));
-        
+
         // Add monthly profits to ledger (Simplified: Adds current selected month profit as an entry)
         const partner = partners.find(p => p.id === partnerId);
         if (partner) {
             monthlyCalculations.profitSplits.forEach(split => {
                 if (split.name === partner.name && split.profit > 0) {
-                     entries.push({
+                    entries.push({
                         date: endOfMonth(parseISO(`${selectedMonth}-01`)),
                         particulars: `Profit Share for ${format(parseISO(`${selectedMonth}-01`), 'MMM yyyy')}`,
                         type: 'credit',
@@ -164,8 +164,8 @@ const Partners: React.FC = () => {
                 }
             });
         }
-        
-        entries.sort((a,b) => a.date.getTime() - b.date.getTime());
+
+        entries.sort((a, b) => a.date.getTime() - b.date.getTime());
         setLedgerEntries(entries);
     }, [transactions, partners, monthlyCalculations, selectedMonth]);
 
@@ -189,13 +189,13 @@ const Partners: React.FC = () => {
         if (!ledgerPartner) return;
 
         const doc = new jsPDF();
-        
+
         doc.setFontSize(18);
         doc.setFont("helvetica", "bold");
         doc.text("Partner Capital Ledger", doc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
         doc.setFontSize(14);
         doc.text(ledgerPartner.name, doc.internal.pageSize.getWidth() / 2, 25, { align: 'center' });
-        
+
         doc.setFontSize(10);
         doc.text(`Period: ${ledgerStartDate} to ${ledgerEndDate}`, 14, 35);
 
@@ -226,20 +226,20 @@ const Partners: React.FC = () => {
                 }
             }
         });
-        
+
         doc.save(`${ledgerPartner.name}_Ledger.pdf`);
     }
-    
+
     const monthlyCashFlow = useMemo(() => {
         if (!selectedMonth) return { totalInflow: 0, totalOutflow: 0, netFlow: 0 };
-        
+
         const monthStart = startOfMonth(parseISO(`${selectedMonth}-01`));
         const monthEnd = endOfMonth(parseISO(`${selectedMonth}-01`));
 
         const monthTransactions = transactions.filter(t => isWithinInterval(parseISO(t.date), { start: monthStart, end: monthEnd }));
         const investments = monthTransactions.filter(t => t.type === 'investment').reduce((sum, t) => sum + Number(t.amount), 0);
         const withdrawals = monthTransactions.filter(t => t.type === 'withdrawal').reduce((sum, t) => sum + Number(t.amount), 0);
-        
+
         const emiCollected = receipts
             .filter(r => r.paymentDate && isWithinInterval(parseISO(r.paymentDate), { start: monthStart, end: monthEnd }))
             .reduce((sum, r) => sum + Number(r.amount), 0);
@@ -247,7 +247,7 @@ const Partners: React.FC = () => {
         const loansDisbursed = loans
             .filter(l => l.disbursalDate && isWithinInterval(parseISO(l.disbursalDate), { start: monthStart, end: monthEnd }))
             .reduce((sum, l) => sum + (l.actualDisbursed || Number(l.amount)), 0);
-        
+
         const totalInflow = investments + emiCollected;
         const totalOutflow = withdrawals + loansDisbursed;
         const netFlow = totalInflow - totalOutflow;
@@ -255,7 +255,7 @@ const Partners: React.FC = () => {
         return { totalInflow, totalOutflow, netFlow };
 
     }, [selectedMonth, transactions, loans, receipts]);
-    
+
     const onPartnerSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!partnerFormName) return;
@@ -271,7 +271,7 @@ const Partners: React.FC = () => {
             setIsSubmitting(false);
         }
     };
-    
+
     const onTransactionSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!transactionForm.partnerId || !transactionForm.amount) return;
@@ -298,7 +298,7 @@ const Partners: React.FC = () => {
             {/* Header */}
             <div className="sticky top-0 z-10 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm px-4 py-4 border-b border-slate-200 dark:border-slate-800">
                 <div className="flex items-center gap-3">
-                    <Link to="/finance" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all">
+                    <Link to="/loan/finance" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all">
                         <span className="material-symbols-outlined">arrow_back</span>
                     </Link>
                     <h1 className="text-2xl font-bold tracking-tight">Partner Capital</h1>
@@ -306,7 +306,7 @@ const Partners: React.FC = () => {
             </div>
 
             <div className="max-w-6xl mx-auto p-4 space-y-6">
-                
+
                 {/* Actions */}
                 <div className="flex justify-between items-center">
                     <h2 className="text-lg font-bold">Partners & Capital</h2>
@@ -327,26 +327,26 @@ const Partners: React.FC = () => {
                         <div className="md:w-1/3 space-y-4">
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase">Select Month</label>
-                                <input 
-                                    type="month" 
-                                    value={selectedMonth} 
+                                <input
+                                    type="month"
+                                    value={selectedMonth}
                                     onChange={(e) => setSelectedMonth(e.target.value)}
                                     className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
                                 />
                             </div>
-                            
+
                             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl space-y-3">
                                 <h4 className="font-bold text-sm text-slate-700 dark:text-slate-300">Cash Flow Summary</h4>
                                 <div className="flex justify-between text-sm text-green-600">
-                                    <span className="flex items-center gap-1"><span className="material-symbols-outlined text-sm">arrow_downward</span> Inflow</span> 
+                                    <span className="flex items-center gap-1"><span className="material-symbols-outlined text-sm">arrow_downward</span> Inflow</span>
                                     <span className="font-bold">{formatCurrency(monthlyCashFlow.totalInflow)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm text-red-600">
-                                    <span className="flex items-center gap-1"><span className="material-symbols-outlined text-sm">arrow_upward</span> Outflow</span> 
+                                    <span className="flex items-center gap-1"><span className="material-symbols-outlined text-sm">arrow_upward</span> Outflow</span>
                                     <span className="font-bold">{formatCurrency(monthlyCashFlow.totalOutflow)}</span>
                                 </div>
                                 <div className={`flex justify-between font-bold text-sm border-t border-slate-200 dark:border-slate-700 pt-2 ${monthlyCashFlow.netFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    <span>Net Flow:</span> 
+                                    <span>Net Flow:</span>
                                     <span>{formatCurrency(monthlyCashFlow.netFlow)}</span>
                                 </div>
                             </div>
@@ -412,7 +412,7 @@ const Partners: React.FC = () => {
                                                 <td className="px-4 py-3 font-medium">{p.name}</td>
                                                 <td className="px-4 py-3 text-right font-bold">{formatCurrency(capitalInfo?.capital || 0)}</td>
                                                 <td className="px-4 py-3 text-right">
-                                                    <button 
+                                                    <button
                                                         onClick={() => { setLedgerPartner(p); prepareLedgerData(p.id); }}
                                                         className="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 px-2 py-1 rounded font-bold"
                                                     >
@@ -469,10 +469,10 @@ const Partners: React.FC = () => {
                         <form onSubmit={onTransactionSubmit} className="space-y-4">
                             <div>
                                 <label className="text-xs font-bold text-slate-500 mb-1 block">Partner</label>
-                                <select 
+                                <select
                                     className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
                                     value={transactionForm.partnerId}
-                                    onChange={e => setTransactionForm({...transactionForm, partnerId: e.target.value})}
+                                    onChange={e => setTransactionForm({ ...transactionForm, partnerId: e.target.value })}
                                     required
                                 >
                                     <option value="">Select Partner</option>
@@ -481,10 +481,10 @@ const Partners: React.FC = () => {
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-500 mb-1 block">Type</label>
-                                <select 
+                                <select
                                     className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
                                     value={transactionForm.type}
-                                    onChange={e => setTransactionForm({...transactionForm, type: e.target.value as any})}
+                                    onChange={e => setTransactionForm({ ...transactionForm, type: e.target.value as any })}
                                 >
                                     <option value="investment">Investment</option>
                                     <option value="withdrawal">Withdrawal</option>
@@ -492,21 +492,21 @@ const Partners: React.FC = () => {
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-500 mb-1 block">Amount</label>
-                                <input 
-                                    type="number" 
+                                <input
+                                    type="number"
                                     className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
                                     value={transactionForm.amount}
-                                    onChange={e => setTransactionForm({...transactionForm, amount: e.target.value})}
+                                    onChange={e => setTransactionForm({ ...transactionForm, amount: e.target.value })}
                                     required
                                 />
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-500 mb-1 block">Date</label>
-                                <input 
-                                    type="date" 
+                                <input
+                                    type="date"
                                     className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
                                     value={transactionForm.date}
-                                    onChange={e => setTransactionForm({...transactionForm, date: e.target.value})}
+                                    onChange={e => setTransactionForm({ ...transactionForm, date: e.target.value })}
                                     required
                                 />
                             </div>
@@ -527,8 +527,8 @@ const Partners: React.FC = () => {
                         <form onSubmit={onPartnerSubmit} className="space-y-4">
                             <div>
                                 <label className="text-xs font-bold text-slate-500 mb-1 block">Name</label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
                                     value={partnerFormName}
                                     onChange={e => setPartnerFormName(e.target.value)}
@@ -556,7 +556,7 @@ const Partners: React.FC = () => {
                             </div>
                             <button onClick={() => setLedgerPartner(null)} className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"><span className="material-symbols-outlined">close</span></button>
                         </div>
-                        
+
                         <div className="flex gap-2 mb-4 bg-slate-50 dark:bg-slate-800 p-2 rounded-lg">
                             <input type="date" value={ledgerStartDate} onChange={e => setLedgerStartDate(e.target.value)} className="text-xs p-1 rounded border" />
                             <span className="text-xs self-center">to</span>

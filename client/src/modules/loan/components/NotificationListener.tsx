@@ -69,33 +69,49 @@ const NotificationListener: React.FC = () => {
                         console.log("🔔 Receiving Notification:", data.title);
 
                         try {
-                            // Schedule Local Notification
+                            // Try Capacitor LocalNotifications first (for mobile)
                             await LocalNotifications.schedule({
                                 notifications: [{
                                     title: data.title || 'JLS Alert',
                                     body: data.message || '',
                                     id: Math.floor(Math.random() * 1000000),
-                                    schedule: { at: new Date(Date.now() + 1500) }, // 1.5s delay
+                                    schedule: { at: new Date(Date.now() + 1000) }, // 1s delay
                                     sound: 'beep.wav',
                                     channelId: 'default',
                                     smallIcon: 'ic_launcher',
                                     largeIcon: 'ic_launcher'
                                 }]
                             });
+                            console.log("✅ Capacitor notification scheduled");
                         } catch (err) {
+                            console.log("⚠️ Capacitor failed, trying web notification:", err);
                             // Fallback for Web Browser
                             if ("Notification" in window) {
                                 if (Notification.permission === "granted") {
-                                    new Notification(data.title || 'JLS Alert', { body: data.message });
-                                } else if (Notification.permission !== "denied") {
-                                    Notification.requestPermission().then(permission => {
-                                        if (permission === "granted") {
-                                            new Notification(data.title || 'JLS Alert', { body: data.message });
-                                        }
+                                    const notification = new Notification(data.title || 'JLS Alert', {
+                                        body: data.message,
+                                        icon: '/logo.png',
+                                        badge: '/logo.png',
+                                        tag: 'jls-notification',
+                                        requireInteraction: false
                                     });
+                                    console.log("✅ Web notification shown");
+
+                                    // Auto close after 5 seconds
+                                    setTimeout(() => notification.close(), 5000);
+                                } else if (Notification.permission !== "denied") {
+                                    const permission = await Notification.requestPermission();
+                                    if (permission === "granted") {
+                                        const notification = new Notification(data.title || 'JLS Alert', {
+                                            body: data.message,
+                                            icon: '/logo.png'
+                                        });
+                                        setTimeout(() => notification.close(), 5000);
+                                    }
                                 }
+                            } else {
+                                console.error("❌ No notification support available");
                             }
-                            console.error("Error scheduling local notification:", err);
                         }
                     }
                 });

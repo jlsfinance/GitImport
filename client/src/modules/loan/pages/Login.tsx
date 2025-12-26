@@ -24,7 +24,7 @@ const Login: React.FC = () => {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      navigate('/');
+      navigate('/loan');
     } catch (err: any) {
       console.error(err);
       setError('Invalid email or password.');
@@ -52,7 +52,7 @@ const Login: React.FC = () => {
         const provider = new GoogleAuthProvider();
         await signInWithPopup(auth, provider);
       }
-      navigate('/');
+      navigate('/loan');
     } catch (err: any) {
       console.error("Google login error:", err);
       const errorMessage = err.message || JSON.stringify(err);
@@ -120,7 +120,7 @@ const Login: React.FC = () => {
               />
             </div>
             <div className="flex justify-end mt-1">
-              <Link to="/forgot-password" className="text-[10px] text-white/60 hover:text-white transition-colors">Forgot password?</Link>
+              <Link to="/loan/forgot-password" className="text-[10px] text-white/60 hover:text-white transition-colors">Forgot password?</Link>
             </div>
           </div>
 
@@ -133,7 +133,7 @@ const Login: React.FC = () => {
               className="mt-0.5 w-3 h-3 rounded border-white/30 bg-white/10 text-purple-600 focus:ring-purple-500 focus:ring-offset-0"
             />
             <label htmlFor="terms" className="text-[10px] text-white/70 leading-tight">
-              I agree to the <Link to="/terms" className="text-white font-bold hover:underline">Terms</Link> and <Link to="/privacy" className="text-white font-bold hover:underline">Privacy Policy</Link>.
+              I agree to the <Link to="/loan/terms" className="text-white font-bold hover:underline">Terms</Link> and <Link to="/loan/privacy" className="text-white font-bold hover:underline">Privacy Policy</Link>.
             </label>
           </div>
 
@@ -175,7 +175,7 @@ const Login: React.FC = () => {
             <span className="text-xs">Google Account</span>
           </button>
 
-          <Link to="/customer-login" className="w-full border border-white/20 bg-white/5 py-3 rounded-full flex items-center justify-center gap-2 active:scale-95 transition-all text-xs font-bold hover:bg-white/10">
+          <Link to="/loan/customer-login" className="w-full border border-white/20 bg-white/5 py-3 rounded-full flex items-center justify-center gap-2 active:scale-95 transition-all text-xs font-bold hover:bg-white/10">
             <span className="material-symbols-outlined text-[16px]">person_pin</span>
             Customer Portal Login
           </Link>

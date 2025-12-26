@@ -8,7 +8,7 @@ const Tools: React.FC = () => {
             {/* Header & Settings */}
             <div className="flex justify-between items-center px-6 pt-6 pb-2" style={{ paddingTop: 'calc(2rem + env(safe-area-inset-top))' }}>
                 <h1 className="text-3xl font-extrabold tracking-tight">Tools & Reports</h1>
-                <Link to="/settings" className="p-2 -mr-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <Link to="/loan/settings" className="p-2 -mr-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <span className="material-symbols-outlined text-slate-900 dark:text-white">settings</span>
                 </Link>
             </div>
@@ -46,28 +46,28 @@ const Tools: React.FC = () => {
                 <div>
                     <h3 className="text-lg font-bold mb-3 px-1">Utilities</h3>
                     <div className="grid grid-cols-2 gap-3">
-                        <Link to="/tools/emi" className="bg-white dark:bg-[#1e2736] p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-start gap-4 hover:shadow-md transition-all active:scale-95">
+                        <Link to="/loan/tools/emi" className="bg-white dark:bg-[#1e2736] p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-start gap-4 hover:shadow-md transition-all active:scale-95">
                             <div className="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center">
                                 <span className="material-symbols-outlined">calculate</span>
                             </div>
                             <span className="font-bold text-sm">Loan Calc</span>
                         </Link>
 
-                        <Link to="/loans" className="bg-white dark:bg-[#1e2736] p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-start gap-4 hover:shadow-md transition-all active:scale-95">
+                        <Link to="/loan/loans" className="bg-white dark:bg-[#1e2736] p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-start gap-4 hover:shadow-md transition-all active:scale-95">
                             <div className="h-10 w-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center">
                                 <span className="material-symbols-outlined">percent</span>
                             </div>
                             <span className="font-bold text-sm">EMI Check</span>
                         </Link>
 
-                        <Link to="/tools/legal-notice" className="bg-white dark:bg-[#1e2736] p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-start gap-4 hover:shadow-md transition-all active:scale-95">
+                        <Link to="/loan/tools/legal-notice" className="bg-white dark:bg-[#1e2736] p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-start gap-4 hover:shadow-md transition-all active:scale-95">
                             <div className="h-10 w-10 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 flex items-center justify-center">
                                 <span className="material-symbols-outlined">gavel</span>
                             </div>
                             <span className="font-bold text-sm">Legal Notice</span>
                         </Link>
 
-                        <Link to="/customers" className="bg-white dark:bg-[#1e2736] p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-start gap-4 hover:shadow-md transition-all active:scale-95">
+                        <Link to="/loan/customers" className="bg-white dark:bg-[#1e2736] p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-start gap-4 hover:shadow-md transition-all active:scale-95">
                             <div className="h-10 w-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 flex items-center justify-center">
                                 <span className="material-symbols-outlined">search</span>
                             </div>
@@ -80,7 +80,7 @@ const Tools: React.FC = () => {
                 <div>
                     <h3 className="text-lg font-bold mb-3 px-1">Operational Reports</h3>
                     <div className="space-y-3">
-                        <Link to="/reports" className="flex items-center justify-between p-4 bg-white dark:bg-[#1e2736] rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        <Link to="/loan/reports" className="flex items-center justify-between p-4 bg-white dark:bg-[#1e2736] rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                             <div className="flex items-center gap-4">
                                 <div className="h-10 w-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center">
                                     <span className="material-symbols-outlined">bar_chart</span>
@@ -93,7 +93,7 @@ const Tools: React.FC = () => {
                             <span className="material-symbols-outlined text-slate-300">chevron_right</span>
                         </Link>
 
-                        <Link to="/due-list" className="flex items-center justify-between p-4 bg-white dark:bg-[#1e2736] rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        <Link to="/loan/due-list" className="flex items-center justify-between p-4 bg-white dark:bg-[#1e2736] rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                             <div className="flex items-center gap-4">
                                 <div className="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center">
                                     <span className="material-symbols-outlined">receipt_long</span>
@@ -106,7 +106,7 @@ const Tools: React.FC = () => {
                             <span className="material-symbols-outlined text-slate-300">chevron_right</span>
                         </Link>
 
-                        <Link to="/due-list" className="flex items-center justify-between p-4 bg-white dark:bg-[#1e2736] rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        <Link to="/loan/due-list" className="flex items-center justify-between p-4 bg-white dark:bg-[#1e2736] rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                             <div className="flex items-center gap-4">
                                 <div className="h-10 w-10 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 flex items-center justify-center">
                                     <span className="material-symbols-outlined">warning</span>
@@ -119,7 +119,7 @@ const Tools: React.FC = () => {
                             <span className="material-symbols-outlined text-slate-300">chevron_right</span>
                         </Link>
 
-                        <Link to="/approvals" className="flex items-center justify-between p-4 bg-white dark:bg-[#1e2736] rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        <Link to="/loan/approvals" className="flex items-center justify-between p-4 bg-white dark:bg-[#1e2736] rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                             <div className="flex items-center gap-4">
                                 <div className="h-10 w-10 rounded-xl bg-green-100 dark:bg-green-900/30 text-green-600 flex items-center justify-center">
                                     <span className="material-symbols-outlined">fact_check</span>
@@ -132,7 +132,7 @@ const Tools: React.FC = () => {
                             <span className="material-symbols-outlined text-slate-300">chevron_right</span>
                         </Link>
 
-                        <Link to="/disbursal" className="flex items-center justify-between p-4 bg-white dark:bg-[#1e2736] rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        <Link to="/loan/disbursal" className="flex items-center justify-between p-4 bg-white dark:bg-[#1e2736] rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                             <div className="flex items-center gap-4">
                                 <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 flex items-center justify-center">
                                     <span className="material-symbols-outlined">payments</span>

@@ -68,6 +68,52 @@ const Dashboard: React.FC = () => {
         }
     };
 
+    const handleTestNotification = async () => {
+        console.log("🔔 Test notification clicked");
+        try {
+            if (!("Notification" in window)) {
+                alert("❌ Your browser doesn't support notifications");
+                return;
+            }
+
+            console.log("Current permission:", Notification.permission);
+
+            if (Notification.permission === "denied") {
+                alert("❌ Notifications are blocked! Please enable them in browser settings:\n\n1. Click lock icon in address bar\n2. Allow Notifications\n3. Refresh page");
+                return;
+            }
+
+            if (Notification.permission !== "granted") {
+                console.log("Requesting permission...");
+                const permission = await Notification.requestPermission();
+                console.log("Permission result:", permission);
+
+                if (permission !== "granted") {
+                    alert("❌ Permission denied. Please allow notifications.");
+                    return;
+                }
+            }
+
+            console.log("Creating notification...");
+            const notification = new Notification("🔔 Test Notification", {
+                body: "If you see this, notifications are working perfectly!",
+                icon: "/logo.png",
+                badge: "/logo.png",
+                tag: "test-notification",
+                requireInteraction: false
+            });
+
+            console.log("✅ Notification created successfully!");
+            alert("✅ Notification sent! Check top-right corner of your screen.");
+
+            setTimeout(() => notification.close(), 5000);
+        } catch (e: any) {
+            console.error("❌ Error:", e);
+            alert("❌ Error: " + e.message);
+        }
+    };
+
+
     useEffect(() => {
         const avatars = [
             'https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Felix&backgroundColor=b6e3f4,c0aede,d1d4f9',
@@ -510,7 +556,14 @@ const Dashboard: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <Link to="/notifications" className={`relative p-2 rounded-full transition-all border shadow-sm active:scale-90 ${isNotifEnabled
+                        <button
+                            onClick={handleTestNotification}
+                            className="p-2 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all shadow-sm active:scale-90"
+                            title="Test Notification"
+                        >
+                            <span className="material-symbols-outlined text-[20px]">notifications_active</span>
+                        </button>
+                        <Link to="/loan/notifications" className={`relative p-2 rounded-full transition-all border shadow-sm active:scale-90 ${isNotifEnabled
                             ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
                             : 'bg-white/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 border-white/30 dark:border-white/5 hover:bg-white dark:hover:bg-slate-700'
                             }`}>
@@ -540,7 +593,7 @@ const Dashboard: React.FC = () => {
                                 <span className="material-symbols-outlined text-indigo-200 text-sm">account_balance_wallet</span>
                                 <span className="text-xs font-semibold text-indigo-100 tracking-wide uppercase">Available Balance</span>
                             </div>
-                            <Link to="/finance" className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all active:scale-90 ring-1 ring-white/20">
+                            <Link to="/loan/finance" className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all active:scale-90 ring-1 ring-white/20">
                                 <span className="material-symbols-outlined">arrow_outward</span>
                             </Link>
                         </div>
@@ -567,10 +620,10 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         {[
-                            { link: "/loans/new", icon: "add", isKadak: true, label: "New Loan" },
-                            { link: "/due-list", icon: "payments", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30", label: "Collect EMI" },
-                            { link: "/customers/new", icon: "person_add", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/30", label: "Add Client" },
-                            { link: "/finance", icon: "bar_chart", color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30", label: "Reports" }
+                            { link: "/loan/loans/new", icon: "add", isKadak: true, label: "New Loan" },
+                            { link: "/loan/due-list", icon: "payments", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30", label: "Collect EMI" },
+                            { link: "/loan/customers/new", icon: "person_add", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/30", label: "Add Client" },
+                            { link: "/loan/finance", icon: "bar_chart", color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30", label: "Reports" }
                         ].map((action, i) => (
                             <Link key={i} to={action.link}
                                 className={`group flex flex-col items-center justify-center p-5 transition-all duration-300 ${action.isKadak
@@ -715,7 +768,7 @@ const Dashboard: React.FC = () => {
                             <span className="w-1 h-4 bg-orange-500 rounded-full"></span>
                             Recent Activity
                         </h3>
-                        <Link to="/loans" className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                        <Link to="/loan/loans" className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                             <span className="material-symbols-outlined text-slate-400">arrow_forward</span>
                         </Link>
                     </div>
@@ -731,7 +784,7 @@ const Dashboard: React.FC = () => {
                             const customer = customers.find(c => c.id === loan.customerId);
                             const loanDate = loan.date?.toDate?.() || (loan.date ? new Date(loan.date) : new Date());
                             return (
-                                <Link key={loan.id} to={`/loans/${loan.id}`} className="group relative flex items-center justify-between p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all hover:-translate-y-0.5">
+                                <Link key={loan.id} to={`/loan/loans/${loan.id}`} className="group relative flex items-center justify-between p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all hover:-translate-y-0.5">
                                     <div className="flex items-center gap-4">
                                         <div className="h-12 w-12 shrink-0 rounded-2xl bg-slate-50 dark:bg-slate-800 p-0.5 overflow-hidden ring-1 ring-slate-100 dark:ring-slate-700">
                                             <LazyImage

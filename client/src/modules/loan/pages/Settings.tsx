@@ -24,7 +24,7 @@ const Settings: React.FC = () => {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      navigate('/login');
+      navigate('/loan/login');
     } catch (error) {
       console.error("Error signing out:", error);
     }
@@ -77,7 +77,7 @@ const Settings: React.FC = () => {
   return (
     <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden max-w-md mx-auto shadow-2xl bg-background-light dark:bg-background-dark text-slate-900 dark:text-white pb-10">
       <div className="sticky top-0 z-10 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
-        <Link to="/" className="flex items-center gap-2 text-primary cursor-pointer">
+        <Link to="/loan" className="flex items-center gap-2 text-primary cursor-pointer">
           <span className="material-symbols-outlined text-2xl">arrow_back_ios_new</span>
           <span className="text-base font-medium">Back</span>
         </Link>
@@ -107,7 +107,7 @@ const Settings: React.FC = () => {
       <div className="mt-4">
         <h3 className="text-slate-500 dark:text-gray-400 text-sm font-bold uppercase tracking-wider px-6 pb-2 pt-2">Company</h3>
         <div className="mx-4 bg-white dark:bg-[#1a2235] rounded-xl overflow-hidden shadow-sm divide-y divide-gray-100 dark:divide-gray-800">
-          <Link to="/company-selector" className="flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
+          <Link to="/loan/company-selector" className="flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
             <div className="flex items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0 size-9">
               <span className="material-symbols-outlined text-[20px]">business</span>
             </div>
@@ -137,7 +137,7 @@ const Settings: React.FC = () => {
             <span className="material-symbols-outlined text-gray-400 dark:text-gray-600 text-[20px]">chevron_right</span>
           </div>
 
-          <Link to="/user-management" className="flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
+          <Link to="/loan/user-management" className="flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
             <div className="flex items-center justify-center rounded-lg bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 shrink-0 size-9">
               <span className="material-symbols-outlined text-[20px]">manage_accounts</span>
             </div>
@@ -168,7 +168,7 @@ const Settings: React.FC = () => {
             <span className="material-symbols-outlined text-gray-400 dark:text-gray-600 text-[20px]">chevron_right</span>
           </div>
 
-          <Link to="/terms" className="flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
+          <Link to="/loan/terms" className="flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
             <div className="flex items-center justify-center rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 shrink-0 size-9">
               <span className="material-symbols-outlined text-[20px]">description</span>
             </div>
@@ -179,7 +179,7 @@ const Settings: React.FC = () => {
             <span className="material-symbols-outlined text-gray-400 dark:text-gray-600 text-[20px]">chevron_right</span>
           </Link>
 
-          <Link to="/privacy" className="flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
+          <Link to="/loan/privacy" className="flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
             <div className="flex items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 shrink-0 size-9">
               <span className="material-symbols-outlined text-[20px]">security</span>
             </div>

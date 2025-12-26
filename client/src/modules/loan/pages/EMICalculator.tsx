@@ -17,7 +17,7 @@ const EMICalculator: React.FC = () => {
     <div className="bg-background-light dark:bg-background-dark font-display min-h-screen flex flex-col text-slate-900 dark:text-white pb-24">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm px-4 py-3 flex items-center justify-between">
-        <Link to="/tools" className="flex items-center justify-center p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
+        <Link to="/loan/tools" className="flex items-center justify-center p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
           <span className="material-symbols-outlined">arrow_back</span>
         </Link>
         <h1 className="text-lg font-bold flex-1 text-center pr-10">EMI Calculator</h1>
@@ -29,10 +29,10 @@ const EMICalculator: React.FC = () => {
           <div className="absolute top-0 left-0 w-full h-1 bg-primary"></div>
           <h2 className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-6">Monthly Installment</h2>
           <div className="relative size-56 rounded-full flex items-center justify-center mb-6 shadow-inner bg-gradient-to-tr from-primary to-blue-300 p-1">
-             <div className="bg-white dark:bg-[#1a2233] w-full h-full rounded-full flex flex-col items-center justify-center shadow-lg">
-                <span className="text-3xl font-extrabold text-primary">₹{emi.toFixed(2)}</span>
-                <span className="text-xs text-slate-500 mt-1 font-medium">per month</span>
-             </div>
+            <div className="bg-white dark:bg-[#1a2233] w-full h-full rounded-full flex flex-col items-center justify-center shadow-lg">
+              <span className="text-3xl font-extrabold text-primary">₹{emi.toFixed(2)}</span>
+              <span className="text-xs text-slate-500 mt-1 font-medium">per month</span>
+            </div>
           </div>
           <div className="flex items-center justify-between w-full gap-4 px-2">
             <div className="flex flex-col items-center flex-1 p-3 rounded-xl bg-background-light dark:bg-background-dark">
@@ -56,7 +56,7 @@ const EMICalculator: React.FC = () => {
                 <input className="bg-transparent border-none p-0 w-full text-right font-bold focus:ring-0" type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
               </div>
             </div>
-            <input type="range" min="1000" max="50000" value={amount} onChange={(e) => setAmount(Number(e.target.value))} className="w-full accent-primary h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"/>
+            <input type="range" min="1000" max="50000" value={amount} onChange={(e) => setAmount(Number(e.target.value))} className="w-full accent-primary h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700" />
           </div>
 
           <div className="space-y-4">
@@ -67,7 +67,7 @@ const EMICalculator: React.FC = () => {
                 <span className="text-slate-500 font-medium ml-1">%</span>
               </div>
             </div>
-            <input type="range" min="1" max="30" step="0.1" value={rate} onChange={(e) => setRate(Number(e.target.value))} className="w-full accent-primary h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"/>
+            <input type="range" min="1" max="30" step="0.1" value={rate} onChange={(e) => setRate(Number(e.target.value))} className="w-full accent-primary h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700" />
           </div>
         </div>
       </div>

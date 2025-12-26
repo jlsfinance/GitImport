@@ -36,6 +36,15 @@ const UserManagement: React.FC = () => {
   const [editedRole, setEditedRole] = useState<'admin' | 'agent' | 'customer'>('customer');
   const [editedPermissions, setEditedPermissions] = useState<UserPermissions>(defaultPermissions);
 
+  // Add Staff Modal States
+  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
+  const [newStaffName, setNewStaffName] = useState('');
+  const [newStaffEmail, setNewStaffEmail] = useState('');
+  const [newStaffPassword, setNewStaffPassword] = useState('');
+  const [newStaffRole, setNewStaffRole] = useState<'admin' | 'agent'>('agent');
+  const [newStaffPermissions, setNewStaffPermissions] = useState<UserPermissions>(defaultPermissions);
+  const [isAddingStaff, setIsAddingStaff] = useState(false);
+
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
@@ -90,6 +99,57 @@ const UserManagement: React.FC = () => {
     }
   };
 
+  const handleAddStaff = async () => {
+    if (!newStaffEmail || !newStaffPassword || !currentCompany) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    setIsAddingStaff(true);
+    try {
+      // Import Firebase Auth functions
+      const { createUserWithEmailAndPassword } = await import('firebase/auth');
+      const { auth } = await import('../firebaseConfig');
+      const { doc, setDoc } = await import('firebase/firestore');
+
+      // Create Firebase Auth user
+      const userCredential = await createUserWithEmailAndPassword(auth, newStaffEmail, newStaffPassword);
+      const newUser = userCredential.user;
+
+      // Create user document in Firestore
+      const userData: any = {
+        email: newStaffEmail,
+        name: newStaffName || newStaffEmail.split('@')[0],
+        role: newStaffRole,
+        companyId: currentCompany.id,
+        createdAt: new Date().toISOString(),
+      };
+
+      if (newStaffRole === 'agent') {
+        userData.permissions = newStaffPermissions;
+      }
+
+      await setDoc(doc(db, 'users', newUser.uid), userData);
+
+      alert(`Staff member ${newStaffName || newStaffEmail} added successfully!`);
+
+      // Reset form
+      setNewStaffName('');
+      setNewStaffEmail('');
+      setNewStaffPassword('');
+      setNewStaffRole('agent');
+      setNewStaffPermissions(defaultPermissions);
+      setShowAddStaffModal(false);
+
+      await fetchUsers();
+    } catch (error: any) {
+      console.error('Error adding staff:', error);
+      alert(`Failed to add staff: ${error.message}`);
+    } finally {
+      setIsAddingStaff(false);
+    }
+  };
+
   const formatPermissionKey = (key: string) => {
     return key.replace('can', '').replace(/([A-Z])/g, ' $1').trim();
   }
@@ -97,11 +157,20 @@ const UserManagement: React.FC = () => {
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark pb-24 text-slate-900 dark:text-white">
       <div className="sticky top-0 z-10 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm px-4 py-4 border-b border-slate-200 dark:border-slate-800">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all">
-            <span className="material-symbols-outlined">arrow_back</span>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate(-1)} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all">
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+            <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
+          </div>
+          <button
+            onClick={() => setShowAddStaffModal(true)}
+            className="btn-kadak flex items-center gap-2 px-4 py-2 rounded-full shadow-lg active:scale-95 transition-all"
+          >
+            <span className="material-symbols-outlined text-[20px]">person_add</span>
+            <span className="font-black text-sm uppercase tracking-wider">Add Staff</span>
           </button>
-          <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
         </div>
       </div>
 
@@ -242,6 +311,124 @@ const UserManagement: React.FC = () => {
               >
                 {isSubmitting && <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>}
                 Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Staff Modal */}
+      {showAddStaffModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-[#1e2736] rounded-2xl w-full max-w-md shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold">Add New Staff</h3>
+              <button
+                onClick={() => setShowAddStaffModal(false)}
+                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <p className="text-sm text-slate-500 mb-6">
+              Create a new staff member account for <strong>{currentCompany?.name}</strong>
+            </p>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={newStaffName}
+                  onChange={(e) => setNewStaffName(e.target.value)}
+                  placeholder="Enter staff name"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1a2230] border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Email Address *</label>
+                <input
+                  type="email"
+                  value={newStaffEmail}
+                  onChange={(e) => setNewStaffEmail(e.target.value)}
+                  placeholder="staff@example.com"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1a2230] border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Password *</label>
+                <input
+                  type="password"
+                  value={newStaffPassword}
+                  onChange={(e) => setNewStaffPassword(e.target.value)}
+                  placeholder="Minimum 6 characters"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1a2230] border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Role *</label>
+                <select
+                  value={newStaffRole}
+                  onChange={(e) => setNewStaffRole(e.target.value as any)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1a2230] border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary outline-none"
+                >
+                  <option value="agent">Agent (Limited Access)</option>
+                  <option value="admin">Admin (Full Access)</option>
+                </select>
+              </div>
+
+              {newStaffRole === 'agent' && (
+                <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-4">
+                  <h4 className="text-sm font-bold">Agent Permissions</h4>
+                  <label className="flex items-center gap-3 p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newStaffPermissions.canViewCustomers}
+                      onChange={(e) => setNewStaffPermissions(p => ({ ...p, canViewCustomers: e.target.checked }))}
+                      className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
+                    />
+                    <span className="text-sm">Can View Customers</span>
+                  </label>
+                  <label className="flex items-center gap-3 p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newStaffPermissions.canViewLoans}
+                      onChange={(e) => setNewStaffPermissions(p => ({ ...p, canViewLoans: e.target.checked }))}
+                      className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
+                    />
+                    <span className="text-sm">Can View Loans</span>
+                  </label>
+                  <label className="flex items-center gap-3 p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newStaffPermissions.canCollectEMI}
+                      onChange={(e) => setNewStaffPermissions(p => ({ ...p, canCollectEMI: e.target.checked }))}
+                      className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
+                    />
+                    <span className="text-sm">Can Collect EMI</span>
+                  </label>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowAddStaffModal(false)}
+                className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddStaff}
+                disabled={isAddingStaff || !newStaffEmail || !newStaffPassword}
+                className="px-6 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+              >
+                {isAddingStaff && <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>}
+                Add Staff Member
               </button>
             </div>
           </div>

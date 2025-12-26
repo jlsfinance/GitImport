@@ -349,14 +349,14 @@ export class PdfGenerator {
             row.emiNumber.toString(),
             safeFormatDate(row.dueDate),
             formatCurrency(row.amount),
-            row.status,
-            row.paymentDate ? safeFormatDate(row.paymentDate) : '-',
-            row.amountPaid ? formatCurrency(row.amountPaid) : '-'
+            row.principal ? formatCurrency(row.principal) : '-',
+            row.interest ? formatCurrency(row.interest) : '-',
+            formatCurrency(row.amount - (row.principal || 0) - (row.interest || 0)), // Balance
         ]) || [];
 
         autoTable(pdf, {
             startY: y,
-            head: [['#', 'Due Date', 'EMI Amount', 'Status', 'Paid Date', 'Paid Amt']],
+            head: [['No', 'Due Date', 'Amount', 'Principal', 'Interest', 'Balance']],
             body: tableData,
             theme: 'grid',
             headStyles: { fillColor: [41, 128, 185], textColor: 255 },

@@ -1699,7 +1699,7 @@ const LoanDetails: React.FC = () => {
         return (
             <div className="flex flex-col items-center justify-center h-screen p-4">
                 <h2 className="text-xl font-bold mb-2">Loan Not Found</h2>
-                <button onClick={() => navigate('/loans')} className="px-4 py-2 bg-primary text-white rounded-lg">Back to Loans</button>
+                <button onClick={() => navigate('/loan/loans')} className="px-4 py-2 bg-primary text-white rounded-lg">Back to Loans</button>
             </div>
         );
     }
@@ -1722,7 +1722,7 @@ const LoanDetails: React.FC = () => {
                 </button>
                 <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300">Loan Details</h1>
                 <div className="flex gap-2">
-                    <button onClick={() => navigate(`/loans/edit/${loanId}`)} className="p-2.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-slate-800 transition-all hover:shadow-lg hover:shadow-indigo-500/10 active:scale-95" title="Edit Loan">
+                    <button onClick={() => navigate(`/loan/loans/edit/${loanId}`)} className="p-2.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-slate-800 transition-all hover:shadow-lg hover:shadow-indigo-500/10 active:scale-95" title="Edit Loan">
                         <span className="material-symbols-outlined">edit</span>
                     </button>
                     <button onClick={handleDownloadSchedule} disabled={isDownloadingSchedule} className="p-2.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-slate-800 transition-all hover:shadow-lg hover:shadow-indigo-500/10 active:scale-95" title="Download Schedule">

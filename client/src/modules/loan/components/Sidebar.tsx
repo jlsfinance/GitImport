@@ -171,20 +171,31 @@ const Sidebar: React.FC = () => {
 
                         <div className="mb-1.5">
                             <NavLink
-                                to="/notifications"
+                                to="/loan/notifications"
                                 onClick={handleLinkClick}
                                 className={({ isActive }) => `flex items-center gap-3.5 px-3.5 py-3 rounded-xl transition-all duration-200 group border block ${isActive
                                     ? 'bg-violet-600 text-white border-violet-600 shadow-lg shadow-violet-500/30'
                                     : 'border-transparent text-slate-700 dark:text-slate-400 hover:bg-violet-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'
                                     }`}
                             >
-                                <span className={`material-symbols-outlined text-[22px] transition-colors ${!location.pathname.includes('/notifications') && 'text-slate-500 group-hover:text-violet-600 dark:text-slate-500 dark:group-hover:text-violet-400'}`}>campaign</span>
+                                <span className={`material-symbols-outlined text-[22px] transition-colors ${!location.pathname.includes('/loan/notifications') && 'text-slate-500 group-hover:text-violet-600 dark:text-slate-500 dark:group-hover:text-violet-400'}`}>campaign</span>
                                 <span className="font-semibold text-sm">Notification Center</span>
                             </NavLink>
                         </div>
 
-                        {/* Logout & About Section */}
+                        {/* Logout, Switch & About Section */}
                         <div className="pt-6 mt-6 border-t border-slate-200 dark:border-slate-800 space-y-1">
+                            <button
+                                onClick={() => {
+                                    localStorage.removeItem('active_module');
+                                    window.location.href = '/';
+                                }}
+                                className="w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-violet-50 dark:hover:bg-violet-950/20 transition-colors group"
+                            >
+                                <span className="material-symbols-outlined text-[22px] group-hover:text-violet-500 dark:group-hover:text-violet-400 transition-colors">apps</span>
+                                <span className="font-semibold text-sm">Switch Dashboard</span>
+                            </button>
+
                             <button
                                 onClick={handleLogout}
                                 className="w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors group"

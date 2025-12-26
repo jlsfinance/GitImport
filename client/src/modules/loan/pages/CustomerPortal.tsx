@@ -85,11 +85,11 @@ const CustomerPortal: React.FC = () => {
 
   const fetchData = useCallback(async () => {
     const cid = localStorage.getItem('customerPortalId');
-    if (!cid) return navigate('/customer-login');
+    if (!cid) return navigate('/loan/customer-login');
     setLoading(true);
     try {
       const cSnap = await getDoc(doc(db, "customers", cid));
-      if (!cSnap.exists()) return navigate('/customer-login');
+      if (!cSnap.exists()) return navigate('/loan/customer-login');
       const cData = { id: cSnap.id, ...cSnap.data() } as Customer;
       setCustomer(cData);
       if (cData.companyId) {
@@ -175,7 +175,7 @@ const CustomerPortal: React.FC = () => {
     if (confirm("Are you sure you want to logout?")) {
       localStorage.removeItem('customerPortalId');
       localStorage.removeItem('customerPortalPhone');
-      navigate('/customer-login');
+      navigate('/loan/customer-login');
     }
   };
 
