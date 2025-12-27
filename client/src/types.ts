@@ -82,6 +82,7 @@ export interface Payment {
   date: string;
   amount: number;
   mode: 'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE';
+  type?: 'RECEIVED' | 'PAID'; // RECEIVED = In from Customer, PAID = Out to Vendor
   reference?: string; // Cheque number or UPI Ref
   note?: string;
 }
@@ -127,6 +128,10 @@ export interface Invoice {
   total: number;
   status: 'PAID' | 'PENDING' | 'OVERDUE';
   paymentMode?: 'CASH' | 'CREDIT' | 'ONLINE';
+  discountType?: 'PERCENTAGE' | 'AMOUNT';
+  discountValue?: number;
+  discountAmount?: number;
+  paidAmount?: number; // Amount paid/received
   notes?: string;
   terms?: string;
 }

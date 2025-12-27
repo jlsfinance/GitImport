@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import { motion } from 'framer-motion';
 
 interface Customer {
   id: string;
@@ -173,7 +174,13 @@ const EditLoan: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark pb-24 text-slate-900 dark:text-white">
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.3 }}
+      className="min-h-screen bg-background-light dark:bg-background-dark pb-24 text-slate-900 dark:text-white"
+    >
       <div className="sticky top-0 z-20 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
           <span className="material-symbols-outlined">arrow_back</span>
@@ -355,7 +362,7 @@ const EditLoan: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting || loading}
-            className="w-full py-4 rounded-xl btn-kadak text-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full py-4 rounded-xl bg-primary text-white font-bold text-lg shadow-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <><div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div> Updating...</>
@@ -365,7 +372,7 @@ const EditLoan: React.FC = () => {
           </button>
         </form>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

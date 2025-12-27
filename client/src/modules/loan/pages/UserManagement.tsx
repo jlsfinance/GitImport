@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { collection, getDocs, query, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { useCompany } from '../context/CompanyContext';
+import { motion } from 'framer-motion';
 
 interface UserPermissions {
   canViewLoans: boolean;
@@ -155,7 +156,13 @@ const UserManagement: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark pb-24 text-slate-900 dark:text-white">
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.3 }}
+      className="min-h-screen bg-background-light dark:bg-background-dark pb-24 text-slate-900 dark:text-white"
+    >
       <div className="sticky top-0 z-10 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm px-4 py-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -166,10 +173,10 @@ const UserManagement: React.FC = () => {
           </div>
           <button
             onClick={() => setShowAddStaffModal(true)}
-            className="btn-kadak flex items-center gap-2 px-4 py-2 rounded-full shadow-lg active:scale-95 transition-all"
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white shadow-lg active:scale-95 transition-all outline-none"
           >
             <span className="material-symbols-outlined text-[20px]">person_add</span>
-            <span className="font-black text-sm uppercase tracking-wider">Add Staff</span>
+            <span className="font-bold text-sm uppercase tracking-wider">Add Staff</span>
           </button>
         </div>
       </div>
@@ -434,7 +441,7 @@ const UserManagement: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 

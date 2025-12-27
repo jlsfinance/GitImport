@@ -1,18 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, getDocs, query, orderBy, limit, where } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig';
 import { useCompany } from '../context/CompanyContext';
-import { useSidebar } from '../context/SidebarContext';
 import { NotificationService } from '../services/NotificationService';
 import LazyImage from '../components/LazyImage';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format, parseISO } from 'date-fns';
 import { Loan } from '../types';
-
-// Type definitions for the dashboard
-
+import { motion } from 'framer-motion';
 
 const formatCurrency = (amount: number) => {
     return `Rs. ${new Intl.NumberFormat('en-IN', {
@@ -22,18 +19,13 @@ const formatCurrency = (amount: number) => {
 
 const Dashboard: React.FC = () => {
     const { currentCompany } = useCompany();
-    const { openSidebar } = useSidebar();
     const [activeCard, setActiveCard] = useState<string | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
 
     const [loans, setLoans] = useState<any[]>([]);
     const [customers, setCustomers] = useState<any[]>([]);
     const [partnerTransactions, setPartnerTransactions] = useState<any[]>([]);
     const [expenses, setExpenses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [userName, setUserName] = useState('Admin');
-    const [isNotifEnabled, setIsNotifEnabled] = useState(false);
-    const [randomAvatar, setRandomAvatar] = useState('');
     const [showReminderModal, setShowReminderModal] = useState(false);
     const [notifTitle, setNotifTitle] = useState('');
     const [notifBody, setNotifBody] = useState('');
@@ -68,72 +60,12 @@ const Dashboard: React.FC = () => {
         }
     };
 
-    const handleTestNotification = async () => {
-        console.log("🔔 Test notification clicked");
-        try {
-            if (!("Notification" in window)) {
-                alert("❌ Your browser doesn't support notifications");
-                return;
-            }
-
-            console.log("Current permission:", Notification.permission);
-
-            if (Notification.permission === "denied") {
-                alert("❌ Notifications are blocked! Please enable them in browser settings:\n\n1. Click lock icon in address bar\n2. Allow Notifications\n3. Refresh page");
-                return;
-            }
-
-            if (Notification.permission !== "granted") {
-                console.log("Requesting permission...");
-                const permission = await Notification.requestPermission();
-                console.log("Permission result:", permission);
-
-                if (permission !== "granted") {
-                    alert("❌ Permission denied. Please allow notifications.");
-                    return;
-                }
-            }
-
-            console.log("Creating notification...");
-            const notification = new Notification("🔔 Test Notification", {
-                body: "If you see this, notifications are working perfectly!",
-                icon: "/logo.png",
-                badge: "/logo.png",
-                tag: "test-notification",
-                requireInteraction: false
-            });
-
-            console.log("✅ Notification created successfully!");
-            alert("✅ Notification sent! Check top-right corner of your screen.");
-
-            setTimeout(() => notification.close(), 5000);
-        } catch (e: any) {
-            console.error("❌ Error:", e);
-            alert("❌ Error: " + e.message);
-        }
-    };
-
-
-    useEffect(() => {
-        const avatars = [
-            'https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Felix&backgroundColor=b6e3f4,c0aede,d1d4f9',
-            'https://api.dicebear.com/7.x/bottts/svg?seed=Midnight&backgroundColor=b6e3f4,c0aede,d1d4f9',
-            'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka&backgroundColor=b6e3f4,c0aede,d1d4f9',
-            'https://api.dicebear.com/7.x/notionists/svg?seed=Jordan&backgroundColor=b6e3f4,c0aede,d1d4f9'
-        ];
-        setRandomAvatar(avatars[Math.floor(Math.random() * avatars.length)]);
-    }, []);
 
     useEffect(() => {
         const fetchDashboardData = async () => {
             if (!currentCompany) return;
 
             try {
-                const user = auth.currentUser;
-                if (user?.email) {
-                    setUserName(user.email.split('@')[0]);
-                }
-
                 const companyId = currentCompany.id;
 
                 const [loansSnap, customersSnap, partnerTxSnap, expensesSnap] = await Promise.all([
@@ -168,30 +100,12 @@ const Dashboard: React.FC = () => {
             }
         };
 
-
-
         fetchDashboardData();
 
         // Check Notification Status (Permission + Token)
         const checkNotifs = async () => {
             try {
-                // Register to ensure we try to get a token if we haven't
                 await NotificationService.registerNotifications();
-
-                const perm = await NotificationService.checkPermissions();
-                const token = NotificationService.getToken();
-
-                if (perm?.receive === 'granted' && token) {
-                    setIsNotifEnabled(true);
-                } else if (perm?.receive === 'granted') {
-                    // Permission granted but no token yet, maybe it's coming. 
-                    // Let's poll for it briefly or just wait for next reload.
-                    // For now, let's trust the permission but strictly 'green' means everything is ready.
-                    // Let's retry checking token after 3 seconds
-                    setTimeout(() => {
-                        if (NotificationService.getToken()) setIsNotifEnabled(true);
-                    }, 3000);
-                }
             } catch (e) {
                 console.error("Notif check failed", e);
             }
@@ -259,7 +173,6 @@ const Dashboard: React.FC = () => {
 
         let totalCollections = 0;
         let totalProcessingFees = 0;
-
         loans.forEach(loan => {
             const processingFee = Number(loan.processingFee) || 0;
             const status = loan.status;
@@ -305,14 +218,14 @@ const Dashboard: React.FC = () => {
                 modalData = loans.filter(l => ['Disbursed', 'Active', 'Completed', 'Overdue'].includes(l.status));
                 columns = ['Customer', 'Loan ID', 'Amount', 'Disbursal', 'EMI', 'Status'];
                 renderRow = (row, index) => (
-                    <tr key={index} className="hover:bg-surface-variant-light/30 dark:hover:bg-surface-variant-dark/30 transition-colors border-b border-outline-light/20 dark:border-outline-dark/20">
+                    <tr key={index} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800">
                         <td className="px-4 py-4 font-medium">{row.customerName}</td>
-                        <td className="px-4 py-4 text-on-surface-variant-light">{row.id}</td>
+                        <td className="px-4 py-4 text-slate-500">{row.id}</td>
                         <td className="px-4 py-4 font-bold">{formatCurrency(row.amount)}</td>
                         <td className="px-4 py-4">{row.disbursalDate ? format(parseISO(row.disbursalDate), 'dd-MMM-yy') : '-'}</td>
                         <td className="px-4 py-4">{formatCurrency(row.emi)}</td>
                         <td className="px-4 py-4">
-                            <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-bold bg-primary-container text-on-primary-container">{row.status}</span>
+                            <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400">{row.status}</span>
                         </td>
                     </tr>
                 );
@@ -327,12 +240,12 @@ const Dashboard: React.FC = () => {
                 });
                 columns = ['Customer', 'Total (P+I)', 'EMI', 'Paid', 'Pending'];
                 renderRow = (row, index) => (
-                    <tr key={index} className="hover:bg-surface-variant-light/30 border-b border-outline-light/20">
+                    <tr key={index} className="hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
                         <td className="px-4 py-4 font-medium">{row.customerName}</td>
                         <td className="px-4 py-4">{formatCurrency(row.loanAmountPI)}</td>
                         <td className="px-4 py-4">{formatCurrency(row.emiPI)}</td>
                         <td className="px-4 py-4">{row.emisPaidCount}</td>
-                        <td className="px-4 py-4 font-bold text-error">{formatCurrency(row.amountPendingPI)}</td>
+                        <td className="px-4 py-4 font-bold text-red-500">{formatCurrency(row.amountPendingPI)}</td>
                     </tr>
                 );
                 break;
@@ -352,7 +265,7 @@ const Dashboard: React.FC = () => {
                 });
                 columns = ['Customer', 'Principal', 'Interest', 'Total', 'EMI (P)', 'EMI (I)', 'EMI', 'Received', 'Balance'];
                 renderRow = (row, index) => (
-                    <tr key={index} className="hover:bg-surface-variant-light/30 border-b border-outline-light/20">
+                    <tr key={index} className="hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
                         <td className="px-4 py-4 font-medium">{row.customerName}</td>
                         <td className="px-4 py-4">{formatCurrency(row.principal)}</td>
                         <td className="px-4 py-4">{formatCurrency(row.totalInterest)}</td>
@@ -360,8 +273,8 @@ const Dashboard: React.FC = () => {
                         <td className="px-4 py-4">{formatCurrency(row.emiPrincipal)}</td>
                         <td className="px-4 py-4">{formatCurrency(row.emiInterest)}</td>
                         <td className="px-4 py-4">{formatCurrency(row.emi)}</td>
-                        <td className="px-4 py-4 text-primary">{formatCurrency(row.totalReceivedPI)}</td>
-                        <td className="px-4 py-4 font-bold text-tertiary">{formatCurrency(row.balancePI)}</td>
+                        <td className="px-4 py-4 text-emerald-600">{formatCurrency(row.totalReceivedPI)}</td>
+                        <td className="px-4 py-4 font-bold text-orange-500">{formatCurrency(row.balancePI)}</td>
                     </tr>
                 );
                 break;
@@ -373,12 +286,12 @@ const Dashboard: React.FC = () => {
                 }));
                 columns = ['Customer', 'Loan Amount', 'Processing Fee', 'Net Disbursed', 'Status'];
                 renderRow = (row, index) => (
-                    <tr key={index} className="hover:bg-surface-variant-light/30 border-b border-outline-light/20">
+                    <tr key={index} className="hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
                         <td className="px-4 py-4 font-medium">{row.customerName}</td>
                         <td className="px-4 py-4">{formatCurrency(row.amount)}</td>
-                        <td className="px-4 py-4 text-error">{formatCurrency(row.processingFee)}</td>
-                        <td className="px-4 py-4 font-bold text-primary">{formatCurrency(row.netAmount)}</td>
-                        <td className="px-4 py-4"><span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-bold bg-primary-container text-on-primary-container">{row.status}</span></td>
+                        <td className="px-4 py-4 text-red-500">{formatCurrency(row.processingFee)}</td>
+                        <td className="px-4 py-4 font-bold text-emerald-600">{formatCurrency(row.netAmount)}</td>
+                        <td className="px-4 py-4"><span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400">{row.status}</span></td>
                     </tr>
                 );
                 break;
@@ -395,12 +308,12 @@ const Dashboard: React.FC = () => {
                 });
                 columns = ['Customer', 'Principal', 'Total (P+I)', 'Collected', 'Outstanding'];
                 renderRow = (row, index) => (
-                    <tr key={index} className="hover:bg-surface-variant-light/30 border-b border-outline-light/20">
+                    <tr key={index} className="hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
                         <td className="px-4 py-4 font-medium">{row.customerName}</td>
                         <td className="px-4 py-4">{formatCurrency(row.principal)}</td>
                         <td className="px-4 py-4">{formatCurrency(row.totalPI)}</td>
-                        <td className="px-4 py-4 text-primary">{formatCurrency(row.paidAmount)}</td>
-                        <td className="px-4 py-4 font-bold text-error">{formatCurrency(row.outstanding)}</td>
+                        <td className="px-4 py-4 text-emerald-600">{formatCurrency(row.paidAmount)}</td>
+                        <td className="px-4 py-4 font-bold text-red-500">{formatCurrency(row.outstanding)}</td>
                     </tr>
                 );
                 break;
@@ -415,12 +328,12 @@ const Dashboard: React.FC = () => {
                 }).filter(l => l.totalCollected > 0);
                 columns = ['Customer', 'EMIs Paid', 'EMI Collected', 'Foreclosure', 'Total Collected'];
                 renderRow = (row, index) => (
-                    <tr key={index} className="hover:bg-surface-variant-light/30 border-b border-outline-light/20">
+                    <tr key={index} className="hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
                         <td className="px-4 py-4 font-medium">{row.customerName}</td>
                         <td className="px-4 py-4">{row.emisPaid}</td>
                         <td className="px-4 py-4">{formatCurrency(row.emiCollected)}</td>
                         <td className="px-4 py-4">{formatCurrency(row.foreclosureAmount)}</td>
-                        <td className="px-4 py-4 font-bold text-primary">{formatCurrency(row.totalCollected)}</td>
+                        <td className="px-4 py-4 font-bold text-emerald-600">{formatCurrency(row.totalCollected)}</td>
                     </tr>
                 );
                 break;
@@ -504,85 +417,25 @@ const Dashboard: React.FC = () => {
             const { DownloadService } = await import('../services/DownloadService');
             await DownloadService.downloadPDF(filename, pdfData);
         } catch (error) {
-            // Fallback for web
             doc.save(filename);
         }
     };
 
     const { data, columns, renderRow } = getModalContent();
 
-
-
     return (
-        <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-32 pb-safe bg-slate-50 dark:bg-slate-950 font-sans">
-            {/* Background Decor */}
-            <div className="fixed inset-0 pointer-events-none">
-                <div className="absolute top-0 left-0 w-full h-[50vh] bg-gradient-to-b from-indigo-50/50 via-purple-50/30 to-transparent dark:from-indigo-950/20 dark:via-purple-950/10 dark:to-transparent"></div>
-                <div className="absolute top-[-10%] right-[-10%] w-[400px] h-[400px] rounded-full bg-indigo-500/5 blur-[100px]"></div>
-                <div className="absolute top-[20%] left-[-10%] w-[300px] h-[300px] rounded-full bg-purple-500/5 blur-[100px]"></div>
-            </div>
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="w-full flex-col font-sans"
+        >
+            <div className="relative px-4 sm:px-6 space-y-6 sm:space-y-8 mt-4 sm:mt-6 max-w-7xl mx-auto w-full pb-32">
 
-            {/* Premium Compact Header */}
-            <div className="sticky top-0 z-40 px-4 py-2 bg-white/40 dark:bg-slate-950/40 backdrop-blur-xl border-b border-white/20 dark:border-white/5 shadow-sm transition-all duration-500"
-                style={{ paddingTop: 'calc(env(safe-area-inset-top) + 4px)' }}>
-                <div className="max-w-7xl mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <button onClick={openSidebar} className="lg:hidden p-1.5 rounded-full text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800 transition-colors">
-                            <span className="material-symbols-outlined text-[22px]">menu</span>
-                        </button>
-
-                        <div className="relative group cursor-pointer">
-                            <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-primary via-purple-500 to-pink-500 p-[2px] shadow-lg shadow-primary/20 animate-float">
-                                <div className="h-full w-full rounded-full bg-white dark:bg-slate-900 overflow-hidden border border-white/50 dark:border-white/10">
-                                    {randomAvatar ? (
-                                        <img src={randomAvatar} alt="Profile" className="w-full h-full object-cover scale-110 group-hover:scale-125 transition-transform duration-500" />
-                                    ) : (
-                                        <div className="h-full w-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 animate-pulse"></div>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-slate-950 rounded-full shadow-sm">
-                                <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-40"></span>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-[#7c3aed] opacity-80 leading-none mb-1">Authenticated Admin</span>
-                            <div className="flex items-center gap-1.5">
-                                <h1 className="text-sm font-black text-slate-900 dark:text-white capitalize leading-tight">Hi, {userName}</h1>
-                                <span className="text-[14px]">✨</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleTestNotification}
-                            className="p-2 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all shadow-sm active:scale-90"
-                            title="Test Notification"
-                        >
-                            <span className="material-symbols-outlined text-[20px]">notifications_active</span>
-                        </button>
-                        <Link to="/loan/notifications" className={`relative p-2 rounded-full transition-all border shadow-sm active:scale-90 ${isNotifEnabled
-                            ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
-                            : 'bg-white/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 border-white/30 dark:border-white/5 hover:bg-white dark:hover:bg-slate-700'
-                            }`}>
-                            <span className="material-symbols-outlined text-[20px] font-variation-FILL">notifications</span>
-                            {isNotifEnabled && (
-                                <span className="absolute top-2 right-2.5 h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                            )}
-                        </Link>
-                    </div>
-                </div>
-            </div>
-
-            <div className="relative px-4 sm:px-6 space-y-6 sm:space-y-8 mt-4 sm:mt-6 max-w-7xl mx-auto w-full">
-
-                {/* Hero Balance Card - Premium 3D Effect */}
+                {/* Hero Balance Card */}
                 <div className="group relative overflow-hidden rounded-[2rem] bg-slate-900 text-white shadow-2xl shadow-indigo-500/25 transition-all hover:scale-[1.01]">
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-700 to-indigo-800"></div>
-                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
-
                     {/* Animated Glows */}
                     <div className="absolute -top-24 -right-24 w-64 h-64 bg-purple-500/30 rounded-full blur-3xl group-hover:bg-purple-500/40 transition-colors duration-500"></div>
                     <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-indigo-500/30 rounded-full blur-3xl group-hover:bg-indigo-500/40 transition-colors duration-500"></div>
@@ -620,24 +473,24 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         {[
-                            { link: "/loan/loans/new", icon: "add", isKadak: true, label: "New Loan" },
+                            { link: "/loan/loans/new", icon: "add", isPrimary: true, label: "New Loan" },
                             { link: "/loan/due-list", icon: "payments", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30", label: "Collect EMI" },
                             { link: "/loan/customers/new", icon: "person_add", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/30", label: "Add Client" },
                             { link: "/loan/finance", icon: "bar_chart", color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30", label: "Reports" }
-                        ].map((action, i) => (
+                        ].map((action: any, i) => (
                             <Link key={i} to={action.link}
-                                className={`group flex flex-col items-center justify-center p-5 transition-all duration-300 ${action.isKadak
-                                    ? 'btn-kadak !flex-row !gap-3 !p-4 !rounded-full'
+                                className={`group flex flex-col items-center justify-center p-5 transition-all duration-300 ${action.isPrimary
+                                    ? 'bg-primary text-white shadow-lg shadow-primary/30 !flex-row !gap-3 !p-4 !rounded-full'
                                     : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1'
                                     }`}
                             >
-                                <div className={`flex items-center justify-center transition-transform duration-300 group-hover:scale-110 ${action.isKadak
+                                <div className={`flex items-center justify-center transition-transform duration-300 group-hover:scale-110 ${action.isPrimary
                                     ? 'w-8 h-8 rounded-full bg-white/20 text-white'
                                     : `w-12 h-12 rounded-xl ${action.bg} ${action.color}`
                                     }`}>
-                                    <span className={`material-symbols-outlined ${action.isKadak ? 'text-[20px]' : 'text-[26px]'} font-variation-FILL`}>{action.icon}</span>
+                                    <span className={`material-symbols-outlined ${action.isPrimary ? 'text-[20px]' : 'text-[26px]'} font-variation-FILL`}>{action.icon}</span>
                                 </div>
-                                <span className={`font-black uppercase tracking-tight ${action.isKadak ? 'text-sm text-white' : 'text-xs text-slate-700 dark:text-slate-300 mt-2'
+                                <span className={`font-black uppercase tracking-tight ${action.isPrimary ? 'text-sm text-white' : 'text-xs text-slate-700 dark:text-slate-300 mt-2'
                                     }`}>{action.label}</span>
                             </Link>
                         ))}
@@ -647,7 +500,7 @@ const Dashboard: React.FC = () => {
                 {/* Automated Reminders Banner */}
                 <div
                     onClick={() => setShowReminderModal(true)}
-                    className="relative overflow-hidden rounded-2xl p-6 shadow-lg shadow-purple-500/30 cursor-pointer active:scale-[0.98] transition-all flex items-center justify-between group mt-6 sm:mt-8"
+                    className="relative overflow-hidden rounded-2xl p-6 shadow-lg shadow-purple-500/30 cursor-pointer active:scale-[0.98] transition-all flex items-center justify-between group"
                     style={{ background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)' }}
                 >
                     <div className="relative z-10 flex items-center gap-4">
@@ -798,15 +651,17 @@ const Dashboard: React.FC = () => {
                                             <div className="flex items-center gap-2 mt-1">
                                                 <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${loan.status === 'Active' || loan.status === 'Disbursed' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30'
                                                     : loan.status === 'Completed' ? 'bg-purple-50 text-purple-600 dark:bg-purple-950/30'
-                                                        : 'bg-amber-50 text-amber-600 dark:bg-amber-950/30'
-                                                    }`}>{loan.status}</span>
-                                                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 font-mono">#{loan.id?.slice(0, 6).toUpperCase()}</span>
+                                                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
+                                                    }`}>
+                                                    {loan.status}
+                                                </span>
+                                                <span className="text-[10px] text-slate-400 font-medium">{format(loanDate, 'dd MMM')}</span>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mb-1">{format(loanDate, 'dd MMM, yy')}</p>
-                                        <span className="text-lg font-black text-slate-900 dark:text-white block tabular-nums leading-none tracking-tight">{formatCurrency(loan.amount)}</span>
+                                        <p className="text-sm font-black text-slate-900 dark:text-white">{formatCurrency(loan.amount)}</p>
+                                        <p className="text-[10px] font-semibold text-slate-400">Loan #{loan.id.slice(0, 5)}</p>
                                     </div>
                                 </Link>
                             );
@@ -816,154 +671,131 @@ const Dashboard: React.FC = () => {
 
             </div>
 
-            {/* Modal */}
-            {
-                activeCard && (
-                    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4">
-                        <div className="w-full max-w-4xl h-[90vh] sm:h-[600px] bg-surface-light dark:bg-surface-dark rounded-t-2xl sm:rounded-2xl flex flex-col shadow-m3-3 overflow-hidden">
-
-                            <div className="p-4 border-b border-outline-light/10 flex justify-between items-center">
-                                <h2 className="text-lg font-normal">{activeCard}</h2>
-                                <div className="flex gap-2">
-                                    <button onClick={handleExportPDF} className="p-2 hover:bg-surface-variant-light/30 rounded-full text-primary"><span className="material-symbols-outlined">download</span></button>
-                                    <button onClick={() => setActiveCard(null)} className="p-2 hover:bg-surface-variant-light/30 rounded-full"><span className="material-symbols-outlined">close</span></button>
+            {/* Expanded Analytics Modal */}
+            {activeCard && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+                    <div className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600">
+                                    <span className="material-symbols-outlined">analytics</span>
                                 </div>
+                                <h2 className="text-xl font-bold text-slate-900 dark:text-white">{activeCard}</h2>
                             </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleExportPDF}
+                                    className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-2"
+                                >
+                                    <span className="material-symbols-outlined text-lg">download</span>
+                                    Export PDF
+                                </button>
+                                <button
+                                    onClick={() => setActiveCard(null)}
+                                    className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+                                >
+                                    <span className="material-symbols-outlined">close</span>
+                                </button>
+                            </div>
+                        </div>
 
-                            <div className="p-4 flex-1 overflow-auto bg-surface-light dark:bg-background-dark">
-                                <input
-                                    type="text"
-                                    placeholder="Search..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full mb-4 rounded-lg border border-outline-light/30 bg-transparent px-4 py-2 text-sm focus:border-primary focus:ring-0"
-                                />
-                                <div className="rounded-lg border border-outline-light/10 overflow-hidden">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="bg-surface-variant-light/50 dark:bg-surface-variant-dark/20 text-on-surface-variant-light">
-                                            <tr>
-                                                {columns.map((col, idx) => <th key={idx} className="px-4 py-3 font-medium">{col}</th>)}
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-outline-light/10">
-                                            {data.filter((row: any) => JSON.stringify(Object.values(row)).toLowerCase().includes(searchQuery.toLowerCase()))
-                                                .map((row: any, index: number) => renderRow(row, index))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                        <div className="overflow-auto flex-1 p-0">
+                            <table className="w-full text-sm text-left">
+                                <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50 sticky top-0 z-10 backdrop-blur-md">
+                                    <tr>
+                                        {columns.map((col, i) => (
+                                            <th key={i} className="px-4 py-3 font-bold tracking-wider">{col}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                    {data.length > 0 ? (
+                                        data.map((row: any, i: number) => renderRow(row, i))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={columns.length} className="px-4 py-8 text-center text-slate-500">
+                                                No data found for this category
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 text-center text-xs text-slate-500">
+                            Showing {data.length} records • Generated on {new Date().toLocaleDateString()}
                         </div>
                     </div>
-                )
-            }
+                </div>
+            )}
 
-            {/* Premium Reminder Modal */}
+            {/* Notification Modal */}
             {showReminderModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-white/20 dark:border-white/5 overflow-hidden ring-1 ring-black/5">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+                    <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-6 relative">
+                        <button
+                            onClick={() => setShowReminderModal(false)}
+                            className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
+                        >
+                            <span className="material-symbols-outlined">close</span>
+                        </button>
 
-                        {/* Header Section */}
-                        <div className="relative p-8 pb-0 flex justify-between items-start">
-                            <div className="flex items-center gap-4">
-                                <div className="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-200 dark:shadow-none">
-                                    <span className="material-symbols-outlined text-3xl">campaign</span>
-                                </div>
-                                <div>
-                                    <h3 className="font-black text-xl text-slate-900 dark:text-white leading-tight">Push Notification</h3>
-                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1 opacity-70">Announcement Center</p>
-                                </div>
+                        <div className="text-center mb-6">
+                            <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 flex items-center justify-center mx-auto mb-4">
+                                <span className="material-symbols-outlined text-3xl">notifications_active</span>
                             </div>
-                            <button onClick={() => setShowReminderModal(false)} className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                                <span className="material-symbols-outlined text-[20px]">close</span>
-                            </button>
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Send Push Notification</h3>
+                            <p className="text-sm text-slate-500 mt-1">Send a custom message to your customers</p>
                         </div>
 
-                        <div className="p-8 space-y-8">
-                            {/* Fast Action: Auto Sync */}
-                            <div onClick={() => {
-                                if (loans.length > 0) {
-                                    if (confirm("Send automated reminders to all active loan customers?")) {
-                                        NotificationService.scheduleLoanNotifications(loans as any);
-                                        alert("One-Click Sync Activated!");
-                                    }
-                                } else {
-                                    alert("No active loans.");
-                                }
-                            }}
-                                className="group p-5 rounded-3xl text-white cursor-pointer active:scale-[0.98] transition-all shadow-xl shadow-indigo-500/20 flex items-center justify-between border border-white/20"
-                                style={{ background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)' }}
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md"><span className="material-symbols-outlined">sync_lock</span></div>
-                                    <div>
-                                        <h4 className="font-black text-base">One-Click Auto Sync</h4>
-                                        <p className="text-[10px] opacity-80 font-bold uppercase tracking-tight">Sync all local device alerts</p>
-                                    </div>
-                                </div>
-                                <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">bolt</span>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Title</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    placeholder="e.g. Payment Reminder"
+                                    value={notifTitle}
+                                    onChange={e => setNotifTitle(e.target.value)}
+                                />
                             </div>
-
-                            <div className="relative flex items-center gap-4">
-                                <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Manual Compose</span>
-                                <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Message</label>
+                                <textarea
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-indigo-500 outline-none transition-all h-24 resize-none"
+                                    placeholder="e.g. Your EMI for this month is due tomorrow."
+                                    value={notifBody}
+                                    onChange={e => setNotifBody(e.target.value)}
+                                />
                             </div>
-
-                            {/* Manual Form - Premium Style */}
-                            <div className="space-y-5">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Target Recipient</label>
-                                    <select
-                                        value={selectedCustomerId}
-                                        onChange={e => setSelectedCustomerId(e.target.value)}
-                                        className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none text-sm font-bold shadow-inner focus:ring-2 focus:ring-indigo-500 transition-shadow transition-colors"
-                                    >
-                                        <option value="all">📢 Everyone (All Customers)</option>
-                                        <optgroup label="Direct Message">
-                                            {customers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>)}
-                                        </optgroup>
-                                    </select>
-                                </div>
-
-                                <div className="flex flex-wrap gap-2 py-1">
-                                    {[
-                                        { l: 'Reminder', t: 'Just a Reminder 🎗️', b: 'Your EMI is due soon. Please keep sufficient balance.' },
-                                        { l: 'Urgent', t: 'Action Required ⚠️', b: 'Your payment is Overdue. Please pay immediately.' },
-                                        { l: 'Offer', t: 'Special Offer 🎉', b: 'Get a Top-Up loan today with 0% processing fee!' }
-                                    ].map((tmpl, i) => (
-                                        <button key={i} onClick={() => { setNotifTitle(tmpl.t); setNotifBody(tmpl.b) }} className="px-3.5 py-2 text-[10px] font-black uppercase tracking-wider bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-600 hover:text-white transition-all border border-indigo-100 dark:border-indigo-500/20">
-                                            {tmpl.l}
-                                        </button>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Recipient</label>
+                                <select
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                    value={selectedCustomerId}
+                                    onChange={e => setSelectedCustomerId(e.target.value)}
+                                >
+                                    <option value="all">All Customers</option>
+                                    {customers.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
-                                </div>
-
-                                <div className="space-y-3">
-                                    <input
-                                        value={notifTitle}
-                                        onChange={e => setNotifTitle(e.target.value)}
-                                        placeholder="Notification Title (e.g. EMI Reminder)"
-                                        className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none text-sm font-bold placeholder:opacity-50 shadow-inner focus:ring-2 focus:ring-indigo-500 transition-all"
-                                    />
-                                    <textarea
-                                        value={notifBody}
-                                        onChange={e => setNotifBody(e.target.value)}
-                                        placeholder="Enter your announcement details here..."
-                                        className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none text-sm font-medium min-h-[120px] shadow-inner focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
-                                    ></textarea>
-                                </div>
+                                </select>
                             </div>
 
                             <button
                                 onClick={handleSendNotification}
                                 disabled={sending}
-                                className="w-full py-5 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 hover:opacity-90 active:scale-[0.98] transition-all shadow-xl disabled:opacity-50"
+                                className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg shadow-indigo-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
                             >
                                 {sending ? (
-                                    <div className="w-5 h-5 border-3 border-current border-t-transparent rounded-full animate-spin"></div>
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Sending...
+                                    </>
                                 ) : (
                                     <>
-                                        <span className="material-symbols-outlined text-lg">rocket_launch</span>
-                                        Dispatch Alert Now
+                                        <span className="material-symbols-outlined">send</span>
+                                        Send Notification
                                     </>
                                 )}
                             </button>
@@ -971,8 +803,7 @@ const Dashboard: React.FC = () => {
                     </div>
                 </div>
             )}
-
-        </div >
+        </motion.div>
     );
 };
 

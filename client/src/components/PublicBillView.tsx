@@ -240,6 +240,13 @@ export const PublicBillView: React.FC<PublicBillViewProps> = ({ billId }) => {
                                 <span className="text-sm font-black text-slate-800 dark:text-slate-200 tracking-tighter">₹{(invoice.subtotal || 0).toLocaleString()}</span>
                             </div>
 
+                            {invoice.discountAmount && invoice.discountAmount > 0 && (
+                                <div className="flex justify-between items-center group">
+                                    <span className="text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] group-hover:text-red-500 transition-colors">Discount</span>
+                                    <span className="text-sm font-black text-red-500 tracking-tighter">- ₹{invoice.discountAmount.toLocaleString()}</span>
+                                </div>
+                            )}
+
                             {invoice.gstEnabled && (
                                 <div className="space-y-4 pt-2 border-l-2 border-emerald-500/20 ml-1 pl-5">
                                     {invoice.totalCgst > 0 && (

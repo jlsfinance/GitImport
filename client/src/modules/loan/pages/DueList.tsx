@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { APP_NAME } from '../constants';
 import { db } from '../firebaseConfig';
 import { collection, query, where, getDocs, doc, runTransaction, getDoc } from "firebase/firestore";
 import { format, parseISO, isPast, subMonths, addMonths } from 'date-fns';
@@ -6,6 +7,7 @@ import { Link } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useCompany } from '../context/CompanyContext';
+import { motion } from 'framer-motion';
 
 // WhatsApp Icon Component
 const WhatsAppIcon = ({ className }: { className?: string }) => (
@@ -50,7 +52,7 @@ const DueList: React.FC = () => {
     const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 
     const companyDetails = useMemo(() => ({
-        name: currentCompany?.name || "Finance Company",
+        name: currentCompany?.name || APP_NAME,
         address: currentCompany?.address || "",
         phone: currentCompany?.phone || ""
     }), [currentCompany]);
@@ -149,9 +151,9 @@ const DueList: React.FC = () => {
         const isOverdue = isPast(parseISO(emi.dueDate));
 
         if (isOverdue) {
-            message = `चेतावनी: ${emi.customerName},\n\nJLS Finance Company से आपकी EMI (किश्त संख्या ${emi.emiNumber}) जिसका भुगतान ${dueDateFormatted} को होना था, अभी तक नहीं चुकाई गई है। राशि: ${amountFormatted}.\n\nकानूनी कार्रवाई और अतिरिक्त शुल्क से बचने के लिए तुरंत भुगतान करें।\n\nJLS Finance Company`;
+            message = `चेतावनी: ${emi.customerName},\n\n${companyDetails.name} से आपकी EMI (किश्त संख्या ${emi.emiNumber}) जिसका भुगतान ${dueDateFormatted} को होना था, अभी तक नहीं चुकाई गई है। राशि: ${amountFormatted}.\n\nकानूनी कार्रवाई और अतिरिक्त शुल्क से बचने के लिए तुरंत भुगतान करें।\n\n${companyDetails.name}`;
         } else {
-            message = `नमस्ते ${emi.customerName},\n\nJLS Finance Company की ओर से यह आपकी आने वाली EMI के लिए एक विनम्र अनुस्मारक है।\n\nराशि: ${amountFormatted}\nदेय तिथि: ${dueDateFormatted}\nEMI संख्या: ${emi.emiNumber}\n\nअतिरिक्त शुल्क से बचने के लिए कृपया समय पर भुगतान सुनिश्चित करें। धन्यवाद।`;
+            message = `नमस्ते ${emi.customerName},\n\n${companyDetails.name} की ओर से यह आपकी आने वाली EMI के लिए एक विनम्र अनुस्मारक है।\n\nराशि: ${amountFormatted}\nदेय तिथि: ${dueDateFormatted}\nEMI संख्या: ${emi.emiNumber}\n\nअतिरिक्त शुल्क से बचने के लिए कृपया समय पर भुगतान सुनिश्चित करें। धन्यवाद।`;
         }
 
         const whatsappUrl = `whatsapp://send?phone=${formattedPhone}&text=${encodeURIComponent(message)}`;
@@ -481,7 +483,7 @@ const DueList: React.FC = () => {
         }
 
         const formattedPhone = `91${lastCollectedEmi.phoneNumber.replace(/\D/g, '').slice(-10)}`;
-        const message = `Payment Received!\n\nDear ${lastCollectedEmi.customerName},\nWe have received your payment of ${formatCurrency(lastCollectedEmi.amount)} for EMI #${lastCollectedEmi.emiNumber}.\n\nThank you,\nJLS Finance Company`;
+        const message = `Payment Received!\n\nDear ${lastCollectedEmi.customerName},\nWe have received your payment of ${formatCurrency(lastCollectedEmi.amount)} for EMI #${lastCollectedEmi.emiNumber}.\n\nThank you,\n${companyDetails.name}`;
 
         window.open(`whatsapp://send?phone=${formattedPhone}&text=${encodeURIComponent(message)}`, '_system');
         setIsNotificationModalOpen(false);
@@ -493,7 +495,13 @@ const DueList: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-background-light dark:bg-background-dark pb-safe text-slate-900 dark:text-white">
+        <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+            className="min-h-screen bg-background-light dark:bg-background-dark pb-safe text-slate-900 dark:text-white"
+        >
             {/* Header */}
             <div className="sticky top-0 z-10 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm px-4 pb-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }}>
                 <div className="flex items-center gap-3">
@@ -707,7 +715,7 @@ const DueList: React.FC = () => {
                 </div>
             )}
 
-        </div>
+        </motion.div>
     );
 };
 

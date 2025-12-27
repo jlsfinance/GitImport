@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { APP_NAME } from '../constants';
 import { useNavigate, Link } from 'react-router-dom';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
@@ -124,7 +126,13 @@ const CustomerLogin: React.FC = () => {
   };
 
   return (
-    <div className="h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 flex flex-col items-center justify-center p-4 overflow-hidden">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 1.05 }}
+      transition={{ duration: 0.4 }}
+      className="h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 flex flex-col items-center justify-center p-4 overflow-hidden"
+    >
 
       <div className="w-full max-w-sm flex flex-col h-full justify-evenly">
 
@@ -249,11 +257,11 @@ const CustomerLogin: React.FC = () => {
         </div>
 
         <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest text-center">
-          Secured by JLS Finance v1.0
+          Secured by {APP_NAME}
         </p>
 
       </div>
-    </div>
+    </motion.div>
   );
 };
 

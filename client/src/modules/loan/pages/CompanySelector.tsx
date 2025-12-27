@@ -4,6 +4,7 @@ import { useCompany } from '../context/CompanyContext';
 import { Company } from '../types';
 import { collection, getDocs, query, where, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import { motion } from 'framer-motion';
 
 const CompanySelector: React.FC = () => {
   const navigate = useNavigate();
@@ -259,7 +260,13 @@ const CompanySelector: React.FC = () => {
   }
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden max-w-md mx-auto bg-background-light dark:bg-background-dark text-on-surface-light dark:text-on-surface-dark pb-10">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.3 }}
+      className="relative flex min-h-screen w-full flex-col overflow-x-hidden max-w-md mx-auto bg-background-light dark:bg-background-dark text-on-surface-light dark:text-on-surface-dark pb-10"
+    >
       <div className="sticky top-0 z-10 bg-surface-light/95 dark:bg-surface-dark/95 backdrop-blur-md px-4 py-4 border-b border-outline-light/10 dark:border-outline-dark/10">
         <h1 className="text-xl font-bold text-center">Select Company</h1>
         <p className="text-sm text-center text-on-surface-variant-light dark:text-on-surface-variant-dark mt-1">
@@ -635,7 +642,7 @@ const CompanySelector: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 

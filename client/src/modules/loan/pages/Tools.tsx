@@ -1,9 +1,16 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 const Tools: React.FC = () => {
     return (
-        <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-24 bg-background-light dark:bg-background-dark text-slate-900 dark:text-white">
+        <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+            className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-24 bg-background-light dark:bg-background-dark text-slate-900 dark:text-white"
+        >
 
             {/* Header & Settings */}
             <div className="flex justify-between items-center px-6 pt-6 pb-2" style={{ paddingTop: 'calc(2rem + env(safe-area-inset-top))' }}>
@@ -148,7 +155,7 @@ const Tools: React.FC = () => {
                 </div>
 
             </div>
-        </div>
+        </motion.div>
     );
 };
 

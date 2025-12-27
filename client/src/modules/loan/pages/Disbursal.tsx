@@ -4,6 +4,8 @@ import { collection, getDocs, query, where, doc, updateDoc, getDoc } from "fireb
 import { db } from "../firebaseConfig";
 import { addMonths, startOfMonth, format, parse, isValid } from 'date-fns';
 import { useCompany } from '../context/CompanyContext';
+import { APP_NAME } from '../constants';
+import { motion } from 'framer-motion';
 
 interface ApprovedLoan {
     id: string;
@@ -22,8 +24,8 @@ const Disbursal: React.FC = () => {
     const [approvedLoans, setApprovedLoans] = useState<ApprovedLoan[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const companyName = useMemo(() => currentCompany?.name || "Finance Company", [currentCompany]);
-    
+    const companyName = useMemo(() => currentCompany?.name || APP_NAME, [currentCompany]);
+
     // Modal State
     const [selectedLoan, setSelectedLoan] = useState<ApprovedLoan | null>(null);
     const [disbursalDate, setDisbursalDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -36,11 +38,11 @@ const Disbursal: React.FC = () => {
                 setLoading(false);
                 return;
             }
-            
+
             setLoading(true);
             try {
                 const q = query(
-                    collection(db, "loans"), 
+                    collection(db, "loans"),
                     where("status", "==", "Approved"),
                     where("companyId", "==", currentCompany.id)
                 );
@@ -73,7 +75,7 @@ const Disbursal: React.FC = () => {
             const year = nextMonth.getFullYear();
             const month = nextMonth.getMonth();
             const firstEmiDate = new Date(year, month, emiDueDay);
-            
+
             for (let i = 0; i < selectedLoan.tenure; i++) {
                 const emiDate = addMonths(firstEmiDate, i);
                 repaymentSchedule.push({
@@ -83,7 +85,7 @@ const Disbursal: React.FC = () => {
                     status: 'Pending'
                 });
             }
-            
+
             const actualDisbursed = selectedLoan.amount - (selectedLoan.processingFee || 0);
 
             await updateDoc(loanRef, {
@@ -93,17 +95,17 @@ const Disbursal: React.FC = () => {
                 actualDisbursed: actualDisbursed,
                 emiDueDay: emiDueDay,
             });
-            
+
             // Success Handling
             setApprovedLoans(prev => prev.filter(app => app.id !== selectedLoan.id));
-            
+
             // Notification logic
             try {
                 const customerRef = doc(db, "customers", selectedLoan.customerId);
                 const customerSnap = await getDoc(customerRef);
-                if(customerSnap.exists()){
+                if (customerSnap.exists()) {
                     const customerData = customerSnap.data();
-                    if(customerData.phone){
+                    if (customerData.phone) {
                         // Clean phone number
                         const cleanPhone = customerData.phone.replace(/\D/g, '').slice(-10);
                         const formattedPhone = `91${cleanPhone}`;
@@ -112,7 +114,7 @@ const Disbursal: React.FC = () => {
 
                         const message = `Namaste ${selectedLoan.customerName},\n\nAapka ${companyName} se ${amountFormatted} ka loan aaj dinank ${dateFormatted} ko disburse kar diya gaya hai.\n\nDhanyavaad.`;
                         const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
-                        
+
                         window.open(whatsappUrl, '_blank');
                     }
                 }
@@ -132,7 +134,13 @@ const Disbursal: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-background-light dark:bg-background-dark pb-24 text-slate-900 dark:text-white">
+        <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+            className="min-h-screen bg-background-light dark:bg-background-dark pb-24 text-slate-900 dark:text-white"
+        >
             {/* Header */}
             <div className="sticky top-0 z-10 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm px-4 py-4 border-b border-slate-200 dark:border-slate-800">
                 <div className="flex items-center gap-3">
@@ -178,7 +186,7 @@ const Disbursal: React.FC = () => {
                                                 {app.approvalDate ? new Date(app.approvalDate).toLocaleDateString() : 'N/A'}
                                             </td>
                                             <td className="px-4 py-3 text-center">
-                                                <button 
+                                                <button
                                                     onClick={() => setSelectedLoan(app)}
                                                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 text-xs font-bold transition-colors shadow-lg shadow-primary/30"
                                                 >
@@ -209,11 +217,11 @@ const Disbursal: React.FC = () => {
                         <p className="text-sm text-slate-500 mb-4">
                             For {selectedLoan.customerName} (Loan #{selectedLoan.id})
                         </p>
-                        
+
                         <div className="space-y-4 mb-6">
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 mb-1">Disbursal Date</label>
-                                <input 
+                                <input
                                     type="date"
                                     value={disbursalDate}
                                     onChange={(e) => setDisbursalDate(e.target.value)}
@@ -245,15 +253,15 @@ const Disbursal: React.FC = () => {
                                 </span>
                             </div>
                         </div>
-                        
+
                         <div className="flex gap-3 justify-end">
-                            <button 
-                                onClick={() => setSelectedLoan(null)} 
+                            <button
+                                onClick={() => setSelectedLoan(null)}
                                 className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                             >
                                 Cancel
                             </button>
-                            <button 
+                            <button
                                 onClick={handleDisburse}
                                 disabled={processing}
                                 className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
@@ -265,7 +273,7 @@ const Disbursal: React.FC = () => {
                     </div>
                 </div>
             )}
-        </div>
+        </motion.div>
     );
 };
 

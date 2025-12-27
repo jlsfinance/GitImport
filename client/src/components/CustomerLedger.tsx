@@ -27,16 +27,32 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack, onV
   });
 
   const { debitItems, creditItems, openingBalance } = useMemo(() => {
-    const openingDebit = invoices
-      .filter((i: Invoice) => i.date < dateRange.from)
-      .reduce((sum: number, i: Invoice) => sum + i.total, 0);
-    const openingCredit = payments
-      .filter((p: Payment) => p.date < dateRange.from)
-      .reduce((sum: number, p: Payment) => sum + p.amount, 0);
+    // 1. Calculate Opening Balance
+    // Debit side: Sales + Paid Out
+    const openDrInv = invoices
+      .filter((i: Invoice) => i.date < dateRange.from && i.type !== 'PURCHASE')
+      .reduce((sum, i) => sum + i.total, 0);
+    const openDrPay = payments
+      .filter((p: Payment) => p.date < dateRange.from && p.type === 'PAID')
+      .reduce((sum, p) => sum + p.amount, 0);
+
+    const openingDebit = openDrInv + openDrPay;
+
+    // Credit side: Purchases + Received In
+    const openCrInv = invoices
+      .filter((i: Invoice) => i.date < dateRange.from && i.type === 'PURCHASE')
+      .reduce((sum, i) => sum + i.total, 0);
+    const openCrPay = payments
+      .filter((p: Payment) => p.date < dateRange.from && p.type !== 'PAID')
+      .reduce((sum, p) => sum + p.amount, 0);
+
+    const openingCredit = openCrInv + openCrPay;
     const openingBalance = openingDebit - openingCredit;
 
-    const d = invoices
-      .filter((i: Invoice) => i.date >= dateRange.from && i.date <= dateRange.to)
+    // 2. Prepare Detailed Lists for Range
+    // Debit Items: Sales & Payments Made (Paid)
+    const dSales = invoices
+      .filter((i: Invoice) => i.date >= dateRange.from && i.date <= dateRange.to && i.type !== 'PURCHASE')
       .map((inv: Invoice) => ({
         id: inv.id,
         date: inv.date,
@@ -45,11 +61,37 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack, onV
         amount: inv.total,
         original: inv,
         type: 'INVOICE'
-      }))
-      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      }));
 
-    const c = payments
-      .filter((p: Payment) => p.date >= dateRange.from && p.date <= dateRange.to)
+    const dPayments = payments
+      .filter((p: Payment) => p.date >= dateRange.from && p.date <= dateRange.to && p.type === 'PAID')
+      .map((pay: Payment) => ({
+        id: pay.id,
+        date: pay.date,
+        description: 'To Payment (Out)',
+        reference: pay.mode || 'CASH',
+        amount: pay.amount,
+        original: pay,
+        type: 'PAYMENT'
+      }));
+
+    const d = [...dSales, ...dPayments].sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    // Credit Items: Purchases & Payments Received (In)
+    const cPurchases = invoices
+      .filter((i: Invoice) => i.date >= dateRange.from && i.date <= dateRange.to && i.type === 'PURCHASE')
+      .map((inv: Invoice) => ({
+        id: inv.id,
+        date: inv.date,
+        description: 'By Purchase',
+        reference: inv.invoiceNumber,
+        amount: inv.total,
+        original: inv,
+        type: 'INVOICE'
+      }));
+
+    const cReceipts = payments
+      .filter((p: Payment) => p.date >= dateRange.from && p.date <= dateRange.to && p.type !== 'PAID')
       .map((pay: Payment) => ({
         id: pay.id,
         date: pay.date,
@@ -58,8 +100,9 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack, onV
         amount: pay.amount,
         original: pay,
         type: 'PAYMENT'
-      }))
-      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      }));
+
+    const c = [...cPurchases, ...cReceipts].sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     return { debitItems: d, creditItems: c, openingBalance };
   }, [invoices, payments, dateRange]);

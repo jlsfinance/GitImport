@@ -4,6 +4,7 @@ import { collection, getDocs, query, orderBy, where, addDoc } from 'firebase/fir
 import { db } from '../firebaseConfig';
 import { useCompany } from '../context/CompanyContext';
 import { format, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, isWithinInterval } from 'date-fns';
+import { motion } from 'framer-motion';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -414,7 +415,13 @@ const FinanceOverview: React.FC = () => {
     };
 
     return (
-        <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-24 max-w-md mx-auto bg-background-light dark:bg-background-dark text-on-surface-light dark:text-on-surface-dark font-sans">
+        <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.3 }}
+            className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-24 max-w-md mx-auto bg-background-light dark:bg-background-dark text-on-surface-light dark:text-on-surface-dark font-sans"
+        >
             {/* M3 Header */}
             <div className="sticky top-0 z-20 flex items-center bg-surface-light/95 dark:bg-surface-dark/95 backdrop-blur-sm p-4 pb-3 justify-between border-b border-outline-light/10 dark:border-outline-dark/10 transition-colors" style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}>
                 <div className="flex items-center gap-3">
@@ -608,7 +615,7 @@ const FinanceOverview: React.FC = () => {
                 </div>
             )}
 
-        </div>
+        </motion.div>
     );
 };
 

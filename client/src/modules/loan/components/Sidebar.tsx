@@ -3,9 +3,9 @@ import { APP_NAME, APP_VERSION } from '../constants';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useSidebar } from '../context/SidebarContext';
 import { useCompany } from '../context/CompanyContext';
-import { auth } from '../firebaseConfig';
-import { signOut } from 'firebase/auth';
+import { useLoanAuth } from '../context/LoanAuthContext';
 import AboutModal from './AboutModal';
+import { useTheme } from 'next-themes';
 
 interface MenuItem {
     title: string;
@@ -20,17 +20,22 @@ const Sidebar: React.FC = () => {
     const { currentCompany } = useCompany();
     const location = useLocation();
     const navigate = useNavigate();
-    const [expandedMenus, setExpandedMenus] = useState<string[]>(['Loans', 'Finance']); // Default expanded
+    const { theme, setTheme } = useTheme();
+    const { signOut } = useLoanAuth();
+
+    // We keep 'Loans' and 'Finance' expanded by default or based on path? 
+    // Let's keep specific logic if needed, but for now simple state.
+    const [expandedMenus, setExpandedMenus] = useState<string[]>(['Loans', 'Finance']);
     const [showAbout, setShowAbout] = useState(false);
 
     const handleLogout = async () => {
         if (window.confirm("Are you sure you want to logout?")) {
             try {
-                await signOut(auth);
+                await signOut();
                 localStorage.removeItem('customerPortalId');
                 localStorage.removeItem('customerPortalCompanyId');
                 closeSidebar();
-                navigate('/login');
+                navigate('/loan/login');
             } catch (error) {
                 console.error("Logout error", error);
             }
@@ -41,6 +46,12 @@ const Sidebar: React.FC = () => {
         setExpandedMenus(prev =>
             prev.includes(title) ? prev.filter(t => t !== title) : [...prev, title]
         );
+    };
+
+    const handleLinkClick = () => {
+        if (window.innerWidth < 1024) {
+            closeSidebar();
+        }
     };
 
     const menuItems: MenuItem[] = [
@@ -72,13 +83,6 @@ const Sidebar: React.FC = () => {
         { title: 'Settings', path: '/loan/settings', icon: 'settings' },
     ];
 
-    const handleLinkClick = () => {
-        // Close sidebar on mobile when a link is clicked
-        if (window.innerWidth < 1024) {
-            closeSidebar();
-        }
-    };
-
     return (
         <>
             {/* Backdrop for mobile */}
@@ -89,63 +93,78 @@ const Sidebar: React.FC = () => {
                 />
             )}
 
-            {/* Sidebar Container */}
+            {/* Sidebar Container - Matched to AccountingApp Sidebar style */}
             <aside
-                className={`fixed inset-y-0 left-0 z-[55] w-72 h-screen bg-gradient-to-b from-white via-white to-violet-50/50 dark:from-slate-950 dark:via-slate-950 dark:to-violet-950/10 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-800/50 shadow-2xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:shadow-none ${isOpen ? 'translate-x-0' : '-translate-x-full'
-                    }`}
+                className={`fixed inset-y-0 left-0 z-[55] w-72 md:w-80 h-full 
+                    bg-surface-container-low border-r border-border 
+                    flex flex-col flex-shrink-0 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static 
+                    ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
                 style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
-                <div className="flex flex-col h-full">
-                    {/* Header */}
-                    <div className="h-20 flex items-center px-6 border-b border-slate-200/50 dark:border-slate-800/50 bg-transparent">
-                        <div className="flex items-center gap-3.5">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-violet-500/20">
-                                J
+                {/* Header */}
+                <div className="p-8 pb-6 flex-shrink-0">
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 rounded-[20px] bg-white dark:bg-slate-800 p-2 shadow-google border border-border flex items-center justify-center">
+                                {/* Use text logo or image similar to BillBook */}
+                                <div className="text-2xl font-black text-google-blue">J</div>
                             </div>
-                            <div className="flex flex-col">
-                                <span className="font-bold text-slate-900 dark:text-white leading-none text-lg">{APP_NAME}</span>
-                                {currentCompany && <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium">{currentCompany.name}</span>}
+                            <div>
+                                <h1 className="text-2xl font-black font-heading tracking-tight text-foreground leading-none">{APP_NAME}</h1>
+                                {currentCompany && (
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.05em] mt-1 max-w-[150px] truncate">
+                                        {currentCompany.name}
+                                    </p>
+                                )}
                             </div>
                         </div>
-                        <button onClick={closeSidebar} className="ml-auto lg:hidden p-2 rounded-xl hover:bg-slate-200/50 dark:hover:bg-slate-800/50 text-slate-500 transition-colors">
+
+                        <button onClick={closeSidebar} className="lg:hidden p-2 text-muted-foreground hover:bg-surface-container-high rounded-full transition-colors">
                             <span className="material-symbols-outlined">close</span>
                         </button>
                     </div>
+                </div>
 
-                    {/* Menu Items */}
-                    <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1.5 custom-scrollbar">
-                        {menuItems.map((item) => (
+                {/* Nav Items */}
+                <nav className="flex-1 px-4 space-y-1 overflow-y-auto min-h-0" role="navigation">
+                    {menuItems.map((item) => {
+                        // Check if any submenu is active
+                        const isSubActive = item.submenu?.some(sub => location.pathname === sub.path);
+                        const isMainActive = item.path && location.pathname === item.path;
+                        const isActive = isMainActive || (item.submenu && expandedMenus.includes(item.title) && isSubActive);
+
+                        return (
                             <div key={item.title}>
                                 {item.submenu ? (
-                                    <div className="mb-1.5">
+                                    <div className="mb-1">
                                         <button
                                             onClick={() => toggleSubmenu(item.title)}
-                                            className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all duration-200 group border border-transparent ${expandedMenus.includes(item.title)
-                                                ? 'bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 border-violet-100 dark:border-violet-500/10 shadow-sm'
-                                                : 'text-slate-700 dark:text-slate-400 hover:bg-violet-50 dark:hover:bg-violet-950/20 hover:text-slate-900 dark:hover:text-slate-200'
+                                            className={`w-full group flex items-center justify-between px-6 py-4 rounded-full text-sm font-bold transition-all cursor-pointer ${expandedMenus.includes(item.title)
+                                                ? 'text-foreground bg-surface-container-high'
+                                                : 'text-muted-foreground hover:bg-surface-container-high hover:text-foreground'
                                                 }`}
                                         >
-                                            <div className="flex items-center gap-3.5">
-                                                <span className={`material-symbols-outlined text-[22px] transition-colors ${expandedMenus.includes(item.title) ? 'fill-current' : 'text-slate-500 group-hover:text-violet-600 dark:text-slate-500 dark:group-hover:text-violet-400'}`}>{item.icon}</span>
-                                                <span className="font-semibold text-sm">{item.title}</span>
+                                            <div className="flex items-center gap-4">
+                                                <span className={`material-symbols-outlined text-[24px] ${expandedMenus.includes(item.title) ? 'text-google-blue' : ''}`}>{item.icon}</span>
+                                                <span className="flex-1 text-left tracking-tight">{item.title}</span>
                                             </div>
                                             <span className={`material-symbols-outlined text-lg transition-transform duration-300 ${expandedMenus.includes(item.title) ? 'rotate-180' : 'text-slate-400'}`}>expand_more</span>
                                         </button>
 
                                         {/* Submenu */}
-                                        <div className={`overflow-hidden transition-all duration-300 ${expandedMenus.includes(item.title) ? 'max-h-96 opacity-100 mt-1.5' : 'max-h-0 opacity-0'}`}>
-                                            <div className="ml-5 pl-5 border-l-2 border-slate-200 dark:border-slate-800 space-y-1.5">
+                                        <div className={`overflow-hidden transition-all duration-300 ${expandedMenus.includes(item.title) ? 'max-h-[600px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
+                                            <div className="ml-6 pl-4 border-l-2 border-border space-y-1 my-2">
                                                 {item.submenu.map((sub) => (
                                                     <NavLink
                                                         key={sub.path}
                                                         to={sub.path}
                                                         onClick={handleLinkClick}
-                                                        className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 group ${isActive
-                                                            ? 'bg-violet-600 text-white shadow-md shadow-violet-500/25 font-medium active'
-                                                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-violet-50 dark:hover:bg-violet-950/20'
+                                                        className={({ isActive }) => `flex items-center gap-3 px-4 py-3 rounded-full text-sm transition-all duration-200 group cursor-pointer ${isActive
+                                                            ? 'bg-google-blue text-white shadow-google font-bold'
+                                                            : 'text-muted-foreground hover:text-foreground hover:bg-surface-container-high'
                                                             }`}
                                                     >
-                                                        {sub.icon && <span className="material-symbols-outlined text-[18px] opacity-70 group-[.active]:opacity-100">{sub.icon}</span>}
+                                                        {sub.icon && <span className="material-symbols-outlined text-[18px] opacity-70">{sub.icon}</span>}
                                                         <span>{sub.title}</span>
                                                     </NavLink>
                                                 ))}
@@ -155,90 +174,86 @@ const Sidebar: React.FC = () => {
                                 ) : (
                                     <NavLink
                                         to={item.path!}
-                                        end={item.path === '/'}
+                                        end={item.path === '/loan'}
                                         onClick={handleLinkClick}
-                                        className={({ isActive }) => `flex items-center gap-3.5 px-3.5 py-3 rounded-xl transition-all duration-200 mb-1.5 group border block ${isActive
-                                            ? 'bg-violet-600 text-white border-violet-600 shadow-lg shadow-violet-500/30'
-                                            : 'border-transparent text-slate-700 dark:text-slate-400 hover:bg-violet-50 dark:hover:bg-violet-950/20 hover:text-slate-900 dark:hover:text-slate-200'
+                                        className={({ isActive }) => `w-full flex items-center gap-4 px-6 py-4 rounded-full text-sm font-bold transition-all mb-1 cursor-pointer ${isActive
+                                            ? 'bg-google-blue text-white shadow-google scale-[1.02]'
+                                            : 'text-muted-foreground hover:bg-surface-container-high hover:text-foreground'
                                             }`}
                                     >
-                                        <span className={`material-symbols-outlined text-[22px] transition-colors ${!location.pathname.includes(item.path!) && 'text-slate-500 group-hover:text-violet-600 dark:text-slate-500 dark:group-hover:text-violet-400'}`}>{item.icon}</span>
-                                        <span className="font-semibold text-sm">{item.title}</span>
+                                        <span className={`material-symbols-outlined text-[24px] ${!isActive && 'group-hover:text-google-blue'}`}>{item.icon}</span>
+                                        <span className="flex-1 text-left tracking-tight">{item.title}</span>
                                     </NavLink>
                                 )}
                             </div>
-                        ))}
+                        )
+                    })}
 
-                        <div className="mb-1.5">
-                            <NavLink
-                                to="/loan/notifications"
-                                onClick={handleLinkClick}
-                                className={({ isActive }) => `flex items-center gap-3.5 px-3.5 py-3 rounded-xl transition-all duration-200 group border block ${isActive
-                                    ? 'bg-violet-600 text-white border-violet-600 shadow-lg shadow-violet-500/30'
-                                    : 'border-transparent text-slate-700 dark:text-slate-400 hover:bg-violet-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'
-                                    }`}
-                            >
-                                <span className={`material-symbols-outlined text-[22px] transition-colors ${!location.pathname.includes('/loan/notifications') && 'text-slate-500 group-hover:text-violet-600 dark:text-slate-500 dark:group-hover:text-violet-400'}`}>campaign</span>
-                                <span className="font-semibold text-sm">Notification Center</span>
-                            </NavLink>
-                        </div>
-
-                        {/* Logout, Switch & About Section */}
-                        <div className="pt-6 mt-6 border-t border-slate-200 dark:border-slate-800 space-y-1">
-                            <button
-                                onClick={() => {
-                                    localStorage.removeItem('active_module');
-                                    window.location.href = '/';
-                                }}
-                                className="w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-violet-50 dark:hover:bg-violet-950/20 transition-colors group"
-                            >
-                                <span className="material-symbols-outlined text-[22px] group-hover:text-violet-500 dark:group-hover:text-violet-400 transition-colors">apps</span>
-                                <span className="font-semibold text-sm">Switch Dashboard</span>
-                            </button>
-
-                            <button
-                                onClick={handleLogout}
-                                className="w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors group"
-                            >
-                                <span className="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform">logout</span>
-                                <span className="font-semibold text-sm">Logout Panel</span>
-                            </button>
-
-                            <button
-                                onClick={() => { setShowAbout(true); closeSidebar(); }}
-                                className="w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-violet-50 dark:hover:bg-violet-950/20 transition-colors group"
-                            >
-                                <span className="material-symbols-outlined text-[22px] group-hover:text-violet-500 dark:group-hover:text-violet-400 transition-colors">info</span>
-                                <span className="font-semibold text-sm">About {APP_NAME}</span>
-                            </button>
-                        </div>
+                    {/* Notification Link */}
+                    <div className="mb-1">
+                        <NavLink
+                            to="/loan/notifications"
+                            onClick={handleLinkClick}
+                            className={({ isActive }) => `w-full flex items-center gap-4 px-6 py-4 rounded-full text-sm font-bold transition-all cursor-pointer ${isActive
+                                ? 'bg-google-blue text-white shadow-google scale-[1.02]'
+                                : 'text-muted-foreground hover:bg-surface-container-high hover:text-foreground'
+                                }`}
+                        >
+                            <span className="material-symbols-outlined text-[24px]">campaign</span>
+                            <span className="flex-1 text-left tracking-tight">Notifications</span>
+                        </NavLink>
                     </div>
 
-                    {/* Footer */}
-                    <div className="p-5 border-t border-slate-200/50 dark:border-slate-800/50 bg-slate-50/30 dark:bg-slate-900/30 backdrop-blur-sm">
+                    <div className="h-4" />
 
-                        {/* Privacy Badge */}
-                        <div className="mb-4 flex items-center justify-center">
-                            <div className="bg-emerald-100/50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-full flex items-center gap-2">
-                                <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[16px]">shield_lock</span>
-                                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 tracking-wide uppercase">Zero Data Sharing</span>
-                            </div>
+                    {/* Theme Toggle Button */}
+                    <button
+                        onClick={() => {
+                            setTheme(theme === 'dark' ? 'light' : 'dark');
+                        }}
+                        className="w-full flex items-center gap-4 px-6 py-4 rounded-full text-sm font-bold text-muted-foreground hover:bg-surface-container-high hover:text-foreground transition-all group cursor-pointer"
+                    >
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${theme === 'dark' ? 'bg-google-yellow/10 text-google-yellow' : 'bg-google-blue/10 text-google-blue'
+                            }`}>
+                            <span className="material-symbols-outlined text-[20px]">{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
                         </div>
+                        <span className="flex-1 text-left tracking-tight">Appearance</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest opacity-40">{theme === 'dark' ? 'Dark' : 'Light'}</span>
+                    </button>
 
-                        <div className="flex items-center justify-between">
-                            <div className="flex flex-col">
-                                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Created by <span className="text-violet-600 dark:text-violet-400 font-bold">Luvi</span></span>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">© 2025 {APP_NAME}</span>
-                                    <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
-                                    <span className="text-[10px] font-black tracking-widest text-[#6366f1] bg-[#6366f1]/10 px-2 py-0.5 rounded-md">{APP_VERSION}</span>
-                                </div>
-                            </div>
-                            <div className="h-8 w-8 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center text-slate-400 shadow-sm border border-slate-100 dark:border-slate-700">
-                                <span className="material-symbols-outlined text-sm">code</span>
-                            </div>
-                        </div>
-                    </div>
+                    {/* Add extra padding at bottom of scrollable area ensures last items aren't cut off */}
+                    <div className="h-24 lg:hidden"></div>
+
+                </nav>
+
+                {/* Footer */}
+                <div className="p-6 border-t border-border bg-surface-container-low flex-shrink-0">
+                    <button
+                        onClick={() => {
+                            localStorage.removeItem('active_module');
+                            window.location.href = '/';
+                        }}
+                        className="w-full mb-2 flex items-center gap-4 px-6 py-4 rounded-[24px] bg-surface-container text-muted-foreground hover:bg-surface-container-high hover:text-foreground transition-all font-bold text-sm group cursor-pointer"
+                    >
+                        <span className="material-symbols-outlined">apps</span>
+                        <span>Switch App</span>
+                    </button>
+
+                    <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-4 px-6 py-4 rounded-[24px] bg-google-red/5 text-google-red hover:bg-google-red hover:text-white transition-all font-bold text-sm group cursor-pointer"
+                    >
+                        <span className="material-symbols-outlined">logout</span>
+                        <span>Sign Out</span>
+                    </button>
+
+                    <button
+                        onClick={() => { setShowAbout(true); closeSidebar(); }}
+                        className="w-full mt-2 flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-google-blue transition-colors cursor-pointer"
+                    >
+                        <span className="material-symbols-outlined text-[16px]">info</span>
+                        <span>About {APP_NAME}</span>
+                    </button>
                 </div>
             </aside>
 
@@ -248,3 +263,4 @@ const Sidebar: React.FC = () => {
 };
 
 export default Sidebar;
+

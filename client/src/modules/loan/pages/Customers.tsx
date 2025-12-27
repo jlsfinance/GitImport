@@ -4,6 +4,7 @@ import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Customer } from '../types';
 import { useCompany } from '../context/CompanyContext';
+import { motion } from 'framer-motion';
 
 const Customers: React.FC = () => {
   const { currentCompany } = useCompany();
@@ -90,7 +91,13 @@ const Customers: React.FC = () => {
   };
 
   return (
-    <div className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden pb-24 bg-background-light dark:bg-background-dark text-slate-900 dark:text-white">
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 20 }}
+      transition={{ duration: 0.3 }}
+      className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden pb-24 bg-background-light dark:bg-background-dark text-slate-900 dark:text-white"
+    >
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm transition-colors duration-200" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex items-center justify-between px-4 py-4">
@@ -221,7 +228,7 @@ const Customers: React.FC = () => {
           ))
         )}
       </main>
-    </div>
+    </motion.div>
   );
 };
 

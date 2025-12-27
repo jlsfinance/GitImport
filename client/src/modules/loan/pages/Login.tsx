@@ -4,6 +4,9 @@ import { auth } from '../firebaseConfig';
 import { useNavigate, Link } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 
+import { APP_NAME, DEVELOPER_NAME } from '../constants';
+import { motion } from 'framer-motion';
+
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -63,7 +66,13 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-[#3b2d72] via-[#482880] to-[#2c1b52] px-6 py-4 text-white font-sans overflow-hidden relative">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 1.05 }}
+      transition={{ duration: 0.4 }}
+      className="h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-[#3b2d72] via-[#482880] to-[#2c1b52] px-6 py-4 text-white font-sans overflow-hidden relative"
+    >
       {/* Background decoration elements */}
       <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-purple-500/20 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
@@ -76,7 +85,7 @@ const Login: React.FC = () => {
             <span className="material-symbols-outlined text-3xl text-white">admin_panel_settings</span>
           </div>
           <h1 className="text-2xl font-bold mb-1">Admin Login</h1>
-          <p className="text-white/60 text-xs">Secure Access to JLS Suite</p>
+          <p className="text-white/60 text-xs">Secure Access to {APP_NAME}</p>
         </div>
 
         {/* Form Section */}
@@ -130,10 +139,9 @@ const Login: React.FC = () => {
 
           <div className="flex items-start gap-2 mt-1">
             <input
-              id="remember"
-              name="remember"
               type="checkbox"
               id="terms"
+              name="terms"
               checked={agreeToTerms}
               onChange={(e) => setAgreeToTerms(e.target.checked)}
               className="mt-0.5 w-3 h-3 rounded border-white/30 bg-white/10 text-purple-600 focus:ring-purple-500 focus:ring-offset-0"
@@ -146,7 +154,7 @@ const Login: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full btn-kadak py-3 rounded-full active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2 transition-all text-sm"
+            className="w-full bg-white text-purple-900 font-bold shadow-lg hover:brightness-110 py-3 rounded-full active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2 transition-all text-sm"
           >
             {loading ? (
               <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -188,11 +196,11 @@ const Login: React.FC = () => {
         </div>
 
         <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-2">
-          App Created by LUVI
+          App Created by {DEVELOPER_NAME}
         </p>
 
       </div>
-    </div>
+    </motion.div>
   );
 };
 

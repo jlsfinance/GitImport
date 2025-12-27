@@ -69,7 +69,7 @@ export default async function runApp(
 
     log(`Error: ${status} - ${message}`);
     console.error(err);
-    
+
     if (!res.headersSent) {
       res.status(status).json({ message });
     }
@@ -94,7 +94,6 @@ export default async function runApp(
   server.listen({
     port,
     host: "0.0.0.0",
-    reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
   });

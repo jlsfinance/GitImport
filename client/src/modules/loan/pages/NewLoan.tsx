@@ -4,6 +4,7 @@ import { collection, getDocs, query, orderBy, where, doc, runTransaction } from 
 import { db, auth } from '../firebaseConfig';
 import { Customer } from '../types';
 import { useCompany } from '../context/CompanyContext';
+import { motion } from 'framer-motion';
 
 interface LoanFormState {
   amount: number;
@@ -188,7 +189,13 @@ const NewLoan: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark pb-24 text-slate-900 dark:text-white">
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.3 }}
+      className="min-h-screen bg-background-light dark:bg-background-dark pb-24 text-slate-900 dark:text-white"
+    >
       {/* Header */}
       <div className="sticky top-0 z-20 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
@@ -235,8 +242,8 @@ const NewLoan: React.FC = () => {
                         onClick={() => handleCustomerSelect(customer.id)}
                         disabled={hasActiveLoan}
                         className={`relative flex flex-col items-center p-4 rounded-xl border transition-all ${hasActiveLoan
-                            ? 'opacity-60 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-not-allowed'
-                            : 'bg-white dark:bg-[#1a2230] border-slate-200 dark:border-slate-700 hover:border-primary hover:shadow-md'
+                          ? 'opacity-60 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-not-allowed'
+                          : 'bg-white dark:bg-[#1a2230] border-slate-200 dark:border-slate-700 hover:border-primary hover:shadow-md'
                           }`}
                       >
                         {hasActiveLoan && <span className="absolute top-2 right-2 text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold">Active</span>}
@@ -384,7 +391,7 @@ const NewLoan: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-4 rounded-xl btn-kadak text-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full py-4 rounded-xl bg-primary text-white font-bold text-lg shadow-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <><div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div> Processing...</>
@@ -397,7 +404,7 @@ const NewLoan: React.FC = () => {
         )}
 
       </div>
-    </div>
+    </motion.div>
   );
 };
 

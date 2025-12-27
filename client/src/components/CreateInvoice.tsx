@@ -30,6 +30,10 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
   const [roundUpTo, setRoundUpTo] = useState<0 | 10 | 100>(company?.roundUpDefault ?? 0);
   const [notes, setNotes] = useState('');
 
+  // Global Discount State
+  const [discountType, setDiscountType] = useState<'PERCENTAGE' | 'AMOUNT'>('PERCENTAGE');
+  const [discountValue, setDiscountValue] = useState<number>(0);
+
   // Smart Calculator States
   const [showSmartCalculator, setShowSmartCalculator] = useState(false);
   const [smartCalcInput, setSmartCalcInput] = useState('');
@@ -120,7 +124,24 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
   };
 
   const calculateTaxes = (item: InvoiceItem, supplier: any, customer: any) => {
-    const baseAmount = item.quantity * item.rate;
+    let baseAmount = item.quantity * item.rate;
+    // Apply Item Discount if present
+    if (item.discountValue && item.discountValue > 0) {
+      if (item.discountType === 'AMOUNT') {
+        item.discountAmount = item.discountValue;
+        baseAmount -= item.discountValue;
+      } else {
+        const discAmt = (baseAmount * item.discountValue / 100);
+        item.discountAmount = discAmt;
+        baseAmount -= discAmt;
+      }
+    } else {
+      item.discountAmount = 0;
+    }
+
+    // Ensure baseAmount is not negative
+    if (baseAmount < 0) baseAmount = 0;
+
     const gstRate = item.gstRate || 0;
     const taxType = supplier?.state === customer?.state ? 'INTRA_STATE' : 'INTER_STATE';
 
@@ -134,8 +155,6 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
       item.igstAmount = baseAmount * gstRate / 100;
     }
 
-    item.baseAmount = baseAmount;
-    item.totalAmount = baseAmount + (item.cgstAmount || 0) + (item.sgstAmount || 0) + (item.igstAmount || 0);
     item.baseAmount = baseAmount;
     item.totalAmount = baseAmount + (item.cgstAmount || 0) + (item.sgstAmount || 0) + (item.igstAmount || 0);
   };
@@ -200,13 +219,23 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     const supplier = company as any;
     const taxType = (supplier?.state || 'Delhi') === (finalCustomer.state || '') ? 'INTRA_STATE' : 'INTER_STATE';
 
-    const rawTotal = subtotal + totalCgst + totalSgst + totalIgst;
+    // Calculate Discount
+    let globalDiscountAmount = 0;
+    if (discountType === 'PERCENTAGE') {
+      globalDiscountAmount = (subtotal * discountValue) / 100;
+    } else {
+      globalDiscountAmount = discountValue;
+    }
 
-    let roundedTotal = rawTotal;
+    const totalBeforeDiscount = subtotal + totalCgst + totalSgst + totalIgst;
+    const finalTotal = totalBeforeDiscount - globalDiscountAmount;
+
+    // Rounding
+    let roundedTotal = finalTotal;
     let roundUpAmount = 0;
     if (roundUpTo > 0) {
-      roundedTotal = Math.ceil(rawTotal / roundUpTo) * roundUpTo;
-      roundUpAmount = roundedTotal - rawTotal;
+      roundedTotal = Math.ceil(finalTotal / roundUpTo) * roundUpTo;
+      roundUpAmount = roundedTotal - finalTotal;
     }
 
     const invoiceData: Invoice = {
@@ -222,6 +251,9 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
       date,
       dueDate,
       items: cleanedItems,
+      discountType,
+      discountValue,
+      discountAmount: Math.round(globalDiscountAmount * 100) / 100,
       subtotal: Math.round(subtotal * 100) / 100,
       totalCgst: Math.round(totalCgst * 100) / 100,
       totalSgst: Math.round(totalSgst * 100) / 100,
@@ -315,6 +347,20 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
       item.hsn = value;
     } else if (field === 'description') {
       item.description = value;
+    } else if (field === 'discountType' || field === 'discountValue') {
+      if (field === 'discountType') item.discountType = value;
+      if (field === 'discountValue') item.discountValue = Number(value);
+      if (gstEnabled) calculateTaxes(item, supplier, customer);
+      else {
+        // Manual recalc for non-GST
+        let base = item.quantity * item.rate;
+        if (item.discountValue && item.discountValue > 0) {
+          if (item.discountType === 'AMOUNT') base -= item.discountValue;
+          else base -= (base * item.discountValue / 100);
+        }
+        item.baseAmount = base > 0 ? base : 0;
+        item.totalAmount = item.baseAmount;
+      }
     }
 
     setItems(newItems);
@@ -334,20 +380,64 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
       setSmartCalcInput('');
     } else if (char === '+') {
       if (smartCalcInput) handleSmartAction('ADD');
-    } else if (char === '-') {
-      if (smartCalcInput) handleSmartAction('REMOVE');
     } else if (char === '*') {
       // Prevent multiple *
       if (!smartCalcInput.includes('*')) setSmartCalcInput(prev => prev + char);
+    } else if (char === 'BILL_DISC') {
+      const val = parseFloat(smartCalcInput);
+      if (!isNaN(val) && val > 0) {
+        // Apply new discount from input
+        setDiscountValue(val);
+        setDiscountType('PERCENTAGE'); // Default to %
+        setSmartCalcInput('');
+        HapticService.success();
+      } else {
+        // No input, toggle existing discount
+        if (discountValue > 0) {
+          if (discountType === 'PERCENTAGE') {
+            setDiscountType('AMOUNT'); // Switch to Flat Amount
+            HapticService.light();
+          } else {
+            setDiscountValue(0); // Turn Off
+            HapticService.medium();
+          }
+        }
+      }
+    } else if (char === '-') {
+      // Primary Action: REMOVE item (if input present)
+      if (smartCalcInput && smartCalcInput !== '-') {
+        handleSmartAction('REMOVE');
+      } else {
+        // Start negative number (for removal by ID like -1001 or just valid negative entry)
+        setSmartCalcInput(prev => prev + char);
+      }
     } else {
       setSmartCalcInput(prev => prev + char);
     }
   };
 
   const handleSmartAction = (action: 'ADD' | 'REMOVE') => {
-    // Parse Input: could be "ID" or "QTY*ID" or "ID*QTY"
-    // Heuristic: Check if part is ID. 
-    const parts = smartCalcInput.split('*');
+    // 1. Analyze Input for Mode (Remove vs Add vs Discount)
+    let finalAction = action;
+    let inputToParse = smartCalcInput;
+    let discountValue = 0;
+
+    // Check for Negative Entry (Remove Mode) - e.g. "-1001"
+    if (smartCalcInput.startsWith('-')) {
+      finalAction = 'REMOVE';
+      inputToParse = smartCalcInput.substring(1); // Remove leading '-'
+    } else if (smartCalcInput.includes('-')) {
+      // Check for Discount (Add Mode with Discount) - e.g. "1001-50"
+      const discParts = smartCalcInput.split('-');
+      // Last part is discount?
+      if (discParts.length === 2) {
+        inputToParse = discParts[0];
+        discountValue = Number(discParts[1]) || 0;
+      }
+    }
+
+    // 2. Parse ID and Quantity
+    const parts = inputToParse.split('*');
     let product: Product | undefined;
     let quantityOp = 1;
 
@@ -379,10 +469,17 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     setHasChanges(true);
     const existingItemIndex = items.findIndex(i => i.productId === product!.id); // bang operator safe due to check above
 
-    if (action === 'ADD') {
+    if (finalAction === 'ADD') {
       if (existingItemIndex > -1) {
         // Increment quantity
         handleUpdateItem(existingItemIndex, 'quantity', items[existingItemIndex].quantity + quantityOp);
+
+        // Update discount if provided (generic overwrite or add? let's overwrite for now or just set if provided)
+        if (discountValue > 0) {
+          handleUpdateItem(existingItemIndex, 'discountType', 'AMOUNT');
+          handleUpdateItem(existingItemIndex, 'discountValue', discountValue);
+        }
+
       } else {
         // Add new item
         const newItem: InvoiceItem = {
@@ -396,7 +493,10 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
           cgstAmount: 0,
           sgstAmount: 0,
           igstAmount: 0,
-          totalAmount: 0
+          totalAmount: 0,
+          discountType: 'AMOUNT',
+          discountValue: discountValue,
+          discountAmount: discountValue // Initial calc will fix this but good to set
         };
         // Calculate taxes... reuse logic
         const supplier = company;
@@ -407,7 +507,15 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
           if (lastRate !== null) rateToUse = lastRate;
         }
         newItem.rate = rateToUse;
-        newItem.baseAmount = newItem.quantity * newItem.rate;
+
+        // Manual Discount Calc for Initial
+        if (discountValue > 0) {
+          newItem.discountAmount = discountValue;
+          newItem.baseAmount = (newItem.quantity * newItem.rate) - discountValue;
+        } else {
+          newItem.baseAmount = newItem.quantity * newItem.rate;
+        }
+
         if (gstEnabled) calculateTaxes(newItem, supplier, customer);
         else newItem.totalAmount = newItem.baseAmount;
 
@@ -462,10 +570,40 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
 
   const calculateTotal = () => {
     const subtotal = calculateSubtotal();
+
+    // Calculate Discount Amount
+    let globalDiscountAmount = 0;
+    if (discountType === 'PERCENTAGE') {
+      globalDiscountAmount = (subtotal * discountValue) / 100;
+    } else {
+      globalDiscountAmount = discountValue;
+    }
+
+    // Tax is usually calculated on discounted base if discount is pre-tax, OR on subtotal if discount is post-tax.
+    // Standard practice: Discount reduces taxable value? OR Discount on final bill?
+    // Request says "full bill me dena ho toh", implies Total Bill Discount.
+
+    // Approach A: Discount reduces Taxable Value (Subtotal) -> Re-calculate Tax?
+    // Approach B: Discount on Final Total (Post-Tax).
+
+    // Let's implement Discount on Subtotal (Pre-Tax) so taxes are reduced, or Discount on Total (Post-Tax).
+    // Usually "Bill Discount" is on the final payable amount or subtotal. 
+    // To keep it simple and safe for GST, lets apply it as a reduction to the Total Payable for now, 
+    // BUT strictly speaking, for GST invoices, discounts should be line-item or pre-tax. 
+    // However, for typical "Bill Book" usage, a flat deduction from total is often expected.
+
+    // Let's assume Post-Tax Discount for "Bill Discount" simplicity unless purely accounting.
+    // ACTUALLY: Let's apply it to the Subtotal effectively for calculation?
+    // No, let's keep it clean: Subtotal + Tax = Total - Discount.
+
     const cgst = calculateTotalCGST();
     const sgst = calculateTotalSGST();
     const igst = calculateTotalIGST();
-    return subtotal + cgst + sgst + igst;
+
+    const totalBeforeDiscount = subtotal + cgst + sgst + igst;
+    const finalTotal = totalBeforeDiscount - globalDiscountAmount;
+
+    return finalTotal > 0 ? finalTotal : 0;
   };
 
   const calculateRoundedTotal = () => {
@@ -590,6 +728,17 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     const totalIgst = calculateTotalIGST();
     const supplier = company as any;
     const taxType = (supplier?.state || 'Delhi') === (customer.state || '') ? 'INTRA_STATE' : 'INTER_STATE';
+
+    // Calculate final total with discount
+    let globalDiscountAmount = 0;
+    if (discountType === 'PERCENTAGE') {
+      globalDiscountAmount = (subtotal * discountValue) / 100;
+    } else {
+      globalDiscountAmount = discountValue;
+    }
+    const totalBeforeDiscount = subtotal + totalCgst + totalSgst + totalIgst;
+    const finalTotal = totalBeforeDiscount - globalDiscountAmount;
+
     const roundedTotal = calculateRoundedTotal();
     const roundUpAmount = getRoundUpAmount();
 
@@ -606,6 +755,9 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
       date,
       dueDate,
       items: cleanedItems,
+      discountType,
+      discountValue,
+      discountAmount: Math.round(globalDiscountAmount * 100) / 100,
       subtotal: Math.round(subtotal * 100) / 100,
       totalCgst: Math.round(totalCgst * 100) / 100,
       totalSgst: Math.round(totalSgst * 100) / 100,
@@ -613,9 +765,10 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
       gstEnabled: gstEnabled && cleanedItems.some(i => (i.gstRate || 0) > 0),
       roundUpTo: roundUpTo,
       roundUpAmount: Math.round(roundUpAmount * 100) / 100,
-      total: Math.round(roundedTotal * 100) / 100,
+      total: Math.round(finalTotal * 100) / 100,
       status: status,
-      notes: notes
+      notes: notes,
+      paymentMode: paymentMode
     };
 
     onSave(invoiceData);
@@ -1065,9 +1218,12 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
 
               {/* Row 4: 0, ., REMOVE(-) */}
               <button onClick={() => handleSmartCalcInput('0')} className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 text-2xl font-bold hover:bg-slate-100 active:scale-95 transition-all shadow-sm border border-slate-200 dark:border-slate-700">0</button>
-              <button onClick={() => handleSmartCalcInput('.')} className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 text-2xl font-bold hover:bg-slate-100 active:scale-95 transition-all shadow-sm border border-slate-200 dark:border-slate-700">.</button>
-              <button onClick={() => handleSmartCalcInput('-')} className="h-16 rounded-2xl bg-orange-50 text-orange-600 font-bold active:scale-95 transition-all flex flex-col items-center justify-center hover:bg-orange-100 leading-none">
-                <span className="text-xl">-</span>
+              <button onClick={() => handleSmartCalcInput('BILL_DISC')} className={`h-16 rounded-2xl font-bold active:scale-95 transition-all flex flex-col items-center justify-center leading-none shadow-sm border ${discountValue > 0 ? 'bg-purple-600 text-white border-purple-600 shadow-purple-500/30' : 'bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100'}`}>
+                <span className="text-xl">{discountValue > 0 ? (discountType === 'PERCENTAGE' ? '%' : '₹') : '%'}</span>
+                <span className="text-[9px] uppercase tracking-widest">{discountValue > 0 ? `${discountValue} ${discountType === 'PERCENTAGE' ? 'OFF' : ''}` : 'DISC'}</span>
+              </button>
+              <button onClick={() => handleSmartCalcInput('-')} className="h-16 rounded-2xl bg-orange-50 text-orange-600 font-bold active:scale-95 transition-all flex flex-col items-center justify-center hover:bg-orange-100 leading-none shadow-sm border border-orange-100">
+                <span className="text-xl material-symbols-outlined">delete</span>
                 <span className="text-[9px] uppercase tracking-widest">REM</span>
               </button>
             </div>
@@ -1076,6 +1232,8 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
               <span className="text-xs font-black uppercase text-blue-600">Save & Close</span>
             </button>
           </div>
+
+
         </div>
       )}
 
@@ -1127,6 +1285,24 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
             <p className="text-3xl font-bold font-heading text-foreground">
               ₹{calculateRoundedTotal().toLocaleString('en-IN')}
             </p>
+            {/* Discount Input for Full Bill */}
+            <div className="flex items-center gap-2 mt-2">
+              <select
+                value={discountType}
+                onChange={(e) => setDiscountType(e.target.value as 'PERCENTAGE' | 'AMOUNT')}
+                className="bg-slate-100 dark:bg-slate-800 text-[10px] font-bold p-1 rounded"
+              >
+                <option value="PERCENTAGE">%</option>
+                <option value="AMOUNT">₹</option>
+              </select>
+              <input
+                type="number"
+                value={discountValue}
+                onChange={(e) => setDiscountValue(Number(e.target.value))}
+                placeholder="Disc."
+                className="w-16 bg-slate-100 dark:bg-slate-800 text-xs font-bold p-1 rounded border border-transparent focus:border-google-blue outline-none"
+              />
+            </div>
           </div>
           <div className="text-right">
             <div className="flex items-center gap-2 mb-1 justify-end">
@@ -1139,7 +1315,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

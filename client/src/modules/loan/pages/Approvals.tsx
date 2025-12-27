@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { useCompany } from '../context/CompanyContext';
+import { motion } from 'framer-motion';
 
 interface LoanApplication {
     id: string;
@@ -95,7 +96,13 @@ const Approvals: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-background-light dark:bg-background-dark pb-24 text-slate-900 dark:text-white">
+        <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+            className="min-h-screen bg-background-light dark:bg-background-dark pb-24 text-slate-900 dark:text-white"
+        >
             {/* Header */}
             <div className="sticky top-0 z-10 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm px-4 py-4 border-b border-slate-200 dark:border-slate-800">
                 <div className="flex items-center gap-3">
@@ -215,7 +222,7 @@ const Approvals: React.FC = () => {
                     </div>
                 </div>
             )}
-        </div>
+        </motion.div>
     );
 };
 

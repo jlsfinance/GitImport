@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { SUPPORT_PHONE } from '../constants';
+import { SUPPORT_PHONE, APP_NAME } from '../constants';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { addMonths, format, parseISO, differenceInDays, startOfDay, isPast, isValid } from 'date-fns';
@@ -57,7 +58,7 @@ const LegalNotice: React.FC = () => {
     const { currentCompany } = useCompany();
 
     const companyDetails = useMemo(() => ({
-        name: currentCompany?.name || "Finance Company",
+        name: currentCompany?.name || APP_NAME,
         address: currentCompany?.address || "",
         phone: currentCompany?.phone || ""
     }), [currentCompany]);
@@ -380,7 +381,13 @@ For ${companyDetails.name}`;
     }
 
     return (
-        <div className="min-h-screen bg-background-light dark:bg-background-dark pb-24 text-slate-900 dark:text-white">
+        <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+            className="min-h-screen bg-background-light dark:bg-background-dark pb-24 text-slate-900 dark:text-white"
+        >
             <div className="sticky top-0 z-10 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm px-4 py-4 border-b border-slate-200 dark:border-slate-800">
                 <div className="flex items-center gap-3">
                     <button onClick={() => setSelectedCustomer(null)} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all">
@@ -517,7 +524,7 @@ For ${companyDetails.name}`;
                 </div>
 
             </div>
-        </div>
+        </motion.div>
     );
 }
 

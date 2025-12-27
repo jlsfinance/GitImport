@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { APP_NAME } from '../constants';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, updateDoc, collection, addDoc, deleteField } from "firebase/firestore";
 import { db } from "../firebaseConfig";
@@ -9,6 +10,7 @@ import { useCompany } from '../context/CompanyContext';
 import { Capacitor } from '@capacitor/core';
 import LazyImage from '../components/LazyImage';
 import { DownloadService } from '../services/DownloadService';
+import { motion } from 'framer-motion';
 
 // Helper function to save/download PDF using the centralized service
 const savePdf = async (pdfDoc: jsPDF, fileName: string) => {
@@ -293,7 +295,7 @@ const LoanDetails: React.FC = () => {
     const [isGeneratingAgreement, setIsGeneratingAgreement] = useState(false);
 
     const companyDetails = useMemo(() => ({
-        name: currentCompany?.name || "Finance Company",
+        name: currentCompany?.name || APP_NAME,
         address: currentCompany?.address || "",
         phone: currentCompany?.phone || ""
     }), [currentCompany]);
@@ -1705,13 +1707,13 @@ const LoanDetails: React.FC = () => {
     }
 
     return (
-        <div className="relative min-h-screen pb-10 text-slate-900 dark:text-white font-sans overflow-x-hidden">
-            {/* Background Decor */}
-            <div className="fixed inset-0 pointer-events-none -z-10">
-                <div className="absolute top-0 left-0 w-full h-[50vh] bg-gradient-to-b from-indigo-50/50 via-purple-50/30 to-transparent dark:from-indigo-950/20 dark:via-purple-950/10 dark:to-transparent"></div>
-                <div className="absolute top-[-10%] right-[-10%] w-[400px] h-[400px] rounded-full bg-indigo-500/5 blur-[100px]"></div>
-                <div className="absolute top-[20%] left-[-10%] w-[300px] h-[300px] rounded-full bg-purple-500/5 blur-[100px]"></div>
-            </div>
+        <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+            className="relative min-h-screen pb-10 text-slate-900 dark:text-white font-sans overflow-x-hidden"
+        >
 
             {/* Top Bar */}
             <div className="sticky top-0 z-30 flex items-center justify-between px-6 pb-4 glass border-b border-white/20 dark:border-slate-800/50 print:hidden"
@@ -2184,7 +2186,7 @@ const LoanDetails: React.FC = () => {
                 )
             }
 
-        </div >
+        </motion.div>
     );
 }
 

@@ -22,8 +22,18 @@ const Payments: React.FC<PaymentsProps> = ({ onBack, initialPayment }) => {
     const [amount, setAmount] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [mode, setMode] = useState<'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE'>('CASH');
+    const [type, setType] = useState<'RECEIVED' | 'PAID'>('RECEIVED');
     const [reference, setReference] = useState('');
     const [note, setNote] = useState('');
+
+    // Tab State for View
+    const [activeTab, setActiveTab] = useState<'ALL' | 'RECEIVED' | 'PAID'>('ALL');
+
+    const filteredPayments = payments.filter(p => {
+        if (activeTab === 'ALL') return true;
+        if (activeTab === 'PAID') return p.type === 'PAID';
+        return p.type !== 'PAID'; // Default or RECEIVED
+    });
 
     React.useEffect(() => {
         if (initialPayment) {
@@ -35,8 +45,12 @@ const Payments: React.FC<PaymentsProps> = ({ onBack, initialPayment }) => {
         setEditingPayment(null);
         setSelectedCustomerId('');
         setAmount('');
+        setAmount('');
         setDate(new Date().toISOString().split('T')[0]);
         setMode('CASH');
+        setDate(new Date().toISOString().split('T')[0]);
+        setMode('CASH');
+        setType(activeTab === 'PAID' ? 'PAID' : 'RECEIVED'); // Auto-set based on current tab
         setReference('');
         setNote('');
         setShowAddModal(true);
@@ -49,6 +63,7 @@ const Payments: React.FC<PaymentsProps> = ({ onBack, initialPayment }) => {
         setAmount(payment.amount.toString());
         setDate(payment.date);
         setMode(payment.mode);
+        setType(payment.type || 'RECEIVED');
         setReference(payment.reference || '');
         setNote(payment.note || '');
         setShowAddModal(true);
@@ -72,6 +87,7 @@ const Payments: React.FC<PaymentsProps> = ({ onBack, initialPayment }) => {
             date: date,
             amount: Number(amount),
             mode: mode,
+            type: type,
             reference: reference,
             note: note
         };
@@ -100,35 +116,53 @@ const Payments: React.FC<PaymentsProps> = ({ onBack, initialPayment }) => {
 
     return (
         <div className="bg-slate-50 dark:bg-slate-900 min-h-screen flex flex-col">
-            {/* Header */}
-            <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-4 sticky top-0 z-10 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
-                        <ArrowLeft className="w-6 h-6 text-slate-600 dark:text-slate-300" />
+            {/* Header with Tabs */}
+            <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
+                <div className="flex items-center justify-between p-4 pb-2">
+                    <div className="flex items-center gap-3">
+                        <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
+                            <ArrowLeft className="w-6 h-6 text-slate-600 dark:text-slate-300" />
+                        </button>
+                        <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Transaction History</h1>
+                    </div>
+                    <button
+                        onClick={handleOpenAdd}
+                        className={`${activeTab === 'PAID' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'} text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors`}
+                    >
+                        <Plus className="w-5 h-5" />
+                        <span className="hidden sm:inline">
+                            {activeTab === 'PAID' ? 'Make Payment' : activeTab === 'RECEIVED' ? 'New Receipt' : 'New Transaction'}
+                        </span>
                     </button>
-                    <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Payment Receipts</h1>
                 </div>
-                <button
-                    onClick={handleOpenAdd}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
-                >
-                    <Plus className="w-5 h-5" /> <span className="hidden sm:inline">New Receipt</span>
-                </button>
+
+                {/* Tabs */}
+                <div className="flex px-4 pb-0 gap-6 overflow-x-auto no-scrollbar">
+                    <button onClick={() => setActiveTab('ALL')} className={`pb-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${activeTab === 'ALL' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+                        All
+                    </button>
+                    <button onClick={() => setActiveTab('RECEIVED')} className={`pb-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${activeTab === 'RECEIVED' ? 'border-green-600 text-green-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+                        Receipts (In)
+                    </button>
+                    <button onClick={() => setActiveTab('PAID')} className={`pb-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${activeTab === 'PAID' ? 'border-red-600 text-red-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+                        Payments (Out)
+                    </button>
+                </div>
             </div>
 
             {/* List */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-24">
-                {payments.length === 0 ? (
+                {filteredPayments.length === 0 ? (
                     <div className="text-center py-20 text-slate-400">
                         <ArrowDownLeft className="w-16 h-16 mx-auto mb-4 opacity-20" />
                         <p>No payments received yet.</p>
                     </div>
                 ) : (
-                    payments.slice().reverse().map(payment => (
+                    filteredPayments.slice().reverse().map(payment => (
                         <div key={payment.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex justify-between items-center group">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400">
-                                    <ArrowDownLeft className="w-6 h-6" />
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${payment.type === 'PAID' ? 'bg-red-100 text-red-500' : 'bg-green-100 text-green-600'}`}>
+                                    <ArrowDownLeft className={`w-6 h-6 ${payment.type === 'PAID' ? 'rotate-180' : ''}`} />
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-slate-800 dark:text-slate-200">{getCustomerName(payment.customerId)}</h3>
@@ -141,7 +175,9 @@ const Payments: React.FC<PaymentsProps> = ({ onBack, initialPayment }) => {
                             </div>
                             <div className="flex items-center gap-4">
                                 <div className="text-right">
-                                    <span className="block text-lg font-bold text-green-600 dark:text-green-400">+₹{payment.amount.toLocaleString('en-IN')}</span>
+                                    <span className={`block text-lg font-bold ${payment.type === 'PAID' ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
+                                        {payment.type === 'PAID' ? '-' : '+'}₹{payment.amount.toLocaleString('en-IN')}
+                                    </span>
                                 </div>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={() => handleEdit(payment)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-blue-600">
@@ -169,7 +205,7 @@ const Payments: React.FC<PaymentsProps> = ({ onBack, initialPayment }) => {
                     <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-                                {editingPayment ? 'Edit Receipt' : 'Receive Payment'}
+                                {editingPayment ? 'Edit Transaction' : (type === 'PAID' ? 'Make Payment' : 'Receive Payment')}
                             </h2>
                             <button onClick={() => setShowAddModal(false)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full">
                                 <X className="w-5 h-5" />
@@ -177,14 +213,22 @@ const Payments: React.FC<PaymentsProps> = ({ onBack, initialPayment }) => {
                         </div>
 
                         <div className="space-y-4">
+                            {/* Type Toggle */}
+                            <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                                <button onClick={() => setType('RECEIVED')} className={`flex-1 py-3 rounded-lg font-bold text-xs uppercase transition-all ${type === 'RECEIVED' ? 'bg-white dark:bg-slate-700 shadow text-green-600 dark:text-green-400' : 'text-slate-400'}`}>Money In (Received)</button>
+                                <button onClick={() => setType('PAID')} className={`flex-1 py-3 rounded-lg font-bold text-xs uppercase transition-all ${type === 'PAID' ? 'bg-white dark:bg-slate-700 shadow text-red-500 dark:text-red-400' : 'text-slate-400'}`}>Money Out (Paid)</button>
+                            </div>
+
                             <div>
-                                <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Customer</label>
+                                <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">
+                                    {type === 'PAID' ? 'Vendor / Party' : 'Customer'}
+                                </label>
                                 <Autocomplete
                                     options={customers.map(c => ({ id: c.id, label: c.company, subLabel: c.name }))}
                                     value={selectedCustomerId}
                                     onChange={setSelectedCustomerId}
                                     onCreate={() => { }}
-                                    placeholder="Select Customer"
+                                    placeholder={type === 'PAID' ? 'Select Vendor' : 'Select Customer'}
                                     type="customer"
                                 />
                             </div>

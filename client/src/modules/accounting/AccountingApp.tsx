@@ -340,6 +340,7 @@ const AccountingApp: React.FC = () => {
                                     StorageService.deletePurchase(inv.id);
                                     setPurchases(StorageService.getPurchases());
                                 }}
+                                onCreate={() => setCurrentView(ViewState.CREATE_PURCHASE)}
                             />
                         )}
 

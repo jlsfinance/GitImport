@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { APP_NAME, DEVELOPER_NAME } from '../constants';
+import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword, updateProfile, signInWithPopup, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -104,11 +106,17 @@ const Register: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background-light dark:bg-background-dark p-6 text-slate-900 dark:text-white">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 1.05 }}
+      transition={{ duration: 0.4 }}
+      className="flex min-h-screen flex-col items-center justify-center bg-background-light dark:bg-background-dark p-6 text-slate-900 dark:text-white"
+    >
       <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-surface-dark p-8 shadow-xl ring-1 ring-slate-900/5 dark:ring-white/10">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold tracking-tight">Create Account</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Join JLS FINANCE SUITE today</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Join {APP_NAME} today</p>
         </div>
 
         <form onSubmit={handleRegister} className="flex flex-col gap-4">
@@ -205,17 +213,17 @@ const Register: React.FC = () => {
 
         <div className="mt-6 text-center text-sm">
           <span className="text-slate-500 dark:text-slate-400">Already have an account? </span>
-          <Link to="/login" className="font-bold text-primary hover:underline">
+          <Link to="/loan/login" className="font-bold text-primary hover:underline">
             Sign In
           </Link>
         </div>
       </div>
       <div className="mt-8 text-center">
         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest">
-          App Created by LUVI
+          App Created by {DEVELOPER_NAME}
         </p>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

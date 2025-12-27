@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Customer, Product, Invoice, InvoiceItem } from '../types';
+import { Customer, Product, Invoice, InvoiceItem, Payment } from '../types';
 import { StorageService } from '../services/storageService';
 import { Plus, Trash2, Save, X, CreditCard, Banknote, ArrowLeft, Calendar, FileText, ChevronDown, Check, AlertCircle, Calculator, Delete, Package, Users, UserPlus, ShoppingCart } from 'lucide-react';
 import Autocomplete from './Autocomplete';
@@ -26,6 +26,7 @@ const CreatePurchase: React.FC<CreatePurchaseProps> = ({ onSave, onCancel, initi
 
     const gstEnabled = company?.gst_enabled ?? true;
     const [paymentMode, setPaymentMode] = useState<'CREDIT' | 'CASH'>('CREDIT');
+    const [paidAmount, setPaidAmount] = useState<number>(0);
     const [notes, setNotes] = useState('');
 
     // States for Modals
@@ -243,21 +244,83 @@ const CreatePurchase: React.FC<CreatePurchaseProps> = ({ onSave, onCancel, initi
 
         if (pendingProductIndex !== null) {
             const newItems = [...items];
-            const item = newItems[pendingProductIndex];
-            item.productId = newProduct.id;
-            item.description = newProduct.name;
-            item.rate = newProduct.purchasePrice || 0;
-            item.quantity = 1;
-            item.gstRate = newProduct.gstRate || 0;
-            item.hsn = newProduct.hsn || '';
-            calculateTaxes(item, null, null);
-            setItems(newItems);
+            // Ensure item exists (if parallel access issue, though React state usually handles this sequence)
+            if (newItems[pendingProductIndex]) {
+                const item = newItems[pendingProductIndex];
+                item.productId = newProduct.id;
+                item.description = newProduct.name;
+                item.rate = newProduct.purchasePrice || 0;
+                item.quantity = 1;
+                item.gstRate = newProduct.gstRate || 0;
+                item.hsn = newProduct.hsn || '';
+                calculateTaxes(item, null, null);
+                setItems(newItems);
+            }
         }
         setShowProductModal(false);
         // Reset inputs...
         setNewProductName('');
         setNewProductPrice('');
         setNewProductPurchasePrice('');
+    };
+
+    const handleQuickAdd = (productId: string) => {
+        const product = products.find(p => p.id === productId);
+        if (!product) return;
+
+        const newItem: InvoiceItem = {
+            productId: product.id,
+            description: product.name,
+            quantity: 1,
+            rate: product.purchasePrice || product.price || 0,
+            baseAmount: 0,
+            hsn: product.hsn || '',
+            gstRate: product.gstRate || 0,
+            cgstAmount: 0,
+            sgstAmount: 0,
+            igstAmount: 0,
+            totalAmount: 0,
+            discountType: 'AMOUNT',
+            discountValue: 0,
+            discountAmount: 0
+        };
+
+        calculateTaxes(newItem, null, null);
+
+        setItems(prev => [...prev, newItem]);
+        // Auto-open modal to confirm/edit price/qty
+        setTimeout(() => handleOpenItemModal(items.length), 100);
+    };
+
+    const handleQuickCreate = (name: string) => {
+        // We need a placeholder item for the new product to land in
+        const newItem: InvoiceItem = {
+            productId: '',
+            description: '',
+            quantity: 1,
+            rate: 0,
+            baseAmount: 0,
+            hsn: '',
+            gstRate: 0,
+            cgstAmount: 0,
+            sgstAmount: 0,
+            igstAmount: 0,
+            totalAmount: 0,
+            discountType: 'AMOUNT',
+            discountValue: 0,
+            discountAmount: 0
+        };
+
+        const newIndex = items.length;
+        setItems(prev => [...prev, newItem]);
+
+        // Setup Product Creation
+        setNewProductName(name);
+        setNewProductPrice('');
+        setNewProductPurchasePrice('');
+        setNewProductId('');
+        setPendingProductIndex(newIndex);
+        setShowProductModal(true);
     };
 
     const handleSubmit = () => {
@@ -311,10 +374,25 @@ const CreatePurchase: React.FC<CreatePurchaseProps> = ({ onSave, onCancel, initi
             totalIgst: Math.round(totalIgst * 100) / 100,
             gstEnabled: gstEnabled && cleanedItems.some(i => (i.gstRate || 0) > 0),
             total: Math.round(calculateTotal() * 100) / 100,
-            status: status,
-            paymentMode: 'CASH', // Default for now
+            status: (paidAmount >= Math.round(calculateTotal() * 100) / 100) ? 'PAID' : 'PENDING',
+            paymentMode: paymentMode,
+            paidAmount: paidAmount,
             notes: notes
         };
+
+        if (paidAmount > 0) {
+            const payment: Payment = {
+                id: crypto.randomUUID(),
+                customerId: vendor.id,
+                date: date,
+                amount: paidAmount,
+                mode: 'CASH',
+                type: 'PAID',
+                reference: 'Purchase Entry',
+                note: `Payment for Purchase ${invoiceData.invoiceNumber}`
+            };
+            StorageService.savePayment(payment);
+        }
 
         onSave(invoiceData);
     };
@@ -374,22 +452,49 @@ const CreatePurchase: React.FC<CreatePurchaseProps> = ({ onSave, onCancel, initi
                         type="customer"
                     />
                     {/* Dates */}
-                    <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="grid grid-cols-1 gap-4 mt-4">
                         <div className="bg-surface-container-high rounded-xl p-3 border border-border">
                             <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">Date</label>
-                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-transparent font-bold outline-none" />
-                        </div>
-                        <div className="bg-surface-container-high rounded-xl p-3 border border-border">
-                            <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">Due Date</label>
-                            <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full bg-transparent font-bold outline-none" />
+                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-transparent font-bold outline-none text-foreground" />
                         </div>
                     </div>
                 </div>
 
-                {/* Payment Mode */}
-                <div className="flex p-1 bg-surface-container rounded-full border border-border">
-                    <button onClick={() => setPaymentMode('CREDIT')} className={`flex-1 py-3 rounded-full font-bold transition-all ${paymentMode === 'CREDIT' ? 'bg-red-500 text-white shadow-lg' : 'text-muted-foreground '}`}>Unpaid (Credit)</button>
-                    <button onClick={() => setPaymentMode('CASH')} className={`flex-1 py-3 rounded-full font-bold transition-all ${paymentMode === 'CASH' ? 'bg-green-600 text-white shadow-lg' : 'text-muted-foreground '}`}>Paid (Cash)</button>
+                {/* Payment Section */}
+                <div className="bg-surface-container p-6 rounded-[32px] border border-border space-y-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-green-600">
+                            <Banknote className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h2 className="font-bold">Payment Details</h2>
+                            <p className="text-xs text-muted-foreground">Record payment</p>
+                        </div>
+                    </div>
+
+                    <div className="flex p-1 bg-surface-container-high rounded-full border border-border">
+                        <button onClick={() => { setPaymentMode('CREDIT'); setPaidAmount(0); }} className={`flex-1 py-3 rounded-full font-bold transition-all ${paymentMode === 'CREDIT' ? 'bg-red-500 text-white shadow-lg' : 'text-muted-foreground '}`}>Unpaid (Credit)</button>
+                        <button onClick={() => { setPaymentMode('CASH'); setPaidAmount(calculateTotal()); }} className={`flex-1 py-3 rounded-full font-bold transition-all ${paymentMode === 'CASH' ? 'bg-green-600 text-white shadow-lg' : 'text-muted-foreground '}`}>Paid (Cash)</button>
+                    </div>
+
+                    {/* Paid Amount Input */}
+                    <div className="bg-surface-container-high rounded-xl p-3 border border-border flex justify-between items-center">
+                        <label className="text-[10px] font-bold uppercase text-muted-foreground">Amount Paid</label>
+                        <div className="flex items-center gap-2">
+                            <span className="font-bold text-muted-foreground">₹</span>
+                            <input
+                                type="number"
+                                value={paidAmount === 0 ? '' : paidAmount}
+                                onChange={e => {
+                                    const val = Number(e.target.value);
+                                    setPaidAmount(val);
+                                    setPaymentMode(val >= calculateTotal() ? 'CASH' : 'CREDIT');
+                                }}
+                                placeholder="0"
+                                className="w-32 bg-transparent font-black text-right outline-none text-foreground text-lg"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Items */}
@@ -404,7 +509,7 @@ const CreatePurchase: React.FC<CreatePurchaseProps> = ({ onSave, onCancel, initi
                         >
                             <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center"><Package className="w-6 h-6 text-slate-500" /></div>
                             <div className="flex-1">
-                                <p className="font-bold text-foreground">{item.description || 'Select Item'}</p>
+                                <p className="font-bold text-foreground">{item.description || 'New Item'}</p>
                                 <div className="flex gap-2 mt-1">
                                     <span className="text-xs bg-slate-100 px-2 py-0.5 rounded-md font-bold text-slate-600">{item.quantity} x ₹{item.rate}</span>
                                     {item.discountAmount ? <span className="text-xs text-green-600 font-bold">-{item.discountAmount} Off</span> : null}
@@ -415,9 +520,19 @@ const CreatePurchase: React.FC<CreatePurchaseProps> = ({ onSave, onCancel, initi
                             </div>
                         </motion.div>
                     ))}
-                    <button onClick={() => { handleAddItem(); setTimeout(() => handleOpenItemModal(items.length), 100); }} className="w-full py-4 rounded-2xl border-2 border-dashed border-orange-200 bg-orange-50 text-orange-600 font-bold flex items-center justify-center gap-2">
-                        <Plus className="w-5 h-5" /> Add Purchase Item
-                    </button>
+
+                    {/* Quick Add Bar */}
+                    <div className="bg-surface-container p-2 rounded-2xl border-2 border-dashed border-border/50">
+                        <label className="text-[10px] font-bold uppercase text-muted-foreground ml-2">Add Items</label>
+                        <Autocomplete
+                            options={products.map(p => ({ id: p.id, label: p.name }))}
+                            value=""
+                            onChange={handleQuickAdd}
+                            onCreate={handleQuickCreate}
+                            placeholder="Type to Search or Add Product..."
+                            type="product" // assuming Autocomplete supports icons for product
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -444,11 +559,11 @@ const CreatePurchase: React.FC<CreatePurchaseProps> = ({ onSave, onCancel, initi
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="text-xs font-bold uppercase text-muted-foreground">Quantity</label>
-                                        <input type="number" value={items[activeItemIndex].quantity} onChange={e => handleUpdateItem(activeItemIndex, 'quantity', e.target.value)} className="w-full p-3 bg-slate-50 rounded-xl font-bold border border-slate-200 outline-none focus:border-orange-500" />
+                                        <input type="number" value={items[activeItemIndex].quantity} onChange={e => handleUpdateItem(activeItemIndex, 'quantity', e.target.value)} className="w-full p-3 bg-surface-container-highest rounded-xl font-bold border border-border outline-none focus:border-orange-500 text-foreground" />
                                     </div>
                                     <div>
                                         <label className="text-xs font-bold uppercase text-muted-foreground">Purchase Rate</label>
-                                        <input type="number" value={items[activeItemIndex].rate} onChange={e => handleUpdateItem(activeItemIndex, 'rate', e.target.value)} className="w-full p-3 bg-slate-50 rounded-xl font-bold border border-slate-200 outline-none focus:border-orange-500" />
+                                        <input type="number" value={items[activeItemIndex].rate} onChange={e => handleUpdateItem(activeItemIndex, 'rate', e.target.value)} className="w-full p-3 bg-surface-container-highest rounded-xl font-bold border border-border outline-none focus:border-orange-500 text-foreground" />
                                     </div>
                                 </div>
 

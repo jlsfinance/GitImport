@@ -4,6 +4,7 @@ import { fetchCustomerById, fetchLoansByCustomerId, deleteCustomer } from '../se
 import { Customer, Loan } from '../types';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import { motion } from 'framer-motion';
 
 const CustomerProfile: React.FC = () => {
   const { id } = useParams();
@@ -107,7 +108,13 @@ const CustomerProfile: React.FC = () => {
   const photoSrc = customer.photo_url || customer.avatar;
 
   return (
-    <div className="bg-background-light dark:bg-background-dark min-h-screen pb-10 text-slate-900 dark:text-white print:bg-white print:text-black">
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.3 }}
+      className="bg-background-light dark:bg-background-dark min-h-screen pb-10 text-slate-900 dark:text-white print:bg-white print:text-black"
+    >
       {/* Top Navigation - Hidden on Print */}
       <div className="sticky top-0 z-50 flex items-center justify-between bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md p-4 border-b border-slate-200 dark:border-slate-800 print:hidden">
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
@@ -341,7 +348,7 @@ const CustomerProfile: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 

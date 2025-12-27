@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
@@ -13,7 +14,7 @@ const ForgotPassword: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     try {
       await sendPasswordResetEmail(auth, email);
       setSubmitted(true);
@@ -30,7 +31,13 @@ const ForgotPassword: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background-light dark:bg-background-dark p-6 text-slate-900 dark:text-white">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 1.05 }}
+      transition={{ duration: 0.4 }}
+      className="flex min-h-screen flex-col items-center justify-center bg-background-light dark:bg-background-dark p-6 text-slate-900 dark:text-white"
+    >
       <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-surface-dark p-8 shadow-xl ring-1 ring-slate-900/5 dark:ring-white/10">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
@@ -46,11 +53,11 @@ const ForgotPassword: React.FC = () => {
               <p className="font-medium text-sm">Reset link sent!</p>
               <p className="text-xs mt-1 opacity-80">Check your inbox and spam folder.</p>
             </div>
-            <Link 
-                to="/login"
-                className="flex h-12 w-full items-center justify-center rounded-xl bg-primary font-bold text-white shadow-lg shadow-primary/30 hover:bg-primary/90 active:scale-95 transition-all"
+            <Link
+              to="/loan/login"
+              className="flex h-12 w-full items-center justify-center rounded-xl bg-primary font-bold text-white shadow-lg shadow-primary/30 hover:bg-primary/90 active:scale-95 transition-all"
             >
-                Back to Sign In
+              Back to Sign In
             </Link>
           </div>
         ) : (
@@ -60,7 +67,7 @@ const ForgotPassword: React.FC = () => {
                 {error}
               </div>
             )}
-            
+
             <div className="space-y-1">
               <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Email Address</label>
               <input
@@ -84,16 +91,16 @@ const ForgotPassword: React.FC = () => {
                 'Send Reset Link'
               )}
             </button>
-            
+
             <div className="mt-2 text-center text-sm">
-                <Link to="/login" className="font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors">
-                    Back to Sign In
-                </Link>
+              <Link to="/loan/login" className="font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors">
+                Back to Sign In
+              </Link>
             </div>
           </form>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

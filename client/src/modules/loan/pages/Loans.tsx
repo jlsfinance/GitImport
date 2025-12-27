@@ -1,5 +1,5 @@
-
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { APP_NAME } from '../constants';
 import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../firebaseConfig';
 import { collection, getDocs, query, orderBy, doc, getDoc, deleteDoc, where } from 'firebase/firestore';
@@ -9,6 +9,7 @@ import autoTable from 'jspdf-autotable';
 import LazyImage from '../components/LazyImage';
 import { useCompany } from '../context/CompanyContext';
 import { DownloadService } from '../services/DownloadService';
+import { motion } from 'framer-motion';
 
 // --- Types ---
 interface Loan {
@@ -139,7 +140,7 @@ const Loans: React.FC = () => {
     const [showPdfModal, setShowPdfModal] = useState(false);
 
     const companyDetails = useMemo(() => ({
-        name: currentCompany?.name || "Finance Company",
+        name: currentCompany?.name || APP_NAME,
         address: currentCompany?.address || "",
         phone: currentCompany?.phone || ""
     }), [currentCompany]);
@@ -578,27 +579,15 @@ const Loans: React.FC = () => {
     };
 
     return (
-        <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-32 pb-safe bg-slate-50 dark:bg-slate-950 font-sans">
-            {/* Background Decor */}
-            <div className="fixed inset-0 pointer-events-none -z-10">
-                <div className="absolute top-0 left-0 w-full h-[50vh] bg-gradient-to-b from-blue-50/50 via-indigo-50/30 to-transparent dark:from-blue-950/20 dark:via-indigo-950/10 dark:to-transparent"></div>
-                <div className="absolute top-[-10%] right-[-10%] w-[400px] h-[400px] rounded-full bg-blue-500/5 blur-[100px]"></div>
-                <div className="absolute top-[30%] left-[-10%] w-[300px] h-[300px] rounded-full bg-indigo-500/5 blur-[100px]"></div>
-            </div>
-
-            {/* Header */}
-            {/* Header */}
-            <header className="sticky top-0 z-20 px-4 pb-4 glass border-b border-white/20 dark:border-slate-800/50" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 8px)' }}>
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Link to="/" className="group flex h-10 w-10 items-center justify-center rounded-xl bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 shadow-sm">
-                            <span className="material-symbols-outlined transition-transform group-hover:-translate-x-1">arrow_back</span>
-                        </Link>
-                        <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300">Loans</h1>
-                    </div>
-                </div>
-                {/* Search & Actions */}
-                <div className="mt-5 flex gap-3">
+        <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+            className="relative flex w-full flex-col overflow-x-hidden pb-32 pb-safe font-sans"
+        >
+            <div className="sticky top-0 z-20 px-4 pt-4 pb-2 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md">
+                <div className="flex gap-3">
                     <div className="relative flex-grow group">
                         <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">search</span>
                         <input
@@ -609,12 +598,12 @@ const Loans: React.FC = () => {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <Link to="/loan/loans/new" className="h-11 px-5 rounded-xl btn-kadak flex items-center gap-2 hover:brightness-110 active:scale-95 transition-all">
+                    <Link to="/loan/loans/new" className="h-11 px-5 rounded-xl bg-primary text-white shadow-md shadow-primary/30 font-bold uppercase tracking-wider flex items-center gap-2 hover:brightness-110 active:scale-95 transition-all">
                         <span className="material-symbols-outlined text-[20px] material-symbols-fill">add_circle</span>
                         <span className="hidden sm:inline">New Loan</span>
                     </Link>
                 </div>
-            </header>
+            </div>
 
             {/* List */}
             <main className="flex flex-col gap-3 px-4 pt-4">
@@ -693,30 +682,26 @@ const Loans: React.FC = () => {
                     return (
                         <>
                             <div
-                                className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm transition-opacity"
+                                className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity"
                                 onClick={() => setActiveMenuId(null)}
                             ></div>
-                            <div className="fixed inset-0 z-[70] flex items-end justify-center md:items-center pointer-events-none">
-                                <div className="bg-white dark:bg-slate-900 shadow-2xl overflow-hidden pointer-events-auto
-                                w-full rounded-t-3xl border-t border-white/10
-                                md:max-w-sm md:rounded-2xl md:border-t-0 md:ring-1 md:ring-slate-900/5
-                                transform transition-all duration-300 ease-out animate-in slide-in-from-bottom
-                                md:duration-200 md:zoom-in-95 md:slide-in-from-bottom-8
-                            ">
-                                    <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mt-3 mb-2 md:hidden"></div>
-
-                                    <div className="p-4 pt-2 md:p-6">
+                            <div className="fixed inset-x-0 bottom-0 z-50 transform transition-transform duration-300 ease-out md:static md:inset-auto md:transform-none">
+                                <div className="bg-white dark:bg-[#1e2736] rounded-t-[2rem] md:rounded-2xl md:fixed md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-md shadow-[0_-8px_30px_rgba(0,0,0,0.12)] md:shadow-2xl overflow-hidden pb-6 md:pb-0">
+                                    <div className="p-2 flex justify-center md:hidden">
+                                        <div className="w-12 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+                                    </div>
+                                    <div className="p-6">
                                         <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
                                             <div className="h-12 w-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 shrink-0">
                                                 <span className="material-symbols-outlined text-2xl">description</span>
                                             </div>
-                                            <div className="min-w-0">
+                                            <div className="min-w-0 flex-1">
                                                 <h3 className="font-bold text-lg text-slate-900 dark:text-white truncate">{selectedLoan.customerName}</h3>
                                                 <p className="text-sm text-slate-500 truncate">Loan ID: #{selectedLoan.id.slice(0, 8)}</p>
                                             </div>
                                             <button
                                                 onClick={() => setActiveMenuId(null)}
-                                                className="ml-auto p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hidden md:block"
+                                                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
                                             >
                                                 <span className="material-symbols-outlined">close</span>
                                             </button>
@@ -868,7 +853,7 @@ const Loans: React.FC = () => {
                     </div>
                 )
             }
-        </div >
+        </motion.div >
     );
 };
 

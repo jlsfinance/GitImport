@@ -283,6 +283,8 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
       `Date: ${new Date(invoice.date).toLocaleDateString()}\n` +
       `Customer: ${custName}\n\n` +
       `*Items:*\n${itemsList}\n\n` +
+      `Subtotal: ₹${invoice.subtotal.toFixed(2)}\n` +
+      ((invoice.discountAmount && invoice.discountAmount > 0) ? `Discount: -₹${invoice.discountAmount.toFixed(2)}\n` : '') +
       `*Total Amount: ₹${invoice.total.toFixed(2)}*\n\n` +
       `Thank you for your business!\n` +
       `View your bill here:\n${link}`;
@@ -500,11 +502,40 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
       const totalXLabel = rightMargin - 45;
       const totalXValue = rightMargin - 5;
 
+      // Calculate Item Level Discounts
+      const itemDiscountTotal = invoice.items.reduce((sum, item) => {
+        const gross = item.quantity * item.rate;
+        const net = item.baseAmount || 0;
+        return sum + (gross - net);
+      }, 0);
+      const grossTotal = invoice.items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
+
+      if (itemDiscountTotal > 0.01) {
+        doc.setFont("helvetica", "normal");
+        doc.text("Gross Amount:", totalXLabel, yPos + 5, { align: "right" });
+        doc.text(`Rs. ${grossTotal.toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
+        yPos += 5;
+
+        doc.setTextColor(220, 38, 38); // Red
+        doc.text("Item Discount:", totalXLabel, yPos + 5, { align: "right" });
+        doc.text(`- Rs. ${itemDiscountTotal.toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
+        doc.setTextColor(0); // Reset
+        yPos += 5;
+      }
+
       doc.setFont("helvetica", "bold");
       doc.text("Subtotal:", totalXLabel, yPos + 5, { align: "right" });
       doc.setFont("helvetica", "normal");
       doc.text(`Rs. ${(invoice.subtotal || 0).toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
-      yPos += 7;
+      yPos += 5;
+
+      if (invoice.discountAmount && invoice.discountAmount > 0) {
+        doc.setFont("helvetica", "normal");
+        doc.text("Discount:", totalXLabel, yPos + 5, { align: "right" });
+        doc.text(`- Rs. ${(invoice.discountAmount).toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
+        yPos += 5;
+      }
+      yPos += 2;
 
       const totalGSTAmount = (invoice.totalCgst || 0) + (invoice.totalSgst || 0) + (invoice.totalIgst || 0);
       if (invoice.gstEnabled && totalGSTAmount > 0) {
@@ -879,10 +910,39 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
             {/* Totals Section Redesign */}
             <div className="flex justify-end mb-16">
               <div className="w-full md:w-1/2 bg-surface-container/50 p-8 rounded-[32px] border border-border space-y-3">
+                {/* Gross & Item Discount */}
+                {(() => {
+                  const itemDiscountTotal = invoice.items.reduce((sum, item) => sum + ((item.quantity * item.rate) - (item.baseAmount || 0)), 0);
+                  const grossTotal = invoice.items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
+
+                  if (itemDiscountTotal <= 0.01) return null;
+
+                  return (
+                    <>
+                      <div className="flex justify-between text-sm font-bold text-muted-foreground uppercase tracking-widest">
+                        <span>Gross Amount</span>
+                        <span>₹{grossTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between text-sm font-bold text-google-red uppercase tracking-widest">
+                        <span>Item Discount</span>
+                        <span>- ₹{itemDiscountTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="h-px bg-border/50 my-2" />
+                    </>
+                  );
+                })()}
+
                 <div className="flex justify-between text-sm font-bold text-muted-foreground uppercase tracking-widest">
                   <span>Subtotal</span>
                   <span className="text-foreground">₹{invoice.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
+
+                {invoice.discountAmount && invoice.discountAmount > 0 ? (
+                  <div className="flex justify-between text-sm font-bold text-google-red">
+                    <span className="uppercase tracking-widest">Discount</span>
+                    <span>- ₹{invoice.discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                ) : null}
 
                 {invoice.gstEnabled && ((invoice.totalCgst || 0) + (invoice.totalSgst || 0) + (invoice.totalIgst || 0)) > 0 && (
                   <div className="space-y-2 pt-2 border-t border-border/50">
@@ -1012,10 +1072,37 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
             <div className="border-b border-dashed border-black my-2"></div>
 
             <div className="text-[10px] text-right space-y-1 mb-4">
+              {/* POS Gross/Disc Calculation */}
+              {(() => {
+                const itemDiscountTotal = invoice.items.reduce((sum, item) => sum + ((item.quantity * item.rate) - (item.baseAmount || 0)), 0);
+                const grossTotal = invoice.items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
+
+                if (itemDiscountTotal <= 0.01) return null;
+                return (
+                  <>
+                    <div className="flex justify-between text-slate-500">
+                      <span>Gross:</span>
+                      <span>{grossTotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-red-600">
+                      <span>Item Disc:</span>
+                      <span>- {itemDiscountTotal.toFixed(2)}</span>
+                    </div>
+                    <div className="border-b border-dashed border-black/20 my-1"></div>
+                  </>
+                );
+              })()}
+
               <div className="flex justify-between">
                 <span>Subtotal:</span>
                 <span>{invoice.subtotal.toFixed(2)}</span>
               </div>
+              {invoice.discountAmount && invoice.discountAmount > 0 && (
+                <div className="flex justify-between text-red-600">
+                  <span>Discount:</span>
+                  <span>- {invoice.discountAmount.toFixed(2)}</span>
+                </div>
+              )}
               {invoice.gstEnabled && ((invoice.totalCgst || 0) + (invoice.totalSgst || 0) + (invoice.totalIgst || 0)) > 0 && (
                 <>
                   {(invoice.totalCgst || 0) > 0 && (

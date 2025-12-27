@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { APP_NAME, APP_VERSION, DEVELOPER_NAME } from '../constants';
 import { Link, useNavigate } from 'react-router-dom';
 import { signOut, updateProfile, updateEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
@@ -75,7 +76,13 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden max-w-md mx-auto shadow-2xl bg-background-light dark:bg-background-dark text-slate-900 dark:text-white pb-10">
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.3 }}
+      className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden max-w-md mx-auto shadow-2xl bg-background-light dark:bg-background-dark text-slate-900 dark:text-white pb-10"
+    >
       <div className="sticky top-0 z-10 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
         <Link to="/loan" className="flex items-center gap-2 text-primary cursor-pointer">
           <span className="material-symbols-outlined text-2xl">arrow_back_ios_new</span>
@@ -321,7 +328,7 @@ const Settings: React.FC = () => {
       )}
 
       <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />
-    </div>
+    </motion.div>
   );
 };
 export default Settings;
