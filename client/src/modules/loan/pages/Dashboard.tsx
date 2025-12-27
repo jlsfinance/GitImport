@@ -39,11 +39,14 @@ const Dashboard: React.FC = () => {
 
     const handleSendNotification = async () => {
         if (!notifTitle || !notifBody) return alert("Please enter title and message");
+        if (!currentCompany?.id) return alert("Company not loaded");
+
         setSending(true);
         try {
             const { addDoc, serverTimestamp, collection } = await import('firebase/firestore');
             const targetCustomer = customers.find(c => c.id === selectedCustomerId);
 
+            // Save to Firestore for in-app notifications
             await addDoc(collection(db, 'notifications'), {
                 title: notifTitle,
                 message: notifBody,
@@ -54,6 +57,33 @@ const Dashboard: React.FC = () => {
                 type: 'admin_push',
                 recipientName: selectedCustomerId === 'all' ? 'All Customers' : (targetCustomer?.name || 'User')
             });
+
+            // Send real push notification via Vercel API
+            try {
+                const apiUrl = selectedCustomerId === 'all'
+                    ? '/api/push/broadcast'
+                    : '/api/push/send';
+
+                const payload = selectedCustomerId === 'all'
+                    ? { companyId: currentCompany.id, title: notifTitle, message: notifBody }
+                    : { customerId: selectedCustomerId, title: notifTitle, message: notifBody };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    console.log('Push notification sent successfully:', result);
+                } else {
+                    console.warn('Push API responded with:', result);
+                }
+            } catch (pushError) {
+                console.warn('Push notification API error (notifications still saved):', pushError);
+            }
+
             alert("Notification Sent Successfully! 🚀");
             setShowReminderModal(false);
             setNotifTitle('');
