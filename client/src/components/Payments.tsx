@@ -117,7 +117,7 @@ const Payments: React.FC<PaymentsProps> = ({ onBack, initialPayment }) => {
     return (
         <div className="bg-slate-50 dark:bg-slate-900 min-h-screen flex flex-col">
             {/* Header with Tabs */}
-            <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
+            <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10 pt-safe">
                 <div className="flex items-center justify-between p-4 pb-2">
                     <div className="flex items-center gap-3">
                         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">

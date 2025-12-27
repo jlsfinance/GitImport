@@ -802,7 +802,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
 
       {/* Top App Bar/Header - Google Activity Style */}
       <motion.div
-        className={`sticky top-0 z-30 transition-all duration-300 ${isScrolled
+        className={`sticky top-0 z-30 transition-all duration-300 pt-safe ${isScrolled
           ? 'bg-background/95 backdrop-blur-xl border-b border-border shadow-sm'
           : 'bg-background border-b border-transparent'
           }`}

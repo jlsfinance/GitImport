@@ -419,7 +419,7 @@ const CreatePurchase: React.FC<CreatePurchaseProps> = ({ onSave, onCancel, initi
             )}
 
             {/* Header */}
-            <motion.div className={`sticky top-0 z-30 transition-all duration-300 ${isScrolled ? 'bg-background/95 backdrop-blur-xl border-b border-border shadow-sm' : 'bg-background'}`}>
+            <motion.div className={`sticky top-0 z-30 transition-all duration-300 pt-safe ${isScrolled ? 'bg-background/95 backdrop-blur-xl border-b border-border shadow-sm' : 'bg-background'}`}>
                 <div className="flex items-center justify-between px-4 h-16 max-w-5xl mx-auto">
                     <button onClick={onCancel} className="p-2 -ml-2 rounded-full hover:bg-slate-100">
                         <ArrowLeft className="w-6 h-6" />

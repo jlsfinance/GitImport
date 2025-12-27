@@ -4,9 +4,11 @@ import { StorageService } from '../services/storageService';
 import { Save, Building2, Phone, Mail, MapPin, Database, Download, Upload, AlertCircle, Cloud, CheckCircle, XCircle, Wand2, ExternalLink, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { FirebaseService } from '../services/firebaseService';
 import { useCompany } from '@/contexts/CompanyContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Settings: React.FC = () => {
   const { company, saveCompany } = useCompany();
+  const { deleteAccount } = useAuth();
 
   const [profile, setProfile] = useState<CompanyProfile>({
     name: '',
@@ -201,6 +203,23 @@ const Settings: React.FC = () => {
       alert("Error during sync.");
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+
+  const handleDeleteAccount = async () => {
+    if (confirm("CRITICAL WARNING: Are you sure you want to delete your account? This action is permanent and cannot be undone.")) {
+      const confirmText = prompt("Type 'DELETE' to confirm account deletion:");
+      if (confirmText === 'DELETE') {
+        try {
+          await deleteAccount();
+          alert("Your account has been deleted.");
+          window.location.href = '/';
+        } catch (e: any) {
+          console.error(e);
+          alert("Error deleting account: " + (e.message || "Unknown error") + "\n\nNote: For security, you may need to sign out and sign in again before deleting your account.");
+        }
+      }
     }
   };
 
@@ -597,6 +616,23 @@ const Settings: React.FC = () => {
                 <CheckCircle className="w-3 h-3 text-green-500" /> Trusted for Play Console
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="lg:col-span-2">
+          <div className="bg-red-50 dark:bg-red-900/10 rounded-[24px] p-6 border border-red-100 dark:border-red-900/30">
+            <h3 className="text-lg font-bold text-red-700 dark:text-red-400 mb-2 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5" /> Danger Zone
+            </h3>
+            <p className="text-sm text-red-600/80 dark:text-red-400/80 mb-6">Once you delete your account, there is no going back. Please be certain.</p>
+
+            <button
+              onClick={handleDeleteAccount}
+              className="px-6 py-3 bg-white dark:bg-red-950 text-red-600 dark:text-red-400 rounded-xl font-bold text-xs uppercase tracking-widest border border-red-200 dark:border-red-900 hover:bg-red-600 hover:text-white transition-all shadow-sm"
+            >
+              Delete My Account
+            </button>
           </div>
         </div>
 

@@ -35,14 +35,18 @@ const DueList: React.FC = () => {
     const [viewDate, setViewDate] = useState(new Date());
     const [loading, setLoading] = useState(true);
 
+    // Date-Wise View State
+    const [selectedDateFilter, setSelectedDateFilter] = useState<string | null>(null);
+
     // Summary Stats
     const [totalDue, setTotalDue] = useState(0);
-    const [collectedCount, setCollectedCount] = useState(0); // Mock for now or calculated if we fetch paid ones
+    const [collectedCount, setCollectedCount] = useState(0);
 
     // Modal State
     const [selectedEmi, setSelectedEmi] = useState<PendingEmi | null>(null);
     const [paymentMethod, setPaymentMethod] = useState('cash');
     const [customAmount, setCustomAmount] = useState<number>(0);
+    const [manualPaymentDate, setManualPaymentDate] = useState<string>('');
     const [paymentRemark, setPaymentRemark] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPdfPreview, setShowPdfPreview] = useState(false);
@@ -50,6 +54,29 @@ const DueList: React.FC = () => {
 
     const [lastCollectedEmi, setLastCollectedEmi] = useState<PendingEmi | null>(null);
     const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+
+    // Grouping Logic
+    const groupedEmis = useMemo(() => {
+        const groups: Record<string, PendingEmi[]> = {};
+        filteredEmis.forEach(emi => {
+            const dateKey = format(parseISO(emi.dueDate), 'yyyy-MM-dd');
+            if (!groups[dateKey]) groups[dateKey] = [];
+            groups[dateKey].push(emi);
+        });
+        return groups;
+    }, [filteredEmis]);
+
+    const sortedDates = useMemo(() => Object.keys(groupedEmis).sort(), [groupedEmis]);
+
+    useEffect(() => {
+        setSelectedDateFilter(null);
+    }, [viewDate]);
+
+    useEffect(() => {
+        if (selectedEmi) {
+            setManualPaymentDate(format(parseISO(selectedEmi.dueDate), 'yyyy-MM-dd'));
+        }
+    }, [selectedEmi]);
 
     const companyDetails = useMemo(() => ({
         name: currentCompany?.name || APP_NAME,
@@ -342,8 +369,7 @@ const DueList: React.FC = () => {
                 if (!loanDoc.exists()) throw new Error("Loan not found!");
 
                 const loanData = loanDoc.data();
-                const today = new Date();
-                const paymentDate = format(today, 'yyyy-MM-dd');
+                const paymentDate = manualPaymentDate;
 
                 const remarkText = isExtraPayment
                     ? `Extra Payment: ${formatCurrency(amountToPay - selectedEmi.amount)}${paymentRemark ? ' - ' + paymentRemark : ''}`
@@ -403,7 +429,7 @@ const DueList: React.FC = () => {
                 tenure: selectedEmi.tenure,
                 emiAmount: selectedEmi.amount,
                 amountPaid: amountToPay,
-                paymentDate: format(new Date(), 'yyyy-MM-dd'),
+                paymentDate: manualPaymentDate,
                 paymentMethod: paymentMethod,
                 remark: finalRemark,
                 isExtraPayment: isExtraPayment,
@@ -543,56 +569,97 @@ const DueList: React.FC = () => {
                     </div>
                 </div>
 
-                {/* List View */}
                 <div className="space-y-3">
                     {loading ? (
                         <div className="flex justify-center py-10"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div></div>
-                    ) : filteredEmis.length > 0 ? (
-                        filteredEmis.map((emi) => (
-                            <div key={`${emi.loanId}-${emi.emiNumber}`} className="bg-white dark:bg-[#1e2736] rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 flex justify-between items-center group hover:shadow-md transition-all">
-                                <div className="flex items-center gap-4">
-                                    <div className="relative h-12 w-12 rounded-2xl shadow-sm overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0 border border-slate-200 dark:border-slate-700">
-                                        {emi.customerPhoto ? (
-                                            <img src={emi.customerPhoto} alt={emi.customerName} className="h-full w-full object-cover" />
-                                        ) : (
-                                            <div className="h-full w-full flex items-center justify-center bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
-                                                <span className="material-symbols-outlined text-[24px]">person</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <h3 className="font-bold text-base text-slate-900 dark:text-white capitalize">{emi.customerName.toLowerCase()}</h3>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">EMI {emi.emiNumber}/{emi.tenure}</span>
-                                            {isPast(parseISO(emi.dueDate)) ? (
-                                                <span className="text-[10px] font-bold text-red-500 bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded">Overdue</span>
-                                            ) : (
-                                                <span className="text-[10px] font-bold text-slate-500">{format(parseISO(emi.dueDate), 'dd MMM')}</span>
-                                            )}
-                                        </div>
-                                        <p className="text-sm font-extrabold text-slate-700 dark:text-slate-300 mt-1">{formatCurrency(emi.amount)}</p>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <button
-                                        onClick={() => setSelectedEmi(emi)}
-                                        className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg shadow-lg shadow-primary/30 active:scale-95 transition-all hover:brightness-110"
-                                    >
-                                        Collect
-                                    </button>
-                                    <button
-                                        onClick={() => handleSendReminder(emi)}
-                                        className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg flex items-center justify-center hover:bg-green-100 hover:text-green-600 transition-colors"
-                                    >
-                                        <span className="material-symbols-outlined text-[18px]">chat</span>
-                                    </button>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
+                    ) : sortedDates.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 text-slate-400">
                             <span className="material-symbols-outlined text-4xl mb-2">check_circle</span>
                             <p>No pending EMIs for this month.</p>
+                        </div>
+                    ) : !selectedDateFilter ? (
+                        // --- OVERVIEW MODE (Date List) ---
+                        <div className="grid grid-cols-1 gap-3">
+                            {sortedDates.map(date => {
+                                const emis = groupedEmis[date];
+                                const count = emis.length;
+                                const totalAmount = emis.reduce((sum, e) => sum + e.amount, 0);
+                                const isDateOverdue = isPast(parseISO(date)) && date !== format(new Date(), 'yyyy-MM-dd');
+
+                                return (
+                                    <div key={date} onClick={() => setSelectedDateFilter(date)} className="bg-white dark:bg-[#1e2736] rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 flex justify-between items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`h-12 w-12 rounded-2xl flex items-center justify-center font-bold text-lg ${isDateOverdue ? 'bg-red-100 text-red-600' : 'bg-primary/10 text-primary'}`}>
+                                                {format(parseISO(date), 'dd')}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-slate-900 dark:text-white">{format(parseISO(date), 'MMMM yyyy')}</h3>
+                                                <p className={`text-xs font-bold ${isDateOverdue ? 'text-red-500' : 'text-slate-500'}`}>
+                                                    {isDateOverdue ? 'Overdue' : 'Due Date'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="block text-lg font-black text-slate-900 dark:text-white">{count} EMIs</span>
+                                            <span className="text-xs font-bold text-slate-500">{formatCurrency(totalAmount)}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        // --- DETAIL MODE (EMI List) ---
+                        <div className="animate-in slide-in-from-right duration-300">
+                            <div className="flex items-center gap-3 mb-4">
+                                <button onClick={() => setSelectedDateFilter(null)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+                                    <span className="material-symbols-outlined">arrow_back</span>
+                                </button>
+                                <h2 className="font-bold text-lg">Due on {format(parseISO(selectedDateFilter), 'dd MMMM yyyy')}</h2>
+                            </div>
+
+                            <div className="space-y-3">
+                                {groupedEmis[selectedDateFilter]?.map(emi => (
+                                    <div key={`${emi.loanId}-${emi.emiNumber}`} className="bg-white dark:bg-[#1e2736] rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 flex justify-between items-center group hover:shadow-md transition-all">
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative h-12 w-12 rounded-2xl shadow-sm overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0 border border-slate-200 dark:border-slate-700">
+                                                {emi.customerPhoto ? (
+                                                    <img src={emi.customerPhoto} alt={emi.customerName} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <div className="h-full w-full flex items-center justify-center bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+                                                        <span className="material-symbols-outlined text-[24px]">person</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <h3 className="font-bold text-base text-slate-900 dark:text-white capitalize">{emi.customerName.toLowerCase()}</h3>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">EMI {emi.emiNumber}/{emi.tenure}</span>
+                                                    {isPast(parseISO(emi.dueDate)) ? (
+                                                        <span className="text-[10px] font-bold text-red-500 bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded">Overdue</span>
+                                                    ) : (
+                                                        <span className="text-[10px] font-bold text-slate-500">{format(parseISO(emi.dueDate), 'dd MMM')}</span>
+                                                    )}
+                                                </div>
+                                                <p className="text-sm font-extrabold text-slate-700 dark:text-slate-300 mt-1">{formatCurrency(emi.amount)}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <button
+                                                onClick={() => setSelectedEmi(emi)}
+                                                className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg shadow-lg shadow-primary/30 active:scale-95 transition-all hover:brightness-110"
+                                            >
+                                                Collect
+                                            </button>
+                                            <button
+                                                onClick={() => handleSendReminder(emi)}
+                                                className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg flex items-center justify-center hover:bg-green-100 hover:text-green-600 transition-colors"
+                                            >
+                                                <span className="material-symbols-outlined text-[18px]">chat</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -625,6 +692,16 @@ const DueList: React.FC = () => {
                                 {customAmount > selectedEmi.amount && (
                                     <p className="text-xs text-green-600 mt-1">Extra Payment: {formatCurrency(customAmount - selectedEmi.amount)}</p>
                                 )}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 mb-2">Payment Date</label>
+                                <input
+                                    type="date"
+                                    value={manualPaymentDate}
+                                    onChange={(e) => setManualPaymentDate(e.target.value)}
+                                    className="w-full px-3 py-2 bg-white dark:bg-[#1a2230] border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary outline-none text-base font-bold"
+                                />
                             </div>
 
                             <div>

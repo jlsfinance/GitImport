@@ -251,30 +251,32 @@ const AccountingApp: React.FC = () => {
 
             <main className="flex-1 overflow-y-auto h-full relative w-full scroll-smooth bg-slate-50 dark:bg-slate-900">
                 {!['VIEW_INVOICE', 'CREATE_INVOICE', 'EDIT_INVOICE', 'PUBLIC_VIEW_INVOICE', 'CREATE_PURCHASE', 'EDIT_PURCHASE'].includes(currentView) && (
-                    <div className="md:hidden sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-4 h-16 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/50 shadow-sm">
-                        <button
-                            onClick={() => setIsSidebarOpen(true)}
-                            className="p-2 -ml-2 rounded-xl text-slate-600 dark:text-slate-400 active:bg-slate-100 dark:active:bg-slate-800"
-                        >
-                            <SidebarIcon className="w-6 h-6" />
-                        </button>
-                        <div className="flex-1 text-center px-4 overflow-hidden">
-                            <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-tighter truncate leading-tight">
-                                {company?.name || 'BillBook'}
-                            </h2>
-                            <p className="text-[9px] text-blue-600 dark:text-blue-400 font-black uppercase tracking-widest leading-tight">
-                                {currentView.replace('_', ' ')}
-                            </p>
+                    <div className="md:hidden sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50 shadow-sm pt-safe">
+                        <div className="h-16 px-4 flex items-center justify-between">
+                            <button
+                                onClick={() => setIsSidebarOpen(true)}
+                                className="p-2 -ml-2 rounded-xl text-slate-600 dark:text-slate-400 active:bg-slate-100 dark:active:bg-slate-800"
+                            >
+                                <SidebarIcon className="w-6 h-6" />
+                            </button>
+                            <div className="flex-1 text-center px-4 overflow-hidden">
+                                <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-tighter truncate leading-tight">
+                                    {company?.name || 'BillBook'}
+                                </h2>
+                                <p className="text-[9px] text-blue-600 dark:text-blue-400 font-black uppercase tracking-widest leading-tight">
+                                    {currentView.replace('_', ' ')}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setTheme(theme === 'dark' ? 'light' : 'dark');
+                                    HapticService.medium();
+                                }}
+                                className="p-2 -mr-2 rounded-xl text-slate-600 dark:text-slate-400 active:bg-slate-100 dark:active:bg-slate-800"
+                            >
+                                {theme === 'dark' ? <Sun className="w-6 h-6 text-yellow-500" /> : <Moon className="w-6 h-6 text-blue-600" />}
+                            </button>
                         </div>
-                        <button
-                            onClick={() => {
-                                setTheme(theme === 'dark' ? 'light' : 'dark');
-                                HapticService.medium();
-                            }}
-                            className="p-2 -mr-2 rounded-xl text-slate-600 dark:text-slate-400 active:bg-slate-100 dark:active:bg-slate-800"
-                        >
-                            {theme === 'dark' ? <Sun className="w-6 h-6 text-yellow-500" /> : <Moon className="w-6 h-6 text-blue-600" />}
-                        </button>
                     </div>
                 )}
 

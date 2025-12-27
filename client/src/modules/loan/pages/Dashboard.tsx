@@ -10,6 +10,9 @@ import autoTable from 'jspdf-autotable';
 import { format, parseISO } from 'date-fns';
 import { Loan } from '../types';
 import { motion } from 'framer-motion';
+import { FESTIVALS, Festival } from '../data/festivals';
+import { generateHindiGreeting, getWhatsAppLink } from '../utils/greetingGenerator';
+import { APP_NAME } from '../constants';
 
 const formatCurrency = (amount: number) => {
     return `Rs. ${new Intl.NumberFormat('en-IN', {
@@ -31,6 +34,8 @@ const Dashboard: React.FC = () => {
     const [notifBody, setNotifBody] = useState('');
     const [selectedCustomerId, setSelectedCustomerId] = useState('all');
     const [sending, setSending] = useState(false);
+    const [todaysFestival, setTodaysFestival] = useState<Festival | null>(null);
+    const [showFestivalListModal, setShowFestivalListModal] = useState(false);
 
     const handleSendNotification = async () => {
         if (!notifTitle || !notifBody) return alert("Please enter title and message");
@@ -113,6 +118,12 @@ const Dashboard: React.FC = () => {
         checkNotifs();
 
     }, [currentCompany]);
+
+    useEffect(() => {
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        const festival = FESTIVALS.find(f => f.date === todayStr);
+        setTodaysFestival(festival || null);
+    }, []);
 
     const metrics = useMemo(() => {
         let totalDisbursedCount = 0;
@@ -433,6 +444,53 @@ const Dashboard: React.FC = () => {
         >
             <div className="relative px-4 sm:px-6 space-y-6 sm:space-y-8 mt-4 sm:mt-6 max-w-7xl mx-auto w-full pb-32">
 
+                {/* Festival Greeting Card (Conditional) */}
+                {todaysFestival && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="relative overflow-hidden rounded-[2rem] p-6 shadow-xl shadow-orange-500/20 bg-gradient-to-r from-orange-500 to-red-600 text-white"
+                    >
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-400/20 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-red-800/20 rounded-full blur-2xl -ml-10 -mb-10"></div>
+
+                        <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6">
+                            <div className="flex items-center gap-5">
+                                <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 shadow-inner">
+                                    <span className="material-symbols-outlined text-4xl">festival</span>
+                                </div>
+                                <div className="text-center sm:text-left">
+                                    <h2 className="text-2xl font-black mb-1 leading-tight">Happy {todaysFestival.name}!</h2>
+                                    <p className="text-orange-100 font-bold text-xs uppercase tracking-widest opacity-90">Today's Special Occasion</p>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 w-full sm:w-auto">
+                                <button
+                                    onClick={() => {
+                                        if (currentCompany) {
+                                            const msg = todaysFestival.greeting || generateHindiGreeting(todaysFestival.name, currentCompany.name, todaysFestival.date);
+                                            const url = getWhatsAppLink(null, msg);
+                                            window.open(url, '_system');
+                                        }
+                                    }}
+                                    className="flex-1 sm:flex-none py-3 px-6 bg-white text-orange-600 rounded-xl font-bold hover:bg-orange-50 active:scale-95 transition-all shadow-md flex items-center justify-center gap-2"
+                                >
+                                    <span className="material-symbols-outlined text-xl">share</span>
+                                    <span>Send Greetings</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Preview (Collapsible or Small) */}
+                        <div className="mt-6 p-4 bg-black/10 rounded-xl backdrop-blur-sm border border-white/10">
+                            <p className="text-sm font-medium whitespace-pre-line opacity-90 leading-relaxed">
+                                {currentCompany ? (todaysFestival.greeting || generateHindiGreeting(todaysFestival.name, currentCompany.name, todaysFestival.date)) : 'Loading...'}
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
+
                 {/* Hero Balance Card */}
                 <div className="group relative overflow-hidden rounded-[2rem] bg-slate-900 text-white shadow-2xl shadow-indigo-500/25 transition-all hover:scale-[1.01]">
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-700 to-indigo-800"></div>
@@ -465,7 +523,6 @@ const Dashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Quick Actions */}
                 <div>
                     <div className="flex items-center gap-2 mb-4">
                         <div className="h-6 w-1 rounded-full bg-indigo-600"></div>
@@ -473,26 +530,30 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         {[
-                            { link: "/loan/loans/new", icon: "add", isPrimary: true, label: "New Loan" },
-                            { link: "/loan/due-list", icon: "payments", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30", label: "Collect EMI" },
+                            { link: "/loan/loans/new", icon: "add", color: "text-indigo-600", bg: "bg-indigo-50 dark:bg-indigo-950/30", label: "New Loan" },
                             { link: "/loan/customers/new", icon: "person_add", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/30", label: "Add Client" },
-                            { link: "/loan/finance", icon: "bar_chart", color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30", label: "Reports" }
+                            { link: "/loan/due-list", icon: "payments", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30", label: "Collect EMI" },
+                            { onClick: () => setShowFestivalListModal(true), icon: "festival", color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950/30", label: "Greetings" }
                         ].map((action: any, i) => (
-                            <Link key={i} to={action.link}
-                                className={`group flex flex-col items-center justify-center p-5 transition-all duration-300 ${action.isPrimary
-                                    ? 'bg-primary text-white shadow-lg shadow-primary/30 !flex-row !gap-3 !p-4 !rounded-full'
-                                    : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1'
-                                    }`}
-                            >
-                                <div className={`flex items-center justify-center transition-transform duration-300 group-hover:scale-110 ${action.isPrimary
-                                    ? 'w-8 h-8 rounded-full bg-white/20 text-white'
-                                    : `w-12 h-12 rounded-xl ${action.bg} ${action.color}`
-                                    }`}>
-                                    <span className={`material-symbols-outlined ${action.isPrimary ? 'text-[20px]' : 'text-[26px]'} font-variation-FILL`}>{action.icon}</span>
+                            action.link ? (
+                                <Link key={i} to={action.link}
+                                    className="group flex flex-col items-center justify-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300"
+                                >
+                                    <div className={`flex items-center justify-center transition-transform duration-300 group-hover:scale-110 w-12 h-12 rounded-xl ${action.bg} ${action.color}`}>
+                                        <span className="material-symbols-outlined text-[26px] font-variation-FILL">{action.icon}</span>
+                                    </div>
+                                    <span className="font-black uppercase tracking-tight text-xs text-slate-700 dark:text-slate-300 mt-2">{action.label}</span>
+                                </Link>
+                            ) : (
+                                <div key={i} onClick={action.onClick}
+                                    className="group flex flex-col items-center justify-center p-5 cursor-pointer bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300"
+                                >
+                                    <div className={`flex items-center justify-center transition-transform duration-300 group-hover:scale-110 w-12 h-12 rounded-xl ${action.bg} ${action.color}`}>
+                                        <span className="material-symbols-outlined text-[26px] font-variation-FILL">{action.icon}</span>
+                                    </div>
+                                    <span className="font-black uppercase tracking-tight text-xs text-slate-700 dark:text-slate-300 mt-2">{action.label}</span>
                                 </div>
-                                <span className={`font-black uppercase tracking-tight ${action.isPrimary ? 'text-sm text-white' : 'text-xs text-slate-700 dark:text-slate-300 mt-2'
-                                    }`}>{action.label}</span>
-                            </Link>
+                            )
                         ))}
                     </div>
                 </div>
@@ -799,6 +860,57 @@ const Dashboard: React.FC = () => {
                                     </>
                                 )}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Manual Festival Greeting Modal */}
+            {showFestivalListModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in">
+                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh]">
+                        <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-orange-50/50 dark:bg-orange-500/5">
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-1">Festival Greetings</h3>
+                                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Select a festival to send wishes</p>
+                            </div>
+                            <button
+                                onClick={() => setShowFestivalListModal(false)}
+                                className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 transition-all border border-slate-200 dark:border-slate-700"
+                            >
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            {FESTIVALS.map((fest, idx) => (
+                                <div key={idx} className="p-5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-orange-200 dark:hover:border-orange-900/50 transition-all flex items-center justify-between group">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 flex items-center justify-center">
+                                            <span className="material-symbols-outlined">festival</span>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-slate-800 dark:text-white">{fest.name}</h4>
+                                            <p className="text-xs text-slate-500 font-medium">Coming on {format(parseISO(fest.date), 'dd MMM yyyy')}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            if (currentCompany) {
+                                                const msg = fest.greeting || generateHindiGreeting(fest.name, currentCompany.name, fest.date);
+                                                const url = getWhatsAppLink(null, msg);
+                                                window.open(url, '_system');
+                                            }
+                                        }}
+                                        className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-orange-600 font-black text-[10px] uppercase tracking-widest hover:bg-orange-600 hover:text-white hover:border-orange-600 transition-all shadow-sm active:scale-95"
+                                    >
+                                        Send Now
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30">
+                            <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest">Wishes are sent via WhatsApp</p>
                         </div>
                     </div>
                 </div>

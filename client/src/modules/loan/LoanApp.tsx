@@ -49,25 +49,11 @@ import { Menu as SidebarIcon, Sun, Moon } from 'lucide-react';
 import { HapticService } from '@/services/hapticService';
 import { APP_NAME } from './constants';
 import { AnimatePresence, motion } from 'framer-motion';
+import PremiumSplash from './components/PremiumSplash';
 
 import './loan.css';
 
-const LoadingScreen = () => (
-    <div className="flex h-screen w-full items-center justify-center bg-white dark:bg-slate-950 flex-col gap-6 animate-pulse">
-        <div className="relative">
-            <div className="w-20 h-20 rounded-3xl bg-violet-600 flex items-center justify-center shadow-2xl shadow-violet-500/20 rotate-12">
-                <SidebarIcon className="w-10 h-10 text-white -rotate-12" />
-            </div>
-            <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-emerald-500 border-4 border-white dark:border-slate-950 flex items-center justify-center">
-                <div className="w-2 h-2 rounded-full bg-white animate-ping" />
-            </div>
-        </div>
-        <div className="text-center">
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">{APP_NAME}</h1>
-            <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Initializing Secure Session</p>
-        </div>
-    </div>
-);
+const LoadingScreen = PremiumSplash;
 
 const ProtectedRoute = ({ children, requireCompany = true }: { children?: React.ReactNode; requireCompany?: boolean }) => {
     const { user, loading } = useLoanAuth();
@@ -143,30 +129,32 @@ const LoanAppContent = () => {
 
                 {/* Mobile Header - Visible only on mobile and when sidebar is shown (authenticated routes) */}
                 {showSidebar && (
-                    <div className="md:hidden sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-4 h-16 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/50 shadow-sm">
-                        <button
-                            onClick={openSidebar}
-                            className="p-2 -ml-2 rounded-xl text-slate-600 dark:text-slate-400 active:bg-slate-100 dark:active:bg-slate-800"
-                        >
-                            <SidebarIcon className="w-6 h-6" />
-                        </button>
-                        <div className="flex-1 text-center px-4 overflow-hidden">
-                            <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-tighter truncate leading-tight">
-                                {currentCompany?.name || APP_NAME}
-                            </h2>
-                            <p className="text-[9px] text-violet-600 dark:text-violet-400 font-black uppercase tracking-widest leading-tight">
-                                {getPageTitle()}
-                            </p>
+                    <div className="md:hidden sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50 shadow-sm pt-safe">
+                        <div className="h-16 px-4 flex items-center justify-between">
+                            <button
+                                onClick={openSidebar}
+                                className="p-2 -ml-2 rounded-xl text-slate-600 dark:text-slate-400 active:bg-slate-100 dark:active:bg-slate-800"
+                            >
+                                <SidebarIcon className="w-6 h-6" />
+                            </button>
+                            <div className="flex-1 text-center px-4 overflow-hidden">
+                                <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-tighter truncate leading-tight">
+                                    {currentCompany?.name || APP_NAME}
+                                </h2>
+                                <p className="text-[9px] text-violet-600 dark:text-violet-400 font-black uppercase tracking-widest leading-tight">
+                                    {getPageTitle()}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setTheme(theme === 'dark' ? 'light' : 'dark');
+                                    HapticService.medium();
+                                }}
+                                className="p-2 -mr-2 rounded-xl text-slate-600 dark:text-slate-400 active:bg-slate-100 dark:active:bg-slate-800"
+                            >
+                                {theme === 'dark' ? <Sun className="w-6 h-6 text-yellow-500" /> : <Moon className="w-6 h-6 text-blue-600" />}
+                            </button>
                         </div>
-                        <button
-                            onClick={() => {
-                                setTheme(theme === 'dark' ? 'light' : 'dark');
-                                HapticService.medium();
-                            }}
-                            className="p-2 -mr-2 rounded-xl text-slate-600 dark:text-slate-400 active:bg-slate-100 dark:active:bg-slate-800"
-                        >
-                            {theme === 'dark' ? <Sun className="w-6 h-6 text-yellow-500" /> : <Moon className="w-6 h-6 text-blue-600" />}
-                        </button>
                     </div>
                 )}
 
@@ -384,30 +372,25 @@ const LoanAppContent = () => {
 }
 
 const LoanApp: React.FC = () => {
-    const [showSplash, setShowSplash] = useState(Capacitor.getPlatform() !== 'web');
     const [showNotice, setShowNotice] = useState(false);
 
-    // Handle Splash Finish
-    const handleSplashFinish = () => {
-        setShowSplash(false);
+    useEffect(() => {
         const hasSeenNotice = localStorage.getItem('hasSeenIntroNotice');
         if (!hasSeenNotice && Capacitor.getPlatform() !== 'web') {
             setShowNotice(true);
         }
-    };
+    }, []);
 
     const handleAcceptNotice = () => {
         localStorage.setItem('hasSeenIntroNotice', 'true');
         setShowNotice(false);
     };
 
-    if (showSplash && Capacitor.getPlatform() !== 'web') {
-        return <AnimatedSplash onFinish={handleSplashFinish} />;
-    }
-
     if (showNotice) {
         return <IntroNotice onAccept={handleAcceptNotice} />;
     }
+
+
 
     return (
         <div className="loan-app-module h-screen font-sans">

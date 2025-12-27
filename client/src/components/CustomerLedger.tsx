@@ -259,7 +259,7 @@ const CustomerLedger: React.FC<CustomerLedgerProps> = ({ customerId, onBack, onV
 
   return (
     <div className="bg-slate-50 dark:bg-black min-h-screen pb-24 font-['Outfit']">
-      <div className="sticky top-0 z-20 bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-slate-200 dark:border-gray-800 p-4">
+      <div className="sticky top-0 z-20 bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-slate-200 dark:border-gray-800 p-4 pt-safe">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">

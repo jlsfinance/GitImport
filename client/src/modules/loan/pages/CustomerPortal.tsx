@@ -9,6 +9,9 @@ import { PdfGenerator } from '../services/PdfGenerator';
 import { NotificationService } from '../services/NotificationService';
 import { Capacitor } from '@capacitor/core';
 import { APP_VERSION, SUPPORT_EMAIL, SUPPORT_PHONE, APP_NAME, DEVELOPER_NAME } from '../constants';
+import { FESTIVALS, Festival } from '../data/festivals';
+import { generateHindiGreeting } from '../utils/greetingGenerator';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Emi {
   emiNumber: number;
@@ -64,6 +67,8 @@ const CustomerPortal: React.FC = () => {
   const [selectedEmi, setSelectedEmi] = useState<Emi | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [todaysFestival, setTodaysFestival] = useState<Festival | null>(null);
+  const [showFestivalModal, setShowFestivalModal] = useState(false);
 
   const formatCurrency = (val: number) => `₹${new Intl.NumberFormat("en-IN").format(val)}`;
   const formatDate = (d: string) => { try { return format(new Date(d), 'dd MMM yyyy'); } catch { return d; } };
@@ -128,6 +133,16 @@ const CustomerPortal: React.FC = () => {
     if (isAuthReady) fetchData();
   }, [fetchData, isAuthReady]);
 
+  // Check for Festivals
+  useEffect(() => {
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const festival = FESTIVALS.find(f => f.date === todayStr);
+    if (festival) {
+      setTodaysFestival(festival);
+      setShowFestivalModal(true);
+    }
+  }, []);
+
   const activeLoans = useMemo(() => loans.filter(l => l.status === 'Active' || l.status === 'Disbursed'), [loans]);
   const getNextEmi = (loan: Loan) => loan.repaymentSchedule?.find(e => e.status === 'Pending' || e.status === 'Overdue');
 
@@ -172,10 +187,18 @@ const CustomerPortal: React.FC = () => {
   }, [loans]);
 
   const handleLogout = () => {
-    if (confirm("Are you sure you want to logout?")) {
-      localStorage.removeItem('customerPortalId');
-      localStorage.removeItem('customerPortalPhone');
-      navigate('/loan/customer-login');
+    const confirmed = window.confirm("Are you sure you want to logout?");
+    if (confirmed) {
+      try {
+        localStorage.removeItem('customerPortalId');
+        localStorage.removeItem('customerPortalPhone');
+        // Force navigation
+        window.location.href = '/loan/customer-login';
+      } catch (e) {
+        console.error("Logout error:", e);
+        // Fallback
+        window.location.replace('/loan/customer-login');
+      }
     }
   };
 
@@ -404,6 +427,7 @@ const CustomerPortal: React.FC = () => {
                     }
                   },
                   { label: 'Payment Receipts', icon: 'receipt_long', action: () => setCurrentTab('history') },
+                  { label: 'Festival Greetings (Test)', icon: 'celebration', action: () => { setTodaysFestival(FESTIVALS[0]); setShowFestivalModal(true); } },
                   { label: 'Update Personal Details', icon: 'manage_accounts', action: () => alert('Contact admin to update profile.') },
                   {
                     label: 'Refer a Friend & Earn',
@@ -636,6 +660,62 @@ const CustomerPortal: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Festival Greeting Modal (Customer) */}
+      <AnimatePresence>
+        {showFestivalModal && todaysFestival && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md"
+            onClick={() => setShowFestivalModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 50 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.8, y: 50 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-sm rounded-[2.5rem] overflow-hidden bg-white dark:bg-gray-900 border-4 border-yellow-400 shadow-[0_0_60px_rgba(234,179,8,0.4)]"
+            >
+              {/* Decorative Background */}
+              <div className="absolute inset-0 bg-gradient-to-b from-orange-500/10 to-transparent"></div>
+              <div className="absolute -top-24 -right-24 w-48 h-48 bg-yellow-500/20 rounded-full blur-3xl"></div>
+
+              <div className="relative z-10 p-8 text-center">
+                <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 p-1 shadow-xl mb-6 flex items-center justify-center animate-bounce-slow">
+                  <div className="w-full h-full rounded-full bg-white flex items-center justify-center border-4 border-white/50">
+                    <span className="material-symbols-outlined text-4xl text-orange-600">festival</span>
+                  </div>
+                </div>
+
+                <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-red-600 mb-2 font-serif">
+                  {todaysFestival.name}
+                </h2>
+                <p className="text-xs font-bold text-orange-400 uppercase tracking-[0.3em] mb-6">Greetings from {company?.name || APP_NAME}</p>
+
+                <div className="bg-orange-50 dark:bg-orange-900/10 p-6 rounded-2xl border border-orange-100 dark:border-orange-800/30">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-200 leading-relaxed font-serif whitespace-pre-line">
+                    {todaysFestival.greeting || generateHindiGreeting(todaysFestival.name, company?.name || APP_NAME, todaysFestival.date).split('\n\n').slice(1, -2).join('\n\n').replace(/\*/g, '')}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setShowFestivalModal(false)}
+                  className="mt-8 w-full py-4 rounded-xl bg-gradient-to-r from-orange-500 to-red-600 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-orange-500/30 active:scale-95 transition-all"
+                >
+                  Thank You & Continue
+                </button>
+              </div>
+
+              {/* Confetti / Sparkles Overlay (CSS based simple ones) */}
+              <div className="absolute top-10 left-10 text-yellow-500 text-xs animate-pulse">✨</div>
+              <div className="absolute bottom-20 right-10 text-yellow-500 text-xs animate-pulse delay-75">✨</div>
+              <div className="absolute top-1/2 right-4 text-orange-500 text-[10px] animate-ping">✴</div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

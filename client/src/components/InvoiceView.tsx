@@ -708,7 +708,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
   return (
     <div className="flex flex-col h-full bg-surface-container-low absolute inset-0 z-40 font-sans">
       {/* Material 3 Expressive Top Bar */}
-      <div className="sticky top-0 z-50 bg-surface-container/95 backdrop-blur-xl border-b border-border px-6 h-20 flex items-center justify-between shadow-sm flex-shrink-0 print:hidden">
+      <div className="sticky top-0 z-50 bg-surface-container/95 backdrop-blur-xl border-b border-border px-6 h-20 flex items-center justify-between shadow-sm flex-shrink-0 print:hidden pt-safe">
         <div className="flex items-center gap-4">
           <motion.button
             whileTap={{ scale: 0.92 }}
