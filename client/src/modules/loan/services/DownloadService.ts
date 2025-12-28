@@ -56,28 +56,32 @@ export class DownloadService {
             });
           } catch (nErr) { console.warn('Notification failed:', nErr); }
 
-          // Save to cache for easy access
+          // Save to cache for share functionality
           const cacheResult = await Filesystem.writeFile({
             path: filename,
             data: base64Data,
             directory: Directory.Cache
           });
 
-          // Short delay
+          // Short delay for file system to sync
           await new Promise(r => setTimeout(r, 200));
 
-          // Ask user what to do
-          const action = confirm(`✅ ${filename} downloaded!\n\nTap OK to OPEN or Cancel to just SAVE.`);
+          // Ask user what to do - be honest about functionality
+          const wantsToShare = confirm(`✅ ${filename} saved!\n\nTap OK to SHARE/OPEN with another app\nTap Cancel to just SAVE to device.`);
 
-          if (action) {
-            // User wants to open - Use Share as opener
-            await Share.share({
-              title: filename,
-              url: cacheResult.uri,
-              dialogTitle: 'Open PDF with...'
-            });
+          if (wantsToShare) {
+            // Share sheet allows user to pick an app to open with (PDF viewer, WhatsApp, etc.)
+            try {
+              await Share.share({
+                title: filename,
+                url: cacheResult.uri,
+                dialogTitle: 'Share or Open with...'
+              });
+            } catch (shareErr) {
+              console.warn('Share cancelled or failed:', shareErr);
+            }
           }
-          // If cancelled, file is already saved, do nothing
+          // File is already saved to JLS_Downloads, user can access via file manager
 
         } catch (externalError: any) {
           console.error('App Storage failed:', externalError);

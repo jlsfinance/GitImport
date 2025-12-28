@@ -4,6 +4,9 @@ import { Calendar, ArrowUpRight, ArrowDownLeft, Filter, Download, Briefcase, Wal
 import jsPDF from 'jspdf';
 import { HapticService } from '@/services/hapticService';
 import { motion } from 'framer-motion';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 
 interface DaybookProps {
     initialDate?: string | null;
@@ -68,7 +71,7 @@ const Daybook: React.FC<DaybookProps> = ({ initialDate }) => {
         setTransactions(combined);
     }, [date]);
 
-    const downloadPDF = () => {
+    const downloadPDF = async () => {
         HapticService.medium();
         try {
             const doc = new jsPDF('p', 'mm', 'a4');
@@ -86,7 +89,35 @@ const Daybook: React.FC<DaybookProps> = ({ initialDate }) => {
             doc.text(`Transaction Summary for ${date}`, pageWidth / 2, yPos, { align: 'center' });
             yPos += 15;
 
-            doc.save(`daybook-${date}.pdf`);
+            const fileName = `daybook-${date}.pdf`;
+
+            if (Capacitor.isNativePlatform()) {
+                const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+                // Save to Cache for sharing
+                const cacheResult = await Filesystem.writeFile({
+                    path: fileName,
+                    data: pdfBase64,
+                    directory: Directory.Cache
+                });
+
+                // Ask user what to do
+                const wantsToShare = confirm(`✅ ${fileName} saved!\n\nTap OK to SHARE/OPEN\nTap Cancel to just SAVE.`);
+
+                if (wantsToShare) {
+                    try {
+                        await Share.share({
+                            title: fileName,
+                            url: cacheResult.uri,
+                            dialogTitle: 'Share or Open with...'
+                        });
+                    } catch (shareErr) {
+                        console.warn('Share cancelled or failed:', shareErr);
+                    }
+                }
+            } else {
+                doc.save(fileName);
+            }
         } catch (e) { alert("PDF Save failed"); }
     };
 

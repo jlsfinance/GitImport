@@ -1,17 +1,15 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, memo } from 'react';
 import { Invoice } from '../types';
 import { StorageService } from '../services/storageService';
-import { Search, MoreVertical, FileText, Trash2, Users, Edit, MessageCircle, Eye, ChevronRight, Plus } from 'lucide-react';
+import { Search, MoreVertical, FileText, Trash2, Users, Edit, Eye, ChevronRight, Plus, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HapticService } from '../services/hapticService';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "../components/ui/dropdown-menu";
+import { isLowEndDevice, debounce } from '../utils/performance';
+
+// Check device capability once
+const IS_LOW_END = isLowEndDevice();
+const PAGE_SIZE = IS_LOW_END ? 15 : 30; // Smaller batches for low-end
 
 interface AllInvoicesProps {
   invoices?: Invoice[];
@@ -24,6 +22,112 @@ interface AllInvoicesProps {
   onCreate?: () => void;
 }
 
+// Memoized Invoice Card for better performance
+const InvoiceCard = memo(({
+  invoice,
+  onView,
+  onDelete,
+  onMenuOpen,
+  isLowEnd
+}: {
+  invoice: Invoice;
+  onView?: (inv: Invoice) => void;
+  onDelete: (inv: Invoice) => void;
+  onMenuOpen: (inv: Invoice) => void;
+  isLowEnd: boolean;
+}) => {
+  const handleClick = useCallback(() => onView?.(invoice), [invoice, onView]);
+  const handleMenu = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    HapticService.light();
+    onMenuOpen(invoice);
+  }, [invoice, onMenuOpen]);
+
+  // Simplified card for low-end (no drag, minimal animations)
+  if (isLowEnd) {
+    return (
+      <div
+        className="bg-surface-container-low p-4 flex justify-between items-center rounded-2xl border border-border cursor-pointer"
+        onClick={handleClick}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-google-blue/10 flex items-center justify-center text-google-blue font-bold text-sm">
+            {invoice.customerName.charAt(0)}
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-bold text-foreground text-sm truncate max-w-[140px]">{invoice.customerName}</h3>
+            <p className="text-[10px] text-muted-foreground font-medium">
+              #{invoice.invoiceNumber} • {new Date(invoice.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="text-right">
+            <p className="text-sm font-bold text-foreground">₹{invoice.total.toLocaleString('en-IN')}</p>
+            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${invoice.status === 'PAID' ? 'bg-google-green/10 text-google-green' : 'bg-google-yellow/10 text-google-yellow'}`}>
+              {invoice.status}
+            </span>
+          </div>
+          <button onClick={handleMenu} className="p-1.5 text-muted-foreground">
+            <MoreVertical className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Full card with animations for capable devices
+  return (
+    <div className="relative overflow-hidden rounded-[28px] group bg-surface-container-low border border-border shadow-sm hover:shadow-google transition-all">
+      <div className="absolute inset-0 bg-google-red flex justify-end items-center px-8">
+        <Trash2 className="w-6 h-6 text-white" />
+      </div>
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: -100, right: 0 }}
+        dragElastic={0.6}
+        dragMomentum={false}
+        onDragEnd={(_, info) => {
+          if (info.offset.x < -80) {
+            HapticService.medium();
+            onDelete(invoice);
+          }
+        }}
+        whileTap={{ scale: 0.99 }}
+        className="bg-surface-container-low p-5 flex justify-between items-center relative z-10 cursor-pointer"
+        onClick={handleClick}
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-google-blue/10 flex items-center justify-center text-google-blue font-bold text-lg border border-google-blue/5">
+            {invoice.customerName.charAt(0)}
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-bold text-foreground text-sm tracking-tight truncate max-w-[180px]">{invoice.customerName}</h3>
+            <p className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1.5 mt-0.5">
+              #{invoice.invoiceNumber}
+              <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+              {new Date(invoice.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <p className="text-base font-bold text-foreground">₹{invoice.total.toLocaleString('en-IN')}</p>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${invoice.status === 'PAID' ? 'bg-google-green/10 text-google-green' : 'bg-google-yellow/10 text-google-yellow'}`}>
+              {invoice.status}
+            </span>
+          </div>
+          <button className="p-2 rounded-full hover:bg-surface-container-highest transition-colors text-muted-foreground" onClick={handleMenu}>
+            <MoreVertical className="w-5 h-5" />
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+});
+
+InvoiceCard.displayName = 'InvoiceCard';
+
 const AllInvoices: React.FC<AllInvoicesProps> = ({
   invoices: propInvoices,
   title = 'Invoices',
@@ -34,32 +138,61 @@ const AllInvoices: React.FC<AllInvoicesProps> = ({
   onViewLedger,
   onCreate
 }) => {
-  // If props aren't passed (legacy), fetch from storage
   const invoices = propInvoices || StorageService.getInvoices();
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PAID' | 'PENDING'>('ALL');
   const [selectedForAction, setSelectedForAction] = useState<Invoice | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
+  // Debounced search handler
+  const handleSearchChange = useMemo(
+    () => debounce((value: string) => setDebouncedSearch(value), 300),
+    []
+  );
+
+  const onSearchInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    handleSearchChange(value);
+  }, [handleSearchChange]);
+
+  // Memoized filtered list
   const filteredInvoices = useMemo(() => {
     return invoices.filter(inv => {
       const matchesSearch =
-        inv.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        inv.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase());
+        inv.customerName.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        inv.invoiceNumber.toLowerCase().includes(debouncedSearch.toLowerCase());
       const matchesStatus = statusFilter === 'ALL' || inv.status === statusFilter;
       return matchesSearch && matchesStatus;
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [invoices, searchTerm, statusFilter]);
+  }, [invoices, debouncedSearch, statusFilter]);
 
-  // Handle local delete if prop not provided (not ideal but safe)
-  const handleDelete = (inv: Invoice) => {
+  // Visible items (paginated)
+  const visibleInvoices = useMemo(
+    () => filteredInvoices.slice(0, visibleCount),
+    [filteredInvoices, visibleCount]
+  );
+
+  const hasMore = visibleCount < filteredInvoices.length;
+
+  const loadMore = useCallback(() => {
+    setVisibleCount(prev => prev + PAGE_SIZE);
+  }, []);
+
+  const handleDelete = useCallback((inv: Invoice) => {
     if (confirm('Are you sure you want to delete this invoice?')) {
       if (onDelete) onDelete(inv);
       else {
         StorageService.deleteInvoice(inv.id);
-        window.location.reload(); // Fallback quick refresh
+        window.location.reload();
       }
     }
-  };
+  }, [onDelete]);
+
+  const handleMenuOpen = useCallback((inv: Invoice) => {
+    setSelectedForAction(inv);
+  }, []);
 
   return (
     <div className="bg-background min-h-screen flex flex-col pb-32">
@@ -82,7 +215,7 @@ const AllInvoices: React.FC<AllInvoicesProps> = ({
               placeholder="Search by client name or bill #"
               className="w-full bg-surface-container-low border border-border rounded-[28px] pl-12 pr-4 py-4 outline-none text-sm font-semibold text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-google-blue/20 focus:border-google-blue transition-all shadow-sm"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={onSearchInput}
             />
           </div>
 
@@ -104,72 +237,28 @@ const AllInvoices: React.FC<AllInvoicesProps> = ({
       </div>
 
       <div className="max-w-5xl mx-auto w-full px-4 mt-4 space-y-3">
-        <AnimatePresence mode='popLayout'>
-          {filteredInvoices.map((invoice) => (
-            <div key={invoice.id} className="relative overflow-hidden rounded-[28px] group bg-surface-container-low border border-border shadow-sm hover:shadow-google transition-all">
-              {/* Delete Action Background */}
-              <div className="absolute inset-0 bg-google-red flex justify-end items-center px-8">
-                <Trash2 className="w-6 h-6 text-white" />
-              </div>
+        {/* Use optimized card rendering */}
+        {visibleInvoices.map((invoice) => (
+          <InvoiceCard
+            key={invoice.id}
+            invoice={invoice}
+            onView={onView}
+            onDelete={handleDelete}
+            onMenuOpen={handleMenuOpen}
+            isLowEnd={IS_LOW_END}
+          />
+        ))}
 
-              {/* Swipeable Card Content */}
-              <motion.div
-                layout
-                drag="x"
-                dragConstraints={{ left: -100, right: 0 }}
-                dragElastic={0.6}
-                dragMomentum={false}
-                onDragEnd={(_, info) => {
-                  if (info.offset.x < -80) {
-                    HapticService.medium();
-                    handleDelete(invoice);
-                  }
-                }}
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                whileTap={{ scale: 0.99 }}
-                className="bg-surface-container-low p-5 flex justify-between items-center relative z-10 cursor-pointer"
-                onClick={() => onView && onView(invoice)}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-google-blue/10 flex items-center justify-center text-google-blue font-bold text-lg border border-google-blue/5">
-                    {invoice.customerName.charAt(0)}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-bold text-foreground text-sm tracking-tight truncate max-w-[180px]">{invoice.customerName}</h3>
-                    <p className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1.5 mt-0.5">
-                      #{invoice.invoiceNumber}
-                      <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                      {new Date(invoice.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="text-base font-bold text-foreground">₹{invoice.total.toLocaleString('en-IN')}</p>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${invoice.status === 'PAID' ? 'bg-google-green/10 text-google-green' : 'bg-google-yellow/10 text-google-yellow'
-                      }`}>
-                      {invoice.status}
-                    </span>
-                  </div>
-
-                  <button
-                    className="p-2 rounded-full hover:bg-surface-container-highest transition-colors text-muted-foreground"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      HapticService.light();
-                      setSelectedForAction(invoice);
-                    }}
-                  >
-                    <MoreVertical className="w-5 h-5" />
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          ))}
-        </AnimatePresence>
+        {/* Load More Button */}
+        {hasMore && (
+          <button
+            onClick={loadMore}
+            className="w-full py-4 bg-surface-container-low border border-border rounded-2xl text-sm font-bold text-muted-foreground hover:bg-surface-container-highest transition-colors flex items-center justify-center gap-2"
+          >
+            <ChevronDown className="w-4 h-4" />
+            Load More ({filteredInvoices.length - visibleCount} remaining)
+          </button>
+        )}
 
         {/* PREMIUM BOTTOM ACTION SHEET */}
         <AnimatePresence>

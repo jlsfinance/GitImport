@@ -34,10 +34,74 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete, startWithAI 
 
   // Chat State
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: '1', text: `Hi! I'm JLS Assistant 🤖\nI can help you manage your business.\n\nTry asking:\n"Add 50 iPhone 15 Pro to stock"\n"Show me today's sales"\n"Upload my inventory file"`, sender: 'ai', timestamp: new Date() }
+    { id: '1', text: `Hi! I'm JLS Assistant 🤖\nI can help you manage your business.\n\nTry asking:\n"Show me full year ledger"\n"Kitna baaki hai?"\n"Today's sales report"`, sender: 'ai', timestamp: new Date() }
   ]);
   const [inputText, setInputText] = useState('');
+  const [dynamicSuggestions, setDynamicSuggestions] = useState<{ label: string; query: string }[]>([]);
   const chatEndRef = React.useRef<HTMLDivElement>(null);
+
+  // Generate context-aware suggestions based on user's last message
+  const generateSuggestions = (lastUserMessage: string): { label: string; query: string }[] => {
+    const lower = lastUserMessage.toLowerCase();
+
+    // Sales related
+    if (lower.includes('sale') || lower.includes('bech') || lower.includes('bikri') || lower.includes('revenue')) {
+      return [
+        { label: '📅 Week ka sales', query: 'Show this week sales' },
+        { label: '📊 Month report', query: 'This month sales report' },
+        { label: '💰 Pending payments', query: 'Kitna baaki hai?' },
+        { label: '📋 Full year ledger', query: 'Show full financial year ledger' }
+      ];
+    }
+
+    // Pending/Balance related
+    if (lower.includes('pending') || lower.includes('baaki') || lower.includes('udhar') || lower.includes('balance') || lower.includes('lena')) {
+      return [
+        { label: '👤 Customer wise', query: 'Customer wise pending list' },
+        { label: '📞 Contact details', query: 'Pending customers with phone' },
+        { label: '📊 Overdue amount', query: 'Show oldest pending bills' },
+        { label: '📋 Full ledger', query: 'Show full financial year ledger' }
+      ];
+    }
+
+    // Stock/Inventory related
+    if (lower.includes('stock') || lower.includes('inventory') || lower.includes('maal') || lower.includes('godown')) {
+      return [
+        { label: '⚠️ Low stock', query: 'Show low stock items' },
+        { label: '💰 Stock value', query: 'Total inventory value' },
+        { label: '📦 Category wise', query: 'Stock by category' },
+        { label: '📊 Sales report', query: 'Show today sales' }
+      ];
+    }
+
+    // Customer related
+    if (lower.includes('customer') || lower.includes('grahak') || lower.includes('party')) {
+      return [
+        { label: '💰 Pending bal', query: 'Customers with pending balance' },
+        { label: '🏆 Top customers', query: 'Top 10 customers by purchase' },
+        { label: '📋 Ledger', query: 'Show full financial year ledger' },
+        { label: '📊 Sales report', query: 'Show today sales' }
+      ];
+    }
+
+    // Ledger/Report related
+    if (lower.includes('ledger') || lower.includes('report') || lower.includes('hisab') || lower.includes('summary')) {
+      return [
+        { label: '📅 Monthly', query: 'Show this month report' },
+        { label: '💰 Receivables', query: 'Total pending amount' },
+        { label: '📦 Stock value', query: 'Total inventory value' },
+        { label: '👥 Customer list', query: 'All customers' }
+      ];
+    }
+
+    // Default suggestions
+    return [
+      { label: '📊 Today sales', query: 'Show today sales' },
+      { label: '💰 Pending', query: 'Kitna baaki hai?' },
+      { label: '📦 Stock', query: 'Stock report' },
+      { label: '📋 Full ledger', query: 'Show full financial year ledger' }
+    ];
+  };
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -344,15 +408,39 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete, startWithAI 
       const products = StorageService.getProducts();
       const customers = StorageService.getCustomers();
       const invoices = StorageService.getInvoices();
+      const payments = StorageService.getPayments() || [];
       const today = new Date().toISOString().split('T')[0];
+
+      // Calculate financial year start (April 1st)
+      const now = new Date();
+      const fyStart = now.getMonth() >= 3 ? new Date(now.getFullYear(), 3, 1) : new Date(now.getFullYear() - 1, 3, 1);
+      const fyStartStr = fyStart.toISOString().split('T')[0];
+
+      // Filter for this financial year
+      const fyInvoices = invoices.filter(i => i.date >= fyStartStr);
+      const fyPayments = payments.filter((p: any) => p.date >= fyStartStr);
 
       const businessContext = {
         products: products.map(p => ({ name: p.name, price: p.price, stock: p.stock })),
-        customers: customers.map(c => ({ name: c.name, balance: c.balance, phone: c.phone })),
+        customers: customers.map(c => ({
+          name: c.name,
+          balance: c.balance,
+          phone: c.phone,
+          openingBalance: (c as any).openingBalance || 0
+        })),
         invoices: invoices.map(i => ({ customerName: i.customerName, total: i.total, status: i.status, date: i.date })),
+        payments: payments.map((p: any) => ({
+          customerName: customers.find(c => c.id === p.customerId)?.name || 'Unknown',
+          amount: p.amount,
+          date: p.date,
+          mode: p.mode
+        })),
         todaySales: invoices.filter(i => i.date === today).reduce((sum, i) => sum + i.total, 0),
         totalReceivables: customers.reduce((sum, c) => sum + c.balance, 0),
         totalInventoryValue: products.reduce((sum, p) => sum + (p.price * p.stock), 0),
+        financialYearStart: `April ${fyStart.getFullYear()}`,
+        totalSalesThisYear: fyInvoices.reduce((sum, i) => sum + i.total, 0),
+        totalCollectionsThisYear: fyPayments.reduce((sum: number, p: any) => sum + p.amount, 0),
       };
 
       // Use AI service for intelligent response
@@ -364,6 +452,9 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete, startWithAI 
         sender: 'ai',
         timestamp: new Date()
       }]);
+
+      // Generate context-aware follow-up suggestions
+      setDynamicSuggestions(generateSuggestions(userMsg.text));
       setLoading(false);
 
     } catch (error) {
@@ -381,7 +472,7 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete, startWithAI 
   // ============== AI FULL SCREEN CHAT ==============
   if (showAIChat) {
     return (
-      <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col animate-in slide-in-from-bottom duration-300">
+      <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col animate-in slide-in-from-bottom duration-300 pt-safe">
         {/* Header */}
         <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-sm shrink-0">
           <div className="flex items-center gap-3">
@@ -425,20 +516,30 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete, startWithAI 
           <div ref={chatEndRef} />
         </div>
 
-        {/* Quick Actions */}
-        {messages.length < 3 && !previewData && (
+        {/* Dynamic Follow-up Suggestions */}
+        {!previewData && !loading && (
           <div className="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar shrink-0">
-            {[
-              { label: '📊 Check Stock', action: () => setInputText('Check Stock'), color: 'bg-blue-100 text-blue-700 border-blue-200' },
-              { label: '💰 Log Sales', action: () => setInputText('Log Sales'), color: 'bg-purple-100 text-purple-700 border-purple-200' },
-              { label: '📋 Today\'s Report', action: () => setInputText('Show today\'s sales'), color: 'bg-green-100 text-green-700 border-green-200' },
-            ].map((action, i) => (
+            {(dynamicSuggestions.length > 0 ? dynamicSuggestions : [
+              { label: '📊 Today Sales', query: 'Show today sales' },
+              { label: '💰 Pending', query: 'Kitna baaki hai?' },
+              { label: '📋 Full Ledger', query: 'Show full financial year ledger' },
+              { label: '📦 Stock', query: 'Stock report' }
+            ]).map((suggestion, i) => (
               <button
                 key={i}
-                onClick={action.action}
-                className={`px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap active:scale-95 transition-transform ${action.color}`}
+                onClick={() => {
+                  setInputText(suggestion.query);
+                  // Auto-send after setting
+                  setTimeout(() => {
+                    const input = document.querySelector('input[placeholder="Ask JLS AI..."]') as HTMLInputElement;
+                    if (input) {
+                      input.focus();
+                    }
+                  }, 100);
+                }}
+                className="px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap active:scale-95 transition-transform bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
               >
-                {action.label}
+                {suggestion.label}
               </button>
             ))}
           </div>

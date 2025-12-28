@@ -125,32 +125,45 @@ export const NotificationService = {
 
             await PushNotifications.addListener('pushNotificationReceived', async (notification) => {
                 console.log('Push received: ', notification);
-                // Fallback: If presentationOptions doesn't work or for custom handling
-                // We verify if we need to show a local toast/notification
-                // For now, let's just log it. The capacitor config 'presentationOptions' should handle the UI.
-                // But if we want to force it:
-                /*
-                await LocalNotifications.schedule({
-                    notifications: [{
-                        title: notification.title || 'New Notification',
-                        body: notification.body || '',
-                        id: new Date().getTime(),
-                        schedule: { at: new Date(Date.now()) },
-                        smallIcon: 'ic_launcher',
-                        extra: notification.data
-                    }]
-                });
-                */
+                // Show local notification when push received in foreground
+                try {
+                    await LocalNotifications.schedule({
+                        notifications: [{
+                            title: notification.title || 'New Notification',
+                            body: notification.body || '',
+                            id: new Date().getTime(),
+                            schedule: { at: new Date(Date.now() + 500) },
+                            smallIcon: 'ic_launcher',
+                            channelId: 'default',
+                            extra: notification.data
+                        }]
+                    });
+                } catch (e) {
+                    console.warn('Error showing local notification:', e);
+                }
             });
 
             await PushNotifications.addListener('pushNotificationActionPerformed', notification => {
                 console.log('Push action performed: ', notification);
             });
 
+            // Check permission and request if needed
             const perm = await PushNotifications.checkPermissions();
+            console.log('Push permission status in registerNotifications:', perm);
+
             if (perm.receive === 'granted') {
                 await PushNotifications.register();
+                console.log('Push registered successfully');
+            } else if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
+                // Request permission
+                const result = await PushNotifications.requestPermissions();
+                console.log('Push permission request result:', result);
+                if (result.receive === 'granted') {
+                    await PushNotifications.register();
+                    console.log('Push registered after permission request');
+                }
             }
+
             await this.createChannel();
         } catch (e) {
             console.error("Failed to register push", e);

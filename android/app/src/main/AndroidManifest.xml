@@ -39,6 +39,11 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="PushNotifications" />
+        
+        <!-- OneSignal Configuration -->
+        <meta-data
+            android:name="onesignal_app_id"
+            android:value="a32aa216-b7f2-4f8b-8e66-77efbf1c45cc" />
     </application>
 
     <!-- Permissions -->

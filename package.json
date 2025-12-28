@@ -17,6 +17,7 @@
   },
   "notes": "removed framer motion dependency",
   "dependencies": {
+    "@awesome-cordova-plugins/onesignal": "^8.1.0",
     "@capacitor-community/contacts": "^7.1.0",
     "@capacitor/android": "^7.4.4",
     "@capacitor/app": "^7.0.0",
@@ -87,6 +88,7 @@
     "lucide-react": "^0.545.0",
     "memorystore": "^1.6.7",
     "next-themes": "^0.4.6",
+    "onesignal-cordova-plugin": "^5.2.19",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "pdfjs-dist": "^5.4.449",

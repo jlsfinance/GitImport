@@ -328,11 +328,15 @@ ${chunkContent}`;
      */
     chat: async (userMessage: string, businessContext: {
         products: { name: string; price: number; stock: number }[];
-        customers: { name: string; balance: number; phone?: string }[];
+        customers: { name: string; balance: number; phone?: string; openingBalance?: number }[];
         invoices: { customerName: string; total: number; status: string; date: string }[];
+        payments?: { customerName: string; amount: number; date: string; mode?: string }[];
         todaySales: number;
         totalReceivables: number;
         totalInventoryValue: number;
+        financialYearStart?: string;
+        totalSalesThisYear?: number;
+        totalCollectionsThisYear?: number;
     }): Promise<string> => {
         const apiKey = AIService.getApiKey();
 
@@ -349,12 +353,14 @@ CRITICAL RULES:
 3. If asked about something not in the data, say "I don't have that information."
 4. Use the EXACT numbers, names, and dates from the provided data.
 5. Today's date is: ${new Date().toLocaleDateString('en-IN')}
+6. Financial Year: ${businessContext.financialYearStart || 'April 2024'} to March 2025
 
 FORMAT GUIDELINES:
 - Use emojis for visual appeal
 - Format numbers with Indian Rupee (₹) symbol, use commas (e.g., ₹1,00,000)
-- Understand Hindi keywords: kitna, becha, bikri, maal, baaki, udhar, grahak, hisab
+- Understand Hindi keywords: kitna, becha, bikri, maal, baaki, udhar, grahak, hisab, ledger, khata
 - Be concise but informative
+- For ledger requests, show opening balance + sales - payments = closing balance
 
 ACTUAL BUSINESS DATA (USE ONLY THIS):
 - Total Products: ${businessContext.products.length}
@@ -363,12 +369,16 @@ ACTUAL BUSINESS DATA (USE ONLY THIS):
 - Today's Sales: ₹${businessContext.todaySales.toLocaleString('en-IN')}
 - Total Receivables (Pending): ₹${businessContext.totalReceivables.toLocaleString('en-IN')}
 - Inventory Value: ₹${businessContext.totalInventoryValue.toLocaleString('en-IN')}
+${businessContext.totalSalesThisYear ? `- Total Sales This FY: ₹${businessContext.totalSalesThisYear.toLocaleString('en-IN')}` : ''}
+${businessContext.totalCollectionsThisYear ? `- Total Collections This FY: ₹${businessContext.totalCollectionsThisYear.toLocaleString('en-IN')}` : ''}
 
 Products (EXACT DATA): ${businessContext.products.length > 0 ? JSON.stringify(businessContext.products.slice(0, 20)) : 'No products'}
 
-Customers (EXACT DATA): ${businessContext.customers.length > 0 ? JSON.stringify(businessContext.customers.slice(0, 20)) : 'No customers'}
+Customers with Opening Balance (EXACT DATA): ${businessContext.customers.length > 0 ? JSON.stringify(businessContext.customers.slice(0, 20)) : 'No customers'}
 
-Invoices (EXACT DATA): ${businessContext.invoices.length > 0 ? JSON.stringify(businessContext.invoices.slice(0, 20)) : 'No invoices'}`;
+Invoices (EXACT DATA): ${businessContext.invoices.length > 0 ? JSON.stringify(businessContext.invoices.slice(0, 30)) : 'No invoices'}
+
+Payments Received (EXACT DATA): ${businessContext.payments && businessContext.payments.length > 0 ? JSON.stringify(businessContext.payments.slice(0, 30)) : 'No payments recorded'}`;
 
         try {
             const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
@@ -468,6 +478,40 @@ Invoices (EXACT DATA): ${businessContext.invoices.length > 0 ? JSON.stringify(bu
                 response += `${i + 1}. ${p.name}\n   Price: ₹${p.price.toLocaleString('en-IN')} | Stock: ${p.stock}\n`;
             });
             if (context.products.length > 15) response += `...+${context.products.length - 15} more`;
+            return response;
+        }
+
+        // Ledger / Khata Query - Full Financial Year
+        if (lower.includes('ledger') || lower.includes('khata') || lower.includes('year') || lower.includes('financial')) {
+            const now = new Date();
+            const fyStart = now.getMonth() >= 3 ? new Date(now.getFullYear(), 3, 1) : new Date(now.getFullYear() - 1, 3, 1);
+            const fyStartStr = fyStart.toISOString().split('T')[0];
+
+            // Calculate totals for financial year
+            const fyInvoices = context.invoices.filter((i: any) => i.date >= fyStartStr);
+            const totalFySales = fyInvoices.reduce((sum: number, i: any) => sum + i.total, 0);
+            const paidFySales = fyInvoices.filter((i: any) => i.status === 'PAID').reduce((sum: number, i: any) => sum + i.total, 0);
+
+            // Calculate opening balance (sum of customer opening balances)
+            const totalOpeningBalance = context.customers.reduce((sum: number, c: any) => sum + (c.openingBalance || 0), 0);
+
+            let response = `📋 **Full Financial Year Ledger**\n`;
+            response += `📅 FY: April ${fyStart.getFullYear()} - March ${fyStart.getFullYear() + 1}\n\n`;
+
+            response += `💰 **Opening Balance**: ₹${totalOpeningBalance.toLocaleString('en-IN')}\n`;
+            response += `📊 **Total Credit Sales (FY)**: ₹${totalFySales.toLocaleString('en-IN')}\n`;
+            response += `✅ **Total Collections (FY)**: ₹${paidFySales.toLocaleString('en-IN')}\n`;
+            response += `💵 **Closing Balance**: ₹${context.totalReceivables.toLocaleString('en-IN')}\n\n`;
+
+            response += `**Customer-wise Ledger:**\n`;
+            const pendingCustomers = context.customers.filter((c: any) => c.balance > 0 || (c.openingBalance && c.openingBalance > 0)).sort((a: any, b: any) => b.balance - a.balance);
+            pendingCustomers.slice(0, 15).forEach((c: any, i: number) => {
+                const openBal = c.openingBalance || 0;
+                response += `${i + 1}. ${c.name}\n`;
+                response += `   Opening: ₹${openBal.toLocaleString('en-IN')} → Current: ₹${c.balance.toLocaleString('en-IN')}\n`;
+            });
+            if (pendingCustomers.length > 15) response += `...+${pendingCustomers.length - 15} more`;
+
             return response;
         }
 

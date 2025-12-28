@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Customer, Product, Invoice, InvoiceItem } from '../types';
 import { StorageService } from '../services/storageService';
-import { Plus, Trash2, Save, X, CreditCard, Banknote, ArrowLeft, Calendar, FileText, ChevronDown, Check, AlertCircle, Calculator, Delete, Package, Users, UserPlus } from 'lucide-react';
+import { Plus, Trash2, Save, X, CreditCard, Banknote, ArrowLeft, AlertCircle, Calculator, Package, UserPlus } from 'lucide-react';
 import Autocomplete from './Autocomplete';
 import { useCompany } from '@/contexts/CompanyContext';
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion';
@@ -807,7 +807,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
 
       {/* Top App Bar/Header - Google Activity Style */}
       <motion.div
-        className={`sticky top-0 z-30 transition-all duration-300 ${isScrolled
+        className={`sticky top-0 pt-safe z-30 transition-all duration-300 ${isScrolled
           ? 'bg-background/95 backdrop-blur-xl border-b border-border shadow-sm'
           : 'bg-background border-b border-transparent'
           }`}
@@ -1136,7 +1136,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
 
       {/* Smart Calculator Modal */}
       {showSmartCalculator && (
-        <div className="fixed inset-0 bg-white dark:bg-slate-900 z-[60] flex flex-col">
+        <div className="fixed inset-0 bg-white dark:bg-slate-900 z-[60] flex flex-col pt-safe">
           {/* Header */}
           <div className="p-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
             <h2 className="text-lg font-black flex items-center gap-2">

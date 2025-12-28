@@ -5,10 +5,11 @@ import { Invoice, CompanyProfile, DEFAULT_COMPANY, Customer } from '../types';
 import { StorageService } from '../services/storageService';
 import { GeminiService } from '../services/geminiService';
 import { WhatsAppService } from '../services/whatsappService';
-import { Printer, ArrowLeft, Play, Loader2, Download, Edit, Trash2, MoreVertical, MessageCircle, Check, FilePlus, History, UserPlus, Users, ChevronRight } from 'lucide-react';
+import { Printer, ArrowLeft, Play, Download, Edit, Trash2, MoreVertical, MessageCircle, Check, UserPlus, Users, ChevronRight } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { useCompany } from '@/contexts/CompanyContext';
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import QRCode from 'qrcode';
 import { Contacts, PhoneType } from '@capacitor-community/contacts';
@@ -667,6 +668,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
           const pdfBase64 = doc.output('datauristring').split(',')[1];
           const fileName = `Invoice-${invoice.invoiceNumber}.pdf`;
 
+          // Save to Documents for permanent storage
           await Filesystem.writeFile({
             path: fileName,
             data: pdfBase64,
@@ -674,7 +676,27 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
             recursive: true
           });
 
-          alert(`Saved successfully to Documents folder as ${fileName}`);
+          // Also save to Cache for sharing
+          const cacheResult = await Filesystem.writeFile({
+            path: fileName,
+            data: pdfBase64,
+            directory: Directory.Cache
+          });
+
+          // Ask user what to do
+          const wantsToShare = confirm(`✅ ${fileName} saved!\n\nTap OK to SHARE/OPEN with another app\nTap Cancel to just SAVE.`);
+
+          if (wantsToShare) {
+            try {
+              await Share.share({
+                title: fileName,
+                url: cacheResult.uri,
+                dialogTitle: 'Share or Open with...'
+              });
+            } catch (shareErr) {
+              console.warn('Share cancelled or failed:', shareErr);
+            }
+          }
         } else {
           // Web Browser Logic (Keep explicit web logic or fallback)
           const pdfBlob = doc.output('blob');
@@ -1497,27 +1519,35 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
                     <span className="absolute left-6 top-1/2 -translate-y-1/2 text-google-blue font-black text-xl">+91</span>
                     <input
                       type="tel"
+                      inputMode="numeric"
                       value={waPhone}
-                      onChange={async (e) => {
+                      onChange={(e) => {
                         const val = e.target.value.replace(/\D/g, '').slice(0, 10);
                         setWaPhone(val);
 
-                        const res = await ContactService.resolveName(val);
-                        if (res.name) setWaName(res.name);
+                        // Only search contacts when we have enough digits (debounced effect)
+                        if (val.length >= 3) {
+                          // Simple debounce using setTimeout
+                          const timeoutId = setTimeout(async () => {
+                            try {
+                              const res = await ContactService.resolveName(val);
+                              if (res.name) setWaName(res.name);
 
-                        if (val.length >= 2) {
-                          const results = await ContactService.getCombinedContacts(val);
-                          setSuggestions(results);
-                          setShowSuggestions(true);
+                              const results = await ContactService.getCombinedContacts(val);
+                              setSuggestions(results);
+                              setShowSuggestions(results.length > 0);
+                            } catch (err) {
+                              console.warn('Contact lookup failed:', err);
+                            }
+                          }, 300);
+                          return () => clearTimeout(timeoutId);
                         } else {
                           setShowSuggestions(false);
                         }
                       }}
-                      onFocus={() => { if (waPhone.length >= 2) setShowSuggestions(true); }}
-                      onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                      onBlur={() => setTimeout(() => setShowSuggestions(false), 300)}
                       className="w-full p-5 pl-16 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-2xl font-black tracking-[0.1em] text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all placeholder:text-muted-foreground/30"
                       placeholder="00000 00000"
-                      autoFocus
                     />
                   </div>
 

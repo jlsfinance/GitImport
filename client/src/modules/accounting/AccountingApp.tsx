@@ -339,8 +339,8 @@ const AccountingApp: React.FC = () => {
                         {currentView === ViewState.EXPENSES && <Expenses />}
                         {currentView === ViewState.PAYMENTS && <Payments onBack={() => setCurrentView(ViewState.DASHBOARD)} createTrigger={triggerPaymentCreate} initialPayment={selectedPaymentToEdit} />}
                         {currentView === ViewState.REPORTS && <Reports onBack={() => setCurrentView(ViewState.DASHBOARD)} onViewLedger={handleViewCustomerLedger} />}
-                        {(currentView === ViewState.ALL_INVOICES || currentView === ViewState.INVOICES) && <AllInvoices title="Sales" createLabel="Add Sale" onView={handleViewInvoice} onEdit={handleEditInvoice} onCreate={handleCreateNew} />}
-                        {currentView === ViewState.PURCHASES && <AllInvoices title="Purchases" createLabel="Add Purchase" invoices={purchases} onView={handleViewInvoice} onEdit={handleEditPurchase} onCreate={() => setCurrentView(ViewState.CREATE_PURCHASE)} />}
+                        {(currentView === ViewState.ALL_INVOICES || currentView === ViewState.INVOICES) && <AllInvoices title="Sales" createLabel="Add Sale" onView={handleViewInvoice} onEdit={handleEditInvoice} />}
+                        {currentView === ViewState.PURCHASES && <AllInvoices title="Purchases" createLabel="Add Purchase" invoices={purchases} onView={handleViewInvoice} onEdit={handleEditPurchase} />}
                         {currentView === ViewState.SETTINGS && <Settings />}
 
                         {currentView === ViewState.VIEW_INVOICE && selectedInvoice && (

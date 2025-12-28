@@ -111,28 +111,30 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, onChange
       </AnimatePresence>
 
       {/* Floating Action Button (M3 Extended FAB) - Context Aware */}
-      <div className="fixed bottom-28 right-6 z-40">
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => {
-            HapticService.medium();
-            if (onFabClick) {
-              onFabClick();
-            } else {
-              handleNavClick(ViewState.CREATE_INVOICE);
-            }
-          }}
-          className="h-14 px-5 rounded-[28px] bg-google-blue text-white shadow-google-lg flex items-center gap-3 hover:shadow-google transition-all border-none"
-        >
-          <Plus className="w-6 h-6" strokeWidth={3} />
-          <span className="font-bold text-sm tracking-tight">
-            {currentView === ViewState.PURCHASES ? 'Add Purchase' :
-              currentView === ViewState.PAYMENTS ? 'Add Receipt' :
-                'Add Sale'}
-          </span>
-        </motion.button>
-      </div>
+      {!['CREATE_INVOICE', 'EDIT_INVOICE', 'CREATE_PURCHASE', 'EDIT_PURCHASE'].includes(currentView) && (
+        <div className="fixed bottom-28 right-6 z-40">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => {
+              HapticService.medium();
+              if (onFabClick) {
+                onFabClick();
+              } else {
+                handleNavClick(ViewState.CREATE_INVOICE);
+              }
+            }}
+            className="h-14 px-5 rounded-[28px] bg-google-blue text-white shadow-google-lg flex items-center gap-3 hover:shadow-google transition-all border-none"
+          >
+            <Plus className="w-6 h-6" strokeWidth={3} />
+            <span className="font-bold text-sm tracking-tight">
+              {currentView === ViewState.PURCHASES ? 'Add Purchase' :
+                currentView === ViewState.PAYMENTS ? 'Add Receipt' :
+                  'Add Sale'}
+            </span>
+          </motion.button>
+        </div>
+      )}
 
       {/* Material 3 Bottom Navigation Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-surface-container/95 dark:bg-surface-container-low/95 backdrop-blur-2xl border-t border-border/50 pb-safe z-30 h-[88px]">
