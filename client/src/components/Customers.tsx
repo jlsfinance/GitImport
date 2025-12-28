@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Customer, Invoice, Payment } from '../types';
 import { StorageService } from '../services/storageService';
 import { WhatsAppService } from '../services/whatsappService';
-import { UserPlus, Phone, Mail, MapPin, ArrowLeft, FileText, Calendar, Bell, Send, Download, TrendingUp, AlertCircle, Eye, Plus, X, Banknote, CreditCard, MessageCircle, Edit, Trash2 } from 'lucide-react';
+import { UserPlus, Search, Phone, Mail, MapPin, ArrowLeft, FileText, Calendar, Bell, Send, Download, TrendingUp, AlertCircle, Eye, Plus, X, Banknote, CreditCard, MessageCircle, Edit, Trash2 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import InvoiceView from './InvoiceView';
 import { HapticService } from '@/services/hapticService';
@@ -63,6 +63,7 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack }) => {
   // Edit Customer Modal State
   const [showEditCustomer, setShowEditCustomer] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     setCustomers(StorageService.getCustomers());
@@ -757,6 +758,12 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack }) => {
     return !!(company?.gst_enabled || company?.gst);
   };
 
+  const filteredCustomers = customers.filter(c =>
+    c.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (c.phone && c.phone.includes(searchTerm))
+  );
+
   return (
     <div className="bg-surface-container-low min-h-screen font-sans">
       {/* Edit Customer Modal */}
@@ -926,10 +933,22 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack }) => {
           </motion.button>
         </div>
 
+        {/* Search Bar */}
+        <div className="relative mb-8">
+          <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search customers by name, company, or phone..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-14 pr-6 py-4 bg-surface rounded-[24px] shadow-sm border border-transparent focus:border-google-blue/30 focus:shadow-google transition-all outline-none font-medium text-foreground"
+          />
+        </div>
+
         {/* Customer Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <AnimatePresence mode="popLayout">
-            {customers.map(customer => (
+            {filteredCustomers.map(customer => (
               <motion.div
                 layout
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -977,13 +996,13 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack }) => {
           </AnimatePresence>
         </div>
 
-        {customers.length === 0 && (
+        {filteredCustomers.length === 0 && (
           <div className="text-center py-24 bg-surface-container-high/30 rounded-[40px] border-2 border-dashed border-border mt-8">
             <div className="w-24 h-24 bg-surface-container-highest rounded-[32px] flex items-center justify-center mx-auto mb-6">
               <UserPlus className="w-10 h-10 text-muted-foreground/40" />
             </div>
-            <h3 className="text-2xl font-black text-foreground mb-2 font-heading">No Customers Yet</h3>
-            <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Add your first client to get started</p>
+            <h3 className="text-2xl font-black text-foreground mb-2 font-heading">{searchTerm ? 'No Matching Customers' : 'No Customers Yet'}</h3>
+            <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">{searchTerm ? 'Try adjusting your search terms' : 'Add your first client to get started'}</p>
           </div>
         )}
       </div>
