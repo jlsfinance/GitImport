@@ -10,9 +10,10 @@ interface PaymentsProps {
     onBack: () => void;
     initialPayment?: Payment | null;
     initialCustomerId?: string | null;
+    createTrigger?: number;
 }
 
-const Payments: React.FC<PaymentsProps> = ({ onBack, initialPayment, initialCustomerId }) => {
+const Payments: React.FC<PaymentsProps> = ({ onBack, initialPayment, initialCustomerId, createTrigger }) => {
     const [payments, setPayments] = useState<Payment[]>(StorageService.getPayments());
     const [customers] = useState<Customer[]>(StorageService.getCustomers());
     const [showAddModal, setShowAddModal] = useState(false);
@@ -42,8 +43,10 @@ const Payments: React.FC<PaymentsProps> = ({ onBack, initialPayment, initialCust
         } else if (initialCustomerId) {
             handleOpenAdd();
             setSelectedCustomerId(initialCustomerId);
+        } else if (createTrigger && createTrigger > 0) {
+            handleOpenAdd();
         }
-    }, [initialPayment, initialCustomerId]);
+    }, [initialPayment, initialCustomerId, createTrigger]);
 
     const handleOpenAdd = () => {
         setEditingPayment(null);

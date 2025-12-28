@@ -51,6 +51,7 @@ const AccountingApp: React.FC = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const [startSmartCalc, setStartSmartCalc] = useState(false);
+    const [triggerPaymentCreate, setTriggerPaymentCreate] = useState(0);
     const [showPostSaveActions, setShowPostSaveActions] = useState(false);
 
     useEffect(() => {
@@ -209,6 +210,19 @@ const AccountingApp: React.FC = () => {
         setCurrentView(ViewState.CREATE_INVOICE);
     };
 
+    const handleGlobalFabClick = () => {
+        HapticService.medium();
+        if (currentView === ViewState.PURCHASES) {
+            setCurrentView(ViewState.CREATE_PURCHASE);
+        } else if (currentView === ViewState.PAYMENTS) {
+            setTriggerPaymentCreate(prev => prev + 1);
+        } else {
+            // Default Action: Create Sale (Invoice)
+            // We can also check if we are in dashboard, invoices, etc.
+            handleCreateNew();
+        }
+    };
+
     const handleOpenSmartCalc = () => {
         setInvoiceToEdit(null);
         setStartSmartCalc(true);
@@ -329,6 +343,7 @@ const AccountingApp: React.FC = () => {
                                 }}
                                 initialPayment={selectedPaymentToEdit}
                                 initialCustomerId={selectedCustomerId}
+                                createTrigger={triggerPaymentCreate}
                             />
                         )}
 
@@ -347,7 +362,7 @@ const AccountingApp: React.FC = () => {
                                     StorageService.deletePurchase(inv.id);
                                     setPurchases(StorageService.getPurchases());
                                 }}
-                                onCreate={() => setCurrentView(ViewState.CREATE_PURCHASE)}
+
                             />
                         )}
 
@@ -444,7 +459,9 @@ const AccountingApp: React.FC = () => {
                         } else {
                             setCurrentView(view);
                         }
-                    }} />
+                    }}
+                        onFabClick={handleGlobalFabClick}
+                    />
                 </div>
             )}
 

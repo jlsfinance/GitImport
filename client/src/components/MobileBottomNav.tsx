@@ -9,9 +9,10 @@ import { HapticService } from '@/services/hapticService';
 interface MobileBottomNavProps {
   currentView: ViewState;
   onChangeView: (view: ViewState) => void;
+  onFabClick?: () => void;
 }
 
-const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, onChangeView }) => {
+const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, onChangeView, onFabClick }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { signOut } = useAuth();
 
@@ -116,7 +117,11 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, onChange
           whileTap={{ scale: 0.9 }}
           onClick={() => {
             HapticService.medium();
-            handleNavClick(ViewState.CREATE_INVOICE);
+            if (onFabClick) {
+              onFabClick();
+            } else {
+              handleNavClick(ViewState.CREATE_INVOICE);
+            }
           }}
           className="w-16 h-16 rounded-[24px] bg-google-blue text-white shadow-google-lg flex items-center justify-center hover:shadow-google transition-all border-none"
         >
