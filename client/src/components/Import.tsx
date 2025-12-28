@@ -4,6 +4,8 @@ import { StorageService } from '../services/storageService';
 import { Product, Customer } from '../types';
 import { useCompany } from '@/contexts/CompanyContext';
 import * as XLSX from 'xlsx';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Capacitor } from '@capacitor/core';
 
 interface ImportProps {
   onClose: () => void;
@@ -25,41 +27,75 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete }) => {
           const workbook = XLSX.read(data, { type: 'array' });
           const result = { products: [] as Product[], customers: [] as Customer[] };
 
-          // Parse Products sheet
-          if (workbook.SheetNames.includes('Products')) {
-            const productSheet = XLSX.utils.sheet_to_json(workbook.Sheets['Products']);
-            result.products = productSheet.map((row: any) => ({
-              id: Math.random().toString(36).substr(2, 9),
-              name: row['Product Name'] || row['Name'] || '',
-              price: parseFloat(row['Price'] || row['Rate'] || 0),
-              stock: (row['Stock'] !== undefined || row['Quantity'] !== undefined)
-                ? parseInt(row['Stock'] || row['Quantity'])
-                : 1, // Default to 1 if missing
-              category: row['Category'] || '',
-              hsn: company?.gst_enabled ? (row['HSN'] || row['HSN Code'] || '') : '',
-              gstRate: company?.gst_enabled ? parseFloat(row['GST Rate'] || row['GSTRATE'] || 0) : 0
-            }));
+          // Helper to get value from row by multiple possible keys (case insensitive)
+          const getValue = (row: any, ...keys: string[]): string => {
+            for (const key of keys) {
+              // Try exact match first
+              if (row[key] !== undefined) return String(row[key]);
+              // Try case-insensitive match
+              const lowerKey = key.toLowerCase();
+              const foundKey = Object.keys(row).find(k => k.toLowerCase() === lowerKey);
+              if (foundKey && row[foundKey] !== undefined) return String(row[foundKey]);
+            }
+            return '';
+          };
+
+          const getNumber = (row: any, ...keys: string[]): number => {
+            const val = getValue(row, ...keys);
+            return parseFloat(val) || 0;
+          };
+
+          // Parse Products sheet (try multiple sheet name variations)
+          const productSheetName = workbook.SheetNames.find(name =>
+            name.toLowerCase().includes('product') || name.toLowerCase() === 'items' || name.toLowerCase() === 'inventory'
+          );
+
+          if (productSheetName) {
+            const productSheet = XLSX.utils.sheet_to_json(workbook.Sheets[productSheetName]);
+            console.log('Parsing products from sheet:', productSheetName, 'Rows:', productSheet.length);
+
+            result.products = productSheet
+              .filter((row: any) => getValue(row, 'Product Name', 'Name', 'Item Name', 'ProductName', 'Item'))
+              .map((row: any) => ({
+                id: Math.random().toString(36).substr(2, 9),
+                name: getValue(row, 'Product Name', 'Name', 'Item Name', 'ProductName', 'Item'),
+                price: getNumber(row, 'Price', 'Rate', 'MRP', 'Sale Price', 'Selling Price'),
+                stock: getNumber(row, 'Stock', 'Quantity', 'Qty', 'Opening Stock') || 1,
+                category: getValue(row, 'Category', 'Group', 'Type') || 'General',
+                hsn: company?.gst_enabled ? getValue(row, 'HSN', 'HSN Code', 'HSNCode') : '',
+                gstRate: company?.gst_enabled ? getNumber(row, 'GST Rate', 'GST', 'GSTRATE', 'Tax Rate', 'GST%') : 0
+              }));
           }
 
-          // Parse Customers sheet
-          if (workbook.SheetNames.includes('Customers')) {
-            const customerSheet = XLSX.utils.sheet_to_json(workbook.Sheets['Customers']);
-            result.customers = customerSheet.map((row: any) => ({
-              id: Math.random().toString(36).substr(2, 9),
-              name: row['Customer Name'] || row['Name'] || '',
-              company: row['Company'] || '',
-              email: row['Email'] || '',
-              phone: row['Phone'] || row['Mobile'] || '',
-              address: row['Address'] || '',
-              state: company?.gst_enabled ? (row['State'] || '') : '',
-              gstin: company?.gst_enabled ? (row['GSTIN'] || '') : '',
-              balance: 0,
-              notifications: []
-            }));
+          // Parse Customers sheet (try multiple sheet name variations)
+          const customerSheetName = workbook.SheetNames.find(name =>
+            name.toLowerCase().includes('customer') || name.toLowerCase() === 'parties' || name.toLowerCase() === 'ledger'
+          );
+
+          if (customerSheetName) {
+            const customerSheet = XLSX.utils.sheet_to_json(workbook.Sheets[customerSheetName]);
+            console.log('Parsing customers from sheet:', customerSheetName, 'Rows:', customerSheet.length);
+
+            result.customers = customerSheet
+              .filter((row: any) => getValue(row, 'Customer Name', 'Name', 'Party Name', 'CustomerName'))
+              .map((row: any) => ({
+                id: Math.random().toString(36).substr(2, 9),
+                name: getValue(row, 'Customer Name', 'Name', 'Party Name', 'CustomerName'),
+                company: getValue(row, 'Company', 'Company Name', 'Firm', 'Business Name'),
+                email: getValue(row, 'Email', 'E-mail', 'EmailID'),
+                phone: getValue(row, 'Phone', 'Mobile', 'Contact', 'Phone Number', 'Mobile Number'),
+                address: getValue(row, 'Address', 'Billing Address', 'Full Address'),
+                state: company?.gst_enabled ? getValue(row, 'State', 'State Name') : '',
+                gstin: company?.gst_enabled ? getValue(row, 'GSTIN', 'GST Number', 'GST No', 'GSTNo') : '',
+                balance: 0,
+                notifications: []
+              }));
           }
 
+          console.log('Import result:', result.products.length, 'products,', result.customers.length, 'customers');
           resolve(result);
         } catch (error) {
+          console.error('Parse error:', error);
           reject(error);
         }
       };
@@ -133,37 +169,68 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete }) => {
     return result;
   };
 
-  const handleDownloadSample = () => {
-    // Sample data structure matching the parsing logic
-    const sampleData = [
-      {
-        'Product Name': 'Sample Product',
-        'Price': 100,
-        'Quantity': 10,
-        'Category': 'General',
-        'HSN': '1234',
-        'GST Rate': 18
-      },
-      {
-        'Product Name': 'Service Item',
-        'Price': 500,
-        'Quantity': 1, // Will autofill to 1 if removed
-        'Category': 'Services',
-        'HSN': '9988',
-        'GST Rate': 5
+  const handleDownloadSample = async () => {
+    try {
+      // Sample data structure matching the parsing logic
+      const sampleData = [
+        {
+          'Product Name': 'Sample Product',
+          'Price': 100,
+          'Quantity': 10,
+          'Category': 'General',
+          'HSN': '1234',
+          'GST Rate': 18
+        },
+        {
+          'Product Name': 'Service Item',
+          'Price': 500,
+          'Quantity': 1,
+          'Category': 'Services',
+          'HSN': '9988',
+          'GST Rate': 5
+        }
+      ];
+
+      const ws = XLSX.utils.json_to_sheet(sampleData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Products");
+
+      // Add a Customers sheet sample too
+      const customerData = [
+        {
+          'Customer Name': 'John Doe',
+          'Company': 'ABC Corp',
+          'Email': 'john@example.com',
+          'Phone': '9876543210',
+          'Address': '123 Main St',
+          'State': 'Delhi',
+          'GSTIN': '07AAAAA0000A1Z5'
+        }
+      ];
+      const wsCust = XLSX.utils.json_to_sheet(customerData);
+      XLSX.utils.book_append_sheet(wb, wsCust, "Customers");
+
+      const fileName = "JLS_Suite_Import_Sample.xlsx";
+
+      if (Capacitor.isNativePlatform()) {
+        // Native: Use Capacitor Filesystem
+        const xlsxData = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+
+        await Filesystem.writeFile({
+          path: fileName,
+          data: xlsxData,
+          directory: Directory.Documents,
+        });
+
+        alert(`✅ Sample file saved!\n\nLocation: Documents/${fileName}\n\nOpen your file manager to find it, then edit and re-upload.`);
+      } else {
+        // Web: Use standard download
+        XLSX.writeFile(wb, fileName);
       }
-    ];
-
-    const ws = XLSX.utils.json_to_sheet(sampleData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Products");
-
-    // Add a Customers sheet sample too
-    const customerData = [{ 'Customer Name': 'John Doe', 'Phone': '9876543210', 'State': 'Delhi' }];
-    const wsCust = XLSX.utils.json_to_sheet(customerData);
-    XLSX.utils.book_append_sheet(wb, wsCust, "Customers");
-
-    XLSX.writeFile(wb, "JLS_Suite_Import_Sample.xlsx");
+    } catch (error) {
+      console.error('Download sample error:', error);
+      alert('Failed to download sample file. Please try again.');
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
