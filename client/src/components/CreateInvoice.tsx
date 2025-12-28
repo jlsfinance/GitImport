@@ -1259,17 +1259,17 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110] p-4">
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white dark:bg-slate-800 rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-              <h3 className="text-lg font-bold">New Product</h3>
-              <button onClick={() => setShowProductModal(false)} className="bg-slate-100 p-2 rounded-full"><X className="w-5 h-5" /></button>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">New Product</h3>
+              <button onClick={() => setShowProductModal(false)} className="bg-slate-100 dark:bg-slate-700 p-2 rounded-full dark:text-white"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6 space-y-4">
-              <input type="text" autoFocus placeholder="Product Name" className="w-full p-4 bg-slate-50 rounded-xl font-bold outline-none focus:ring-2 focus:ring-blue-500" value={newProductName} onChange={(e) => setNewProductName(e.target.value)} />
-              <input type="text" placeholder="Item ID (Optional, for Calculator)" className="w-full p-4 bg-slate-50 rounded-xl font-medium outline-none focus:ring-2 focus:ring-blue-500 uppercase tracking-widest" value={newProductId} onChange={(e) => setNewProductId(e.target.value)} />
-              <input type="number" placeholder="Price / Rate" className="w-full p-4 bg-slate-50 rounded-xl font-medium outline-none focus:ring-2 focus:ring-blue-500" value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (!gstEnabled && saveNewProduct())} />
+              <input type="text" autoFocus placeholder="Product Name" className="w-full p-4 bg-slate-50 dark:bg-slate-900 dark:text-white rounded-xl font-bold outline-none focus:ring-2 focus:ring-blue-500" value={newProductName} onChange={(e) => setNewProductName(e.target.value)} />
+              <input type="text" placeholder="Item ID (Optional, for Calculator)" className="w-full p-4 bg-slate-50 dark:bg-slate-900 dark:text-white rounded-xl font-medium outline-none focus:ring-2 focus:ring-blue-500 uppercase tracking-widest" value={newProductId} onChange={(e) => setNewProductId(e.target.value)} />
+              <input type="number" placeholder="Price / Rate" className="w-full p-4 bg-slate-50 dark:bg-slate-900 dark:text-white rounded-xl font-medium outline-none focus:ring-2 focus:ring-blue-500" value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (!gstEnabled && saveNewProduct())} />
               {gstEnabled && (
                 <div className="flex gap-4">
-                  <input type="text" placeholder="HSN" className="flex-1 p-4 bg-slate-50 rounded-xl outline-none" value={newProductHSN} onChange={(e) => setNewProductHSN(e.target.value)} />
-                  <input type="number" placeholder="GST %" className="w-24 p-4 bg-slate-50 rounded-xl outline-none" value={newProductGST} onChange={(e) => setNewProductGST(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveNewProduct()} />
+                  <input type="text" placeholder="HSN" className="flex-1 p-4 bg-slate-50 dark:bg-slate-900 dark:text-white rounded-xl outline-none" value={newProductHSN} onChange={(e) => setNewProductHSN(e.target.value)} />
+                  <input type="number" placeholder="GST %" className="w-24 p-4 bg-slate-50 dark:bg-slate-900 dark:text-white rounded-xl outline-none" value={newProductGST} onChange={(e) => setNewProductGST(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveNewProduct()} />
                 </div>
               )}
               <button onClick={saveNewProduct} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold mt-4">Save Product</button>
