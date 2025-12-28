@@ -13,9 +13,10 @@ interface CreateInvoiceProps {
   onCancel: () => void;
   initialInvoice?: Invoice | null;
   startSmartCalc?: boolean;
+  initialCustomerId?: string;
 }
 
-const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initialInvoice, startSmartCalc }) => {
+const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initialInvoice, startSmartCalc, initialCustomerId }) => {
   const { company } = useCompany();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -116,8 +117,13 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
       d.setDate(d.getDate() + 30);
       setDueDate(d.toISOString().split('T')[0]);
       if (items.length === 0) handleAddItem();
+
+      // Pre-select Customer if provided
+      if (initialCustomerId) {
+        setSelectedCustomerId(initialCustomerId);
+      }
     }
-  }, [initialInvoice]);
+  }, [initialInvoice, initialCustomerId]);
 
   const handleAddItem = () => {
     setItems([...items, { productId: '', description: '', quantity: 1, rate: 0, baseAmount: 0, hsn: '', gstRate: 0, cgstAmount: 0, sgstAmount: 0, igstAmount: 0, totalAmount: 0 }]);

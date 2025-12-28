@@ -9,9 +9,10 @@ import { HapticService } from '@/services/hapticService';
 interface PaymentsProps {
     onBack: () => void;
     initialPayment?: Payment | null;
+    initialCustomerId?: string | null;
 }
 
-const Payments: React.FC<PaymentsProps> = ({ onBack, initialPayment }) => {
+const Payments: React.FC<PaymentsProps> = ({ onBack, initialPayment, initialCustomerId }) => {
     const [payments, setPayments] = useState<Payment[]>(StorageService.getPayments());
     const [customers] = useState<Customer[]>(StorageService.getCustomers());
     const [showAddModal, setShowAddModal] = useState(false);
@@ -38,16 +39,16 @@ const Payments: React.FC<PaymentsProps> = ({ onBack, initialPayment }) => {
     React.useEffect(() => {
         if (initialPayment) {
             handleEdit(initialPayment);
+        } else if (initialCustomerId) {
+            handleOpenAdd();
+            setSelectedCustomerId(initialCustomerId);
         }
-    }, [initialPayment]);
+    }, [initialPayment, initialCustomerId]);
 
     const handleOpenAdd = () => {
         setEditingPayment(null);
         setSelectedCustomerId('');
         setAmount('');
-        setAmount('');
-        setDate(new Date().toISOString().split('T')[0]);
-        setMode('CASH');
         setDate(new Date().toISOString().split('T')[0]);
         setMode('CASH');
         setType(activeTab === 'PAID' ? 'PAID' : 'RECEIVED'); // Auto-set based on current tab

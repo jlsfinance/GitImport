@@ -205,12 +205,14 @@ const AccountingApp: React.FC = () => {
     const handleCreateNew = () => {
         setInvoiceToEdit(null);
         setStartSmartCalc(false);
+        setSelectedCustomerId(null); // Ensure no customer is pre-selected for generic create
         setCurrentView(ViewState.CREATE_INVOICE);
     };
 
     const handleOpenSmartCalc = () => {
         setInvoiceToEdit(null);
         setStartSmartCalc(true);
+        setSelectedCustomerId(null);
         setCurrentView(ViewState.CREATE_INVOICE);
     }
 
@@ -236,6 +238,7 @@ const AccountingApp: React.FC = () => {
                             if (view === ViewState.CREATE_INVOICE) {
                                 setInvoiceToEdit(null);
                                 setStartSmartCalc(false);
+                                setSelectedCustomerId(null);
                             }
                             if (view === ViewState.IMPORT) {
                                 setShowImport(true);
@@ -322,8 +325,10 @@ const AccountingApp: React.FC = () => {
                                 onBack={() => {
                                     setCurrentView(ViewState.DASHBOARD);
                                     setSelectedPaymentToEdit(null);
+                                    setSelectedCustomerId(null);
                                 }}
                                 initialPayment={selectedPaymentToEdit}
+                                initialCustomerId={selectedCustomerId}
                             />
                         )}
 
@@ -382,6 +387,15 @@ const AccountingApp: React.FC = () => {
                                     setSelectedPaymentToEdit(payment);
                                     setCurrentView(ViewState.PAYMENTS);
                                 }}
+                                onRecordSale={(custId) => {
+                                    setSelectedCustomerId(custId);
+                                    setCurrentView(ViewState.CREATE_INVOICE);
+                                }}
+                                onRecordPayment={(custId) => {
+                                    setSelectedCustomerId(custId);
+                                    setSelectedPaymentToEdit(null);
+                                    setCurrentView(ViewState.PAYMENTS);
+                                }}
                             />
                         )}
 
@@ -390,6 +404,7 @@ const AccountingApp: React.FC = () => {
                                 onSave={handleSaveInvoice}
                                 onCancel={() => setCurrentView(ViewState.INVOICES)}
                                 startSmartCalc={startSmartCalc}
+                                initialCustomerId={selectedCustomerId || undefined}
                             />
                         )}
 
