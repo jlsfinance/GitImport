@@ -1,8 +1,8 @@
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Invoice } from '../types';
 import { StorageService } from '../services/storageService';
-import { DollarSign, Users, Package, ArrowRight, MessageCircle, Plus, FileText, TrendingUp, ArrowDownLeft, Calculator, CheckCircle, ChevronRight, Eye, Edit, Trash2, MoreVertical } from 'lucide-react';
+import { Users, Package, MessageCircle, Plus, FileText, TrendingUp, ArrowDownLeft, Calculator, CheckCircle, ChevronRight, Eye, Trash2, MoreVertical } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HapticService } from '@/services/hapticService';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -17,6 +17,7 @@ interface DashboardProps {
     onOpenReports: () => void;
     onAddCustomer: () => void;
     onOpenSmartCalc: () => void;
+    onOpenAI: () => void; // New Prop
 }
 
 const Dashboard: React.FC<DashboardProps> = ({
@@ -28,48 +29,52 @@ const Dashboard: React.FC<DashboardProps> = ({
     onCreateInvoice,
     onOpenReports,
     onAddCustomer,
-    onOpenSmartCalc
+    onOpenSmartCalc,
+    onOpenAI
 }) => {
     const { company } = useCompany();
-    const [timeFilter, setTimeFilter] = React.useState<'ALL' | 'TODAY' | 'MONTH'>('ALL');
-    const [selectedForAction, setSelectedForAction] = React.useState<Invoice | null>(null);
+    const [timeFilter, setTimeFilter] = useState<'ALL' | 'TODAY' | 'MONTH'>('ALL');
+    const [selectedForAction, setSelectedForAction] = useState<Invoice | null>(null);
 
-    const filteredInvoices = React.useMemo(() => {
-        const now = new Date();
-        const todayStr = now.toISOString().split('T')[0];
-        const monthYear = now.toISOString().slice(0, 7); // YYYY-MM
-
-        return invoices.filter(inv => {
-            if (timeFilter === 'TODAY') return inv.date === todayStr;
-            if (timeFilter === 'MONTH') return inv.date.startsWith(monthYear);
-            return true;
-        });
-    }, [invoices, timeFilter]);
-
-    const totalRevenue = filteredInvoices.reduce((acc, inv) => acc + inv.total, 0);
-    const pendingInvoices = filteredInvoices.filter(i => i.status === 'PENDING').length;
-    const productsCount = StorageService.getProducts().length;
-    const customersCount = StorageService.getCustomers().length;
-
+    // Animation Variants
     const container = {
         hidden: { opacity: 0 },
         show: {
             opacity: 1,
             transition: {
-                staggerChildren: 0.05
+                staggerChildren: 0.1
             }
         }
     };
 
     const item = {
-        hidden: { opacity: 0, y: 10 },
+        hidden: { opacity: 0, y: 20 },
         show: { opacity: 1, y: 0 }
     };
 
+    // Derived State
+    const productsCount = useMemo(() => StorageService.getProducts().length, []);
+    const customersCount = useMemo(() => StorageService.getCustomers().length, []);
+
+    const filteredInvoices = useMemo(() => {
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+        const monthStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+
+        return invoices.filter(inv => {
+            if (timeFilter === 'TODAY') return inv.date === todayStr;
+            if (timeFilter === 'MONTH') return inv.date.startsWith(monthStr);
+            return true;
+        });
+    }, [invoices, timeFilter]);
+
+    const totalRevenue = useMemo(() => filteredInvoices.reduce((sum, inv) => sum + inv.total, 0), [filteredInvoices]);
+    const pendingInvoices = useMemo(() => filteredInvoices.filter(inv => inv.status === 'PENDING').length, [filteredInvoices]);
+
     return (
-        <div className="pb-32 md:pb-6 bg-background min-h-screen font-sans">
+        <div className="pb-32 md:pb-6 bg-background min-h-screen font-sans" >
             {/* Google Static Top Bar / Header */}
-            <div className="pt-14 pb-4 px-6 sticky top-0 z-30 bg-background/95 backdrop-blur-sm">
+            < div className="pt-14 pb-4 px-6 sticky top-0 z-30 bg-background/95 backdrop-blur-sm" >
                 <div className="max-w-5xl mx-auto flex items-center justify-between">
                     <div className="flex flex-col">
                         <span className="text-[11px] font-bold text-google-blue uppercase tracking-widest mb-0.5">
@@ -87,15 +92,16 @@ const Dashboard: React.FC<DashboardProps> = ({
                         >
                             <Calculator className="w-6 h-6" />
                         </motion.button>
-                        <motion.div
-                            whileTap={{ scale: 0.95 }}
-                            className="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center border-2 border-primary/20 p-0.5 overflow-hidden shadow-sm"
+                        <motion.button
+                            whileTap={{ scale: 0.92 }}
+                            onClick={onOpenAI}
+                            className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white border-2 border-white/20 shadow-md hover:shadow-lg transition-all"
                         >
-                            <img src="/logo.png" className="w-full h-full object-cover rounded-full" alt="Profile" />
-                        </motion.div>
+                            <span className="material-symbols-outlined text-[24px]">smart_toy</span>
+                        </motion.button>
                     </div>
                 </div>
-            </div>
+            </div >
 
             <motion.div
                 variants={container}
@@ -350,7 +356,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </>
                 )}
             </AnimatePresence>
-        </div>
+        </div >
     );
 };
 

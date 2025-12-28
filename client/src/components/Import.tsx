@@ -1,572 +1,691 @@
-import React, { useState } from 'react';
-import { Upload, AlertCircle, CheckCircle, Loader2, Download, Sparkles, Zap, Eye, X, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Upload, AlertCircle, Loader2, Download, Sparkles, Eye, X, Check, Send, Paperclip, Bot, ArrowLeft, Package, Users } from 'lucide-react';
 import { StorageService } from '../services/storageService';
 import { AIService } from '../services/aiService';
 import { Product, Customer } from '../types';
 import { useCompany } from '@/contexts/CompanyContext';
 import * as XLSX from 'xlsx';
-import { Filesystem, Directory } from '@capacitor/filesystem';
-import { Capacitor } from '@capacitor/core';
+
+// Chat Message Type
+interface ChatMessage {
+  id: string;
+  text: string;
+  sender: 'user' | 'ai';
+  timestamp: Date;
+  attachment?: { name: string; type: string };
+}
 
 interface ImportProps {
   onClose: () => void;
   onImportComplete: () => void;
+  startWithAI?: boolean;
 }
 
-const Import: React.FC<ImportProps> = ({ onClose, onImportComplete }) => {
-  const { company } = useCompany();
-  const [loading, setLoading] = useState(false);
-  const [useAI, setUseAI] = useState(false);
-  const [status, setStatus] = useState<{ type: 'idle' | 'success' | 'error', message: string }>({ type: 'idle', message: '' });
-  const [importStats, setImportStats] = useState({ products: 0, customers: 0 });
+type ImportStep = 'MODE_SELECT' | 'UPLOAD' | 'PREVIEW';
 
-  // Preview state - show extracted data before saving
+const Import: React.FC<ImportProps> = ({ onClose, onImportComplete, startWithAI = false }) => {
+  useCompany(); // Keep hook call for potential future use
+  const [loading, setLoading] = useState(false);
+  const [useAI, setUseAI] = useState(false); // Whether to use AI parsing
+  const [showAIChat, setShowAIChat] = useState(startWithAI); // Whether to show full-screen AI chat
+  const [step, setStep] = useState<ImportStep>(startWithAI ? 'UPLOAD' : 'MODE_SELECT');
+  const [status, setStatus] = useState<{ type: 'idle' | 'success' | 'error', message: string }>({ type: 'idle', message: '' });
   const [previewData, setPreviewData] = useState<{ products: Product[], customers: Customer[] } | null>(null);
 
-  const parseExcelFile = async (file: File): Promise<{ products: Product[], customers: Customer[] }> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const result = { products: [] as Product[], customers: [] as Customer[] };
+  // Chat State
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { id: '1', text: `Hi! I'm JLS Assistant 🤖\nI can help you manage your business.\n\nTry asking:\n"Add 50 iPhone 15 Pro to stock"\n"Show me today's sales"\n"Upload my inventory file"`, sender: 'ai', timestamp: new Date() }
+  ]);
+  const [inputText, setInputText] = useState('');
+  const chatEndRef = React.useRef<HTMLDivElement>(null);
 
-          // Helper to get value from row by multiple possible keys (case insensitive)
-          const getValue = (row: any, ...keys: string[]): string => {
-            for (const key of keys) {
-              // Try exact match first
-              if (row[key] !== undefined) return String(row[key]);
-              // Try case-insensitive match
-              const lowerKey = key.toLowerCase();
-              const foundKey = Object.keys(row).find(k => k.toLowerCase() === lowerKey);
-              if (foundKey && row[foundKey] !== undefined) return String(row[foundKey]);
-            }
-            return '';
-          };
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, useAI]);
 
-          const getNumber = (row: any, ...keys: string[]): number => {
-            const val = getValue(row, ...keys);
-            return parseFloat(val) || 0;
-          };
+  // Parse Excel File
+  const parseExcelFile = async (file: File) => {
+    setLoading(true);
+    setStatus({ type: 'idle', message: '' });
 
-          // Parse Products sheet (try multiple sheet name variations)
-          const productSheetName = workbook.SheetNames.find(name =>
-            name.toLowerCase().includes('product') || name.toLowerCase() === 'items' || name.toLowerCase() === 'inventory'
-          );
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
 
-          if (productSheetName) {
-            const productSheet = XLSX.utils.sheet_to_json(workbook.Sheets[productSheetName]);
-            console.log('Parsing products from sheet:', productSheetName, 'Rows:', productSheet.length);
+        const products: Product[] = [];
+        const customers: Customer[] = [];
 
-            result.products = productSheet
-              .filter((row: any) => getValue(row, 'Product Name', 'Name', 'Item Name', 'ProductName', 'Item'))
-              .map((row: any) => ({
-                id: Math.random().toString(36).substr(2, 9),
-                name: getValue(row, 'Product Name', 'Name', 'Item Name', 'ProductName', 'Item'),
-                price: getNumber(row, 'Price', 'Rate', 'MRP', 'Sale Price', 'Selling Price'),
-                stock: getNumber(row, 'Stock', 'Quantity', 'Qty', 'Opening Stock') || 1,
-                category: getValue(row, 'Category', 'Group', 'Type') || 'General',
-                hsn: company?.gst_enabled ? getValue(row, 'HSN', 'HSN Code', 'HSNCode') : '',
-                gstRate: company?.gst_enabled ? getNumber(row, 'GST Rate', 'GST', 'GSTRATE', 'Tax Rate', 'GST%') : 0
-              }));
+        const pSheetName = workbook.SheetNames.find(n => n.toLowerCase().includes('product')) || workbook.SheetNames[0];
+        const pSheet = workbook.Sheets[pSheetName];
+        const pData = XLSX.utils.sheet_to_json(pSheet);
+
+        pData.forEach((row: any) => {
+          if (row.Name && row.Price) {
+            products.push({
+              id: row.ID || crypto.randomUUID(),
+              name: row.Name,
+              price: Number(row.Price) || 0,
+              stock: Number(row.Stock) || 0,
+              category: row.Category || 'General',
+              gstRate: Number(row.GST) || 0,
+              description: row.Description || ''
+            });
           }
+        });
 
-          // Parse Customers sheet (try multiple sheet name variations)
-          const customerSheetName = workbook.SheetNames.find(name =>
-            name.toLowerCase().includes('customer') || name.toLowerCase() === 'parties' || name.toLowerCase() === 'ledger'
-          );
-
-          if (customerSheetName) {
-            const customerSheet = XLSX.utils.sheet_to_json(workbook.Sheets[customerSheetName]);
-            console.log('Parsing customers from sheet:', customerSheetName, 'Rows:', customerSheet.length);
-
-            result.customers = customerSheet
-              .filter((row: any) => getValue(row, 'Customer Name', 'Name', 'Party Name', 'CustomerName'))
-              .map((row: any) => ({
-                id: Math.random().toString(36).substr(2, 9),
-                name: getValue(row, 'Customer Name', 'Name', 'Party Name', 'CustomerName'),
-                company: getValue(row, 'Company', 'Company Name', 'Firm', 'Business Name'),
-                email: getValue(row, 'Email', 'E-mail', 'EmailID'),
-                phone: getValue(row, 'Phone', 'Mobile', 'Contact', 'Phone Number', 'Mobile Number'),
-                address: getValue(row, 'Address', 'Billing Address', 'Full Address'),
-                state: company?.gst_enabled ? getValue(row, 'State', 'State Name') : '',
-                gstin: company?.gst_enabled ? getValue(row, 'GSTIN', 'GST Number', 'GST No', 'GSTNo') : '',
-                balance: 0,
+        const cSheetName = workbook.SheetNames.find(n => n.toLowerCase().includes('customer'));
+        if (cSheetName) {
+          const cSheet = workbook.Sheets[cSheetName];
+          const cData = XLSX.utils.sheet_to_json(cSheet);
+          cData.forEach((row: any) => {
+            if (row.Name) {
+              customers.push({
+                id: crypto.randomUUID(),
+                name: row.Name,
+                phone: row.Phone ? String(row.Phone) : '',
+                email: row.Email || '',
+                address: row.Address || '',
+                balance: Number(row.Balance) || 0,
+                company: row.Company || '',
+                gstin: row.GSTIN || '',
                 notifications: []
-              }));
-          }
-
-          console.log('Import result:', result.products.length, 'products,', result.customers.length, 'customers');
-          resolve(result);
-        } catch (error) {
-          console.error('Parse error:', error);
-          reject(error);
-        }
-      };
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsArrayBuffer(file);
-    });
-  };
-
-  const parseTallyXML = (content: string) => {
-    const result = { products: [] as Product[], customers: [] as Customer[] };
-
-    try {
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(content, 'text/xml');
-
-      if (xmlDoc.getElementsByTagName('parsererror').length > 0) {
-        throw new Error('Invalid XML format');
-      }
-
-      // Parse Tally Masters (Items/Products)
-      const items = xmlDoc.getElementsByTagName('ITEM');
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        const name = item.getElementsByTagName('NAME')[0]?.textContent || '';
-        const hsn = company?.gst_enabled ? (item.getElementsByTagName('HSNCODE')[0]?.textContent || '') : '';
-        const gstRate = company?.gst_enabled ? parseFloat(item.getElementsByTagName('GSTRATE')[0]?.textContent || '0') : 0;
-
-        if (name) {
-          result.products.push({
-            id: Math.random().toString(36).substr(2, 9),
-            name,
-            price: 0,
-            stock: 0,
-            category: 'Imported',
-            hsn,
-            gstRate
+              });
+            }
           });
         }
+
+        if (products.length === 0 && customers.length === 0) {
+          throw new Error("No valid data found. Check column names: Name, Price, Stock etc.");
+        }
+
+        setPreviewData({ products, customers });
+        setStep('PREVIEW');
+        setLoading(false);
+
+        if (useAI) {
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            text: `✅ Found ${products.length} products and ${customers.length} customers.\nReview below and click "Confirm Import" to add them.`,
+            sender: 'ai',
+            timestamp: new Date()
+          }]);
+        }
+
+      } catch (err: any) {
+        console.error(err);
+        setStatus({ type: 'error', message: err.message || 'Failed to parse file' });
+        setLoading(false);
       }
+    };
+    reader.readAsBinaryString(file);
+  };
 
-      // Parse Ledgers (Customers)
-      const ledgers = xmlDoc.getElementsByTagName('LEDGER');
-      for (let i = 0; i < ledgers.length; i++) {
-        const ledger = ledgers[i];
-        const name = ledger.getElementsByTagName('NAME')[0]?.textContent || '';
-        const address = ledger.getElementsByTagName('ADDRESS')[0]?.textContent || '';
-        const state = company?.gst_enabled ? (ledger.getElementsByTagName('STATE')[0]?.textContent || '') : '';
-        const gstin = company?.gst_enabled ? (ledger.getElementsByTagName('GSTIN')[0]?.textContent || '') : '';
-        const phone = ledger.getElementsByTagName('PHONE')[0]?.textContent || '';
-        const email = ledger.getElementsByTagName('EMAIL')[0]?.textContent || '';
+  // Tally XML Parser
+  const parseTallyXML = async (file: File) => {
+    setLoading(true);
+    setStatus({ type: 'idle', message: '' });
 
-        if (name && !['Sales', 'Purchase', 'Duty', 'Tax'].includes(name)) {
-          result.customers.push({
-            id: Math.random().toString(36).substr(2, 9),
-            name,
+    try {
+      const text = await file.text();
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(text, 'text/xml');
+
+      const products: Product[] = [];
+      const customers: Customer[] = [];
+
+      // Parse STOCKITEM nodes
+      const stockItems = xmlDoc.querySelectorAll('STOCKITEM');
+      stockItems.forEach((item) => {
+        const name = item.getAttribute('NAME') || item.querySelector('NAME')?.textContent;
+        const rate = item.querySelector('OPENINGRATE, RATE')?.textContent || '0';
+        const qty = item.querySelector('OPENINGBALANCE, CLOSINGBALANCE')?.textContent || '0';
+
+        if (name) {
+          products.push({
+            id: crypto.randomUUID(),
+            name: name.trim(),
+            price: parseFloat(rate.replace(/[^\d.-]/g, '')) || 0,
+            stock: parseFloat(qty.replace(/[^\d.-]/g, '')) || 0,
+            category: 'Tally Import',
+            gstRate: 0
+          });
+        }
+      });
+
+      // Parse LEDGER nodes (Customers/Vendors)
+      const ledgers = xmlDoc.querySelectorAll('LEDGER');
+      ledgers.forEach((ledger) => {
+        const name = ledger.getAttribute('NAME') || ledger.querySelector('NAME')?.textContent;
+        const parent = ledger.querySelector('PARENT')?.textContent?.toLowerCase() || '';
+        const address = ledger.querySelector('ADDRESS')?.textContent || '';
+        const gstin = ledger.querySelector('PARTYGSTIN, GSTIN')?.textContent || '';
+        const balance = ledger.querySelector('CLOSINGBALANCE, OPENINGBALANCE')?.textContent || '0';
+
+        // Only import Sundry Debtors (Customers) or Sundry Creditors (Vendors)
+        if (name && (parent.includes('sundry debtor') || parent.includes('sundry creditor'))) {
+          customers.push({
+            id: crypto.randomUUID(),
+            name: name.trim(),
+            phone: '',
+            email: '',
+            address: address.trim(),
+            balance: parseFloat(balance.replace(/[^\d.-]/g, '')) || 0,
             company: '',
-            email: email || '',
-            phone: phone || '',
-            address: address || '',
-            state: state || '',
-            gstin: gstin || '',
-            balance: 0,
+            gstin: gstin.trim(),
             notifications: []
           });
         }
+      });
+
+      if (products.length === 0 && customers.length === 0) {
+        throw new Error("No valid Tally data found. Ensure the XML contains STOCKITEM or LEDGER tags.");
       }
-    } catch (error) {
-      throw new Error('Failed to parse Tally XML: ' + (error as Error).message);
-    }
 
-    return result;
-  };
+      setPreviewData({ products, customers });
+      setStep('PREVIEW');
+      setLoading(false);
 
-  const handleDownloadSample = async () => {
-    try {
-      // Sample data structure matching the parsing logic
-      const sampleData = [
-        {
-          'Product Name': 'Sample Product',
-          'Price': 100,
-          'Quantity': 10,
-          'Category': 'General',
-          'HSN': '1234',
-          'GST Rate': 18
-        },
-        {
-          'Product Name': 'Service Item',
-          'Price': 500,
-          'Quantity': 1,
-          'Category': 'Services',
-          'HSN': '9988',
-          'GST Rate': 5
-        }
-      ];
-
-      const ws = XLSX.utils.json_to_sheet(sampleData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Products");
-
-      // Add a Customers sheet sample too
-      const customerData = [
-        {
-          'Customer Name': 'John Doe',
-          'Company': 'ABC Corp',
-          'Email': 'john@example.com',
-          'Phone': '9876543210',
-          'Address': '123 Main St',
-          'State': 'Delhi',
-          'GSTIN': '07AAAAA0000A1Z5'
-        }
-      ];
-      const wsCust = XLSX.utils.json_to_sheet(customerData);
-      XLSX.utils.book_append_sheet(wb, wsCust, "Customers");
-
-      const fileName = "JLS_Suite_Import_Sample.xlsx";
-
-      if (Capacitor.isNativePlatform()) {
-        // Native: Use Capacitor Filesystem
-        const xlsxData = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
-
-        await Filesystem.writeFile({
-          path: fileName,
-          data: xlsxData,
-          directory: Directory.Documents,
-        });
-
-        alert(`✅ Sample file saved!\n\nLocation: Documents/${fileName}\n\nOpen your file manager to find it, then edit and re-upload.`);
-      } else {
-        // Web: Use standard download
-        XLSX.writeFile(wb, fileName);
+      if (useAI) {
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          text: `📋 Tally XML Imported!\nFound ${products.length} products and ${customers.length} customers.\nReview and click "Confirm Import" to add.`,
+          sender: 'ai',
+          timestamp: new Date()
+        }]);
       }
-    } catch (error) {
-      console.error('Download sample error:', error);
-      alert('Failed to download sample file. Please try again.');
+
+    } catch (err: any) {
+      console.error(err);
+      setStatus({ type: 'error', message: err.message || 'Failed to parse Tally XML' });
+      setLoading(false);
     }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = ''; // Reset file input
 
-    setLoading(true);
-    setStatus({ type: 'idle', message: '' });
-
-    try {
-      let importData: { products: Product[], customers: Customer[] };
-
-      if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-        importData = await parseExcelFile(file);
-      } else if (file.name.endsWith('.xml')) {
-        const content = await file.text();
-        importData = parseTallyXML(content);
-      } else {
-        throw new Error('Unsupported file format. Use .xlsx, .xls, or .xml');
-      }
-
-      // Show preview instead of directly saving
-      if (importData.products.length === 0 && importData.customers.length === 0) {
-        throw new Error('No products or customers found in the file. Please check the format.');
-      }
-
-      setPreviewData(importData);
-      setStatus({ type: 'idle', message: '' });
-    } catch (error) {
-      setStatus({
-        type: 'error',
-        message: (error as Error).message || 'Import failed. Please check the file format.'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // AI-powered file upload handler
-  const handleAIUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Check if API key is configured
-    if (!AIService.isConfigured()) {
-      setStatus({
-        type: 'error',
-        message: 'Gemini API key not set! Please add it in Settings → AI Settings.'
-      });
+    // Use XML parser for Tally files
+    if (file.name.endsWith('.xml')) {
+      parseTallyXML(file);
       return;
     }
 
+    // Smart AI Import mode - use Gemini for intelligent parsing
+    if (useAI && AIService.isConfigured()) {
+      setLoading(true);
+      setStatus({ type: 'idle', message: '' });
+      try {
+        let fileContent: string;
+
+        // Handle PDF files
+        if (file.name.toLowerCase().endsWith('.pdf')) {
+          fileContent = await AIService.pdfToText(file);
+        } else {
+          // Handle Excel files
+          fileContent = await AIService.excelToText(file);
+        }
+
+        // Fail fast if no text found (e.g. scanned PDF)
+        if (fileContent.includes('No text content found in PDF')) {
+          throw new Error('This PDF appears to be empty or scanned (image-only). Please use a text-based PDF or Convert it to Excel.');
+        }
+
+        const result = await AIService.extractFromExcel(fileContent, file.name);
+
+        if (result.products.length === 0 && result.customers.length === 0) {
+          const preview = fileContent.substring(0, 300).replace(/\n/g, ' ');
+          throw new Error(`AI could not extract any data. Please check if the file has valid text.\n\nExtracted Text Preview: "${preview}..."`);
+        }
+
+        setPreviewData({ products: result.products, customers: result.customers });
+        setStep('PREVIEW');
+        setLoading(false);
+
+        if (showAIChat) {
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            text: `✅ AI Extracted from ${file.name.endsWith('.pdf') ? 'PDF' : 'Excel'}:\n• ${result.products.length} products\n• ${result.customers.length} customers\n\nReview and click "Confirm Import" to add.`,
+            sender: 'ai',
+            timestamp: new Date()
+          }]);
+        }
+      } catch (err: any) {
+        console.error('AI parsing error:', err);
+        setStatus({ type: 'error', message: err.message || 'AI parsing failed. Please check your API key or try Normal Import.' });
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Normal Import mode OR AI not configured - use strict column-based parsing
+    parseExcelFile(file);
+  };
+
+  const handleDownloadSample = () => {
+    const wb = XLSX.utils.book_new();
+    const pWs = XLSX.utils.json_to_sheet([
+      { ID: 'P001', Name: 'iPhone 15', Price: 79999, Stock: 10, Category: 'Electronics', GST: 18 },
+      { ID: 'P002', Name: 'Samsung S24', Price: 89999, Stock: 5, Category: 'Electronics', GST: 18 }
+    ]);
+    XLSX.utils.book_append_sheet(wb, pWs, "Products");
+    const cWs = XLSX.utils.json_to_sheet([
+      { Name: 'John Doe', Phone: '9876543210', Balance: 500, Address: 'Mumbai', GSTIN: '27ABCDE1234F1Z5' }
+    ]);
+    XLSX.utils.book_append_sheet(wb, cWs, "Customers");
+    XLSX.writeFile(wb, "JLS_Import_Sample.xlsx");
+  };
+
+  const handleConfirmImport = async () => {
+    if (!previewData) return;
     setLoading(true);
-    setStatus({ type: 'idle', message: '' });
 
     try {
-      // Convert Excel to text
-      const textContent = await AIService.excelToText(file);
-      console.log('Excel converted to text, length:', textContent.length);
+      let pCount = 0, cCount = 0;
 
-      // Send to Gemini for extraction
-      const result = await AIService.extractFromExcel(textContent, file.name);
-
-      // Show preview instead of directly saving
-      if (result.products.length === 0 && result.customers.length === 0) {
-        throw new Error('AI could not find any products or customers in the file.');
+      for (const p of previewData.products) {
+        StorageService.saveProduct(p);
+        pCount++;
+      }
+      for (const c of previewData.customers) {
+        StorageService.saveCustomer(c);
+        cCount++;
       }
 
-      setPreviewData(result);
-      setStatus({ type: 'idle', message: '' });
-    } catch (error: any) {
-      console.error('AI Import error:', error);
-      setStatus({
-        type: 'error',
-        message: error.message || 'AI extraction failed. Please try again.'
-      });
-    } finally {
+      setStatus({ type: 'success', message: `Successfully imported ${pCount} products and ${cCount} customers!` });
+
+      setTimeout(() => {
+        onImportComplete();
+        if (!useAI) onClose();
+        else {
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            text: `✅ Imported ${pCount} products and ${cCount} customers successfully!`,
+            sender: 'ai',
+            timestamp: new Date()
+          }]);
+          setPreviewData(null);
+          setStep('UPLOAD');
+        }
+        setLoading(false);
+      }, 1000);
+
+    } catch (error) {
+      console.error(error);
+      setStatus({ type: 'error', message: 'Import failed while saving data.' });
       setLoading(false);
     }
   };
 
-  // Confirm and save the previewed data
-  const handleConfirmImport = () => {
-    if (!previewData) return;
-
-    // Save products
-    previewData.products.forEach(product => {
-      StorageService.saveProduct(product);
-    });
-
-    // Save customers
-    previewData.customers.forEach(customer => {
-      StorageService.saveCustomer(customer);
-    });
-
-    setImportStats({
-      products: previewData.products.length,
-      customers: previewData.customers.length
-    });
-
-    setStatus({
-      type: 'success',
-      message: `✅ Added ${previewData.products.length} products and ${previewData.customers.length} customers!`
-    });
-
-    setPreviewData(null);
-
-    setTimeout(() => {
-      onImportComplete();
-      onClose();
-    }, 2000);
-  };
-
-  // Cancel preview and go back
   const handleCancelPreview = () => {
     setPreviewData(null);
+    setStep(useAI ? 'UPLOAD' : 'MODE_SELECT');
     setStatus({ type: 'idle', message: '' });
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-        <h2 className="text-xl font-bold text-slate-900 mb-4">Import Data</h2>
+  const handleSendMessage = async () => {
+    if (!inputText.trim()) return;
 
-        <div className="space-y-4">
-          {/* Show Preview if data is available */}
-          {previewData ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <Eye className="w-5 h-5 text-blue-600" />
-                <span className="text-sm font-bold text-blue-900">Preview - Review before adding</span>
-              </div>
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      text: inputText,
+      sender: 'user',
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, userMsg]);
+    setInputText('');
+    setLoading(true);
 
-              {/* Products Preview */}
-              {previewData.products.length > 0 && (
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
-                  <div className="bg-slate-100 px-4 py-2 flex justify-between items-center">
-                    <span className="text-sm font-bold text-slate-700">📦 Products</span>
-                    <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded-full font-bold">
-                      {previewData.products.length}
-                    </span>
-                  </div>
-                  <div className="max-h-40 overflow-y-auto">
-                    {previewData.products.map((p, i) => (
-                      <div key={i} className="px-4 py-2 border-t border-slate-100 flex justify-between items-center hover:bg-slate-50">
-                        <div>
-                          <span className="text-sm font-medium text-slate-800">{p.name}</span>
-                          {p.category && <span className="text-xs text-slate-500 ml-2">({p.category})</span>}
-                        </div>
-                        <div className="text-right">
-                          <span className="text-sm font-bold text-green-600">₹{p.price}</span>
-                          <span className="text-xs text-slate-500 ml-2">Qty: {p.stock}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+    try {
+      // Gather real business data
+      const products = StorageService.getProducts();
+      const customers = StorageService.getCustomers();
+      const invoices = StorageService.getInvoices();
+      const today = new Date().toISOString().split('T')[0];
 
-              {/* Customers Preview */}
-              {previewData.customers.length > 0 && (
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
-                  <div className="bg-slate-100 px-4 py-2 flex justify-between items-center">
-                    <span className="text-sm font-bold text-slate-700">👥 Customers</span>
-                    <span className="text-xs bg-purple-600 text-white px-2 py-1 rounded-full font-bold">
-                      {previewData.customers.length}
-                    </span>
-                  </div>
-                  <div className="max-h-40 overflow-y-auto">
-                    {previewData.customers.map((c, i) => (
-                      <div key={i} className="px-4 py-2 border-t border-slate-100 hover:bg-slate-50">
-                        <div className="text-sm font-medium text-slate-800">{c.name}</div>
-                        <div className="text-xs text-slate-500">
-                          {c.company && <span>{c.company} • </span>}
-                          {c.phone && <span>{c.phone}</span>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+      const businessContext = {
+        products: products.map(p => ({ name: p.name, price: p.price, stock: p.stock })),
+        customers: customers.map(c => ({ name: c.name, balance: c.balance, phone: c.phone })),
+        invoices: invoices.map(i => ({ customerName: i.customerName, total: i.total, status: i.status, date: i.date })),
+        todaySales: invoices.filter(i => i.date === today).reduce((sum, i) => sum + i.total, 0),
+        totalReceivables: customers.reduce((sum, c) => sum + c.balance, 0),
+        totalInventoryValue: products.reduce((sum, p) => sum + (p.price * p.stock), 0),
+      };
 
-              {/* Confirm/Cancel Buttons */}
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={handleCancelPreview}
-                  className="flex-1 px-4 py-3 border border-slate-300 rounded-lg text-slate-700 font-bold hover:bg-slate-100 transition-colors flex items-center justify-center gap-2"
-                >
-                  <X className="w-4 h-4" />
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConfirmImport}
-                  className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors shadow-lg shadow-green-500/30 flex items-center justify-center gap-2"
-                >
-                  <Check className="w-4 h-4" />
-                  Add All
-                </button>
+      // Use AI service for intelligent response
+      const aiText = await AIService.chat(userMsg.text, businessContext);
+
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        text: aiText,
+        sender: 'ai',
+        timestamp: new Date()
+      }]);
+      setLoading(false);
+
+    } catch (error) {
+      console.error('Chat error:', error);
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        text: 'Sorry, I encountered an error. Please try again.',
+        sender: 'ai',
+        timestamp: new Date()
+      }]);
+      setLoading(false);
+    }
+  };
+
+  // ============== AI FULL SCREEN CHAT ==============
+  if (showAIChat) {
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col animate-in slide-in-from-bottom duration-300">
+        {/* Header */}
+        <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-sm shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md">
+              <Bot className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="font-bold text-slate-900 leading-tight">JLS Assistant</h1>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                <span className="text-xs text-slate-500 font-medium">Online • Smart AI</span>
               </div>
             </div>
-          ) : (
+          </div>
+          <button onClick={onClose} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
+            <X className="w-5 h-5 text-slate-600" />
+          </button>
+        </div>
+
+        {/* Chat Area */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+          {messages.map((msg) => (
+            <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm ${msg.sender === 'user'
+                ? 'bg-indigo-600 text-white rounded-br-none'
+                : 'bg-white text-slate-800 border border-slate-100 rounded-bl-none'
+                }`}>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+              </div>
+            </div>
+          ))}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="bg-white rounded-2xl px-4 py-3 border border-slate-100 rounded-bl-none flex items-center gap-2 shadow-sm">
+                <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+          )}
+          <div ref={chatEndRef} />
+        </div>
+
+        {/* Quick Actions */}
+        {messages.length < 3 && !previewData && (
+          <div className="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar shrink-0">
+            {[
+              { label: '📊 Check Stock', action: () => setInputText('Check Stock'), color: 'bg-blue-100 text-blue-700 border-blue-200' },
+              { label: '💰 Log Sales', action: () => setInputText('Log Sales'), color: 'bg-purple-100 text-purple-700 border-purple-200' },
+              { label: '📋 Today\'s Report', action: () => setInputText('Show today\'s sales'), color: 'bg-green-100 text-green-700 border-green-200' },
+            ].map((action, i) => (
+              <button
+                key={i}
+                onClick={action.action}
+                className={`px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap active:scale-95 transition-transform ${action.color}`}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Input Area */}
+        <div className="p-3 bg-white border-t border-slate-200 shrink-0">
+          <input
+            id="ai-file-upload"
+            type="file"
+            accept=".xlsx,.xls,.xml,.pdf"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+
+          {/* Preview Card in Chat */}
+          {previewData && (
+            <div className="mb-3 mx-1 bg-white border border-slate-200 shadow-lg rounded-xl overflow-hidden animate-in slide-in-from-bottom-10">
+              <div className="bg-indigo-50 px-4 py-2 border-b border-indigo-100 flex justify-between items-center">
+                <span className="text-xs font-bold text-indigo-700">📄 File Analyzed</span>
+                <span className="text-[10px] bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full">
+                  {previewData.products.length} Products • {previewData.customers.length} Customers
+                </span>
+              </div>
+              <div className="p-3 max-h-48 overflow-y-auto">
+                {previewData.products.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Products</p>
+                    <div className="space-y-1">
+                      {previewData.products.slice(0, 5).map((p, i) => (
+                        <div key={i} className="flex justify-between text-xs bg-slate-50 px-2 py-1 rounded">
+                          <span className="text-slate-700 truncate">{p.name}</span>
+                          <span className="text-green-600 font-bold">₹{p.price}</span>
+                        </div>
+                      ))}
+                      {previewData.products.length > 5 && (
+                        <p className="text-[10px] text-slate-400 text-center">+{previewData.products.length - 5} more</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <div className="flex gap-2 mt-2">
+                  <button onClick={handleConfirmImport} disabled={loading} className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-xs font-bold disabled:opacity-50">
+                    {loading ? 'Importing...' : 'Confirm Import'}
+                  </button>
+                  <button onClick={handleCancelPreview} className="px-4 bg-slate-100 text-slate-600 py-2 rounded-lg text-xs font-bold">Discard</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-end gap-2">
+            <button onClick={() => { setShowAIChat(false); setStep('MODE_SELECT'); }} className="p-3 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors" title="Exit AI Mode">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <button onClick={() => document.getElementById('ai-file-upload')?.click()} className="p-3 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
+              <Paperclip className="w-5 h-5" />
+            </button>
+            <div className="flex-1 bg-slate-100 rounded-[24px] px-4 py-2 flex items-center border-2 border-transparent focus-within:border-indigo-500 focus-within:bg-white transition-all">
+              <input
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                placeholder="Ask JLS AI..."
+                className="flex-1 bg-transparent border-none outline-none text-sm text-slate-900 placeholder:text-slate-400"
+              />
+            </div>
+            <button onClick={handleSendMessage} disabled={!inputText.trim()} className="p-3 rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:shadow-none active:scale-95 transition-all">
+              <Send className="w-5 h-5 ml-0.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============== NORMAL MODAL MODE ==============
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 text-white">
+          <h2 className="text-xl font-bold">Import Data</h2>
+          <p className="text-blue-100 text-sm mt-1">
+            {step === 'MODE_SELECT' && 'Choose how you want to import'}
+            {step === 'UPLOAD' && 'Upload your file'}
+            {step === 'PREVIEW' && 'Review before adding'}
+          </p>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {/* STEP 1: Mode Selection */}
+          {step === 'MODE_SELECT' && (
             <>
-              {/* Mode Toggle */}
-              <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
+              <div className="grid grid-cols-2 gap-4">
                 <button
-                  onClick={() => setUseAI(false)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${!useAI ? 'bg-white shadow text-blue-600' : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                  onClick={() => setStep('UPLOAD')}
+                  className="flex flex-col items-center gap-3 p-6 bg-slate-50 hover:bg-blue-50 border-2 border-slate-200 hover:border-blue-400 rounded-xl transition-all group"
                 >
-                  <Upload className="w-4 h-4" />
-                  Normal
+                  <div className="w-14 h-14 bg-blue-100 group-hover:bg-blue-200 rounded-full flex items-center justify-center transition-colors">
+                    <Upload className="w-7 h-7 text-blue-600" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-bold text-slate-800">Normal Import</p>
+                    <p className="text-xs text-slate-500 mt-1">Excel / Tally XML</p>
+                  </div>
                 </button>
+
                 <button
-                  onClick={() => setUseAI(true)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${useAI ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow text-white' : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                  onClick={() => { setUseAI(true); setStep('UPLOAD'); }}
+                  className="flex flex-col items-center gap-3 p-6 bg-gradient-to-br from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 border-2 border-purple-200 hover:border-purple-400 rounded-xl transition-all group"
                 >
-                  <Sparkles className="w-4 h-4" />
-                  AI Smart Import
+                  <div className="w-14 h-14 bg-gradient-to-tr from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
+                    <Sparkles className="w-7 h-7 text-white" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-bold text-slate-800">Smart AI Import</p>
+                    <p className="text-xs text-slate-500 mt-1">Powered by Gemini</p>
+                  </div>
                 </button>
               </div>
 
-              <button
-                onClick={handleDownloadSample}
-                className="w-full flex items-center justify-center gap-2 mb-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold border border-blue-100 hover:bg-blue-100 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                Download Sample Excel
+              <button onClick={handleDownloadSample} className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-100 text-slate-600 rounded-lg font-medium hover:bg-slate-200 transition-colors text-sm">
+                <Download className="w-4 h-4" /> Download Sample Excel
               </button>
+            </>
+          )}
 
-              {/* File Upload Area */}
-              <div className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${useAI
-                ? 'border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100'
-                : 'border-blue-200 hover:bg-blue-50'
-                }`}>
-                <label className="cursor-pointer flex flex-col items-center gap-2">
-                  {useAI ? (
-                    <Sparkles className="w-8 h-8 text-purple-500" />
-                  ) : (
+          {/* STEP 2: Upload */}
+          {step === 'UPLOAD' && !previewData && (
+            <>
+              <div className="border-2 border-dashed border-blue-200 hover:border-blue-400 rounded-xl p-8 text-center transition-colors bg-blue-50/50">
+                <label className="cursor-pointer flex flex-col items-center gap-3">
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
                     <Upload className="w-8 h-8 text-blue-500" />
-                  )}
-                  <span className="text-sm font-medium text-slate-700">
-                    {useAI ? 'Upload for AI Analysis' : 'Drop or click to upload'}
-                  </span>
-                  <span className="text-xs text-slate-500">
-                    .xlsx, .xls{!useAI && ', or Tally .xml'}
-                  </span>
-                  {useAI && (
-                    <span className="text-xs text-purple-600 font-medium mt-1">
-                      ✨ AI will extract products & customers automatically
-                    </span>
-                  )}
-                  <input
-                    type="file"
-                    accept={useAI ? ".xlsx,.xls" : ".xlsx,.xls,.xml"}
-                    onChange={useAI ? handleAIUpload : handleFileUpload}
-                    disabled={loading}
-                    className="hidden"
-                    data-testid="file-input-import"
-                  />
+                  </div>
+                  <div>
+                    <span className="text-sm font-bold text-slate-700 block">Click to upload or drag and drop</span>
+                    <span className="text-xs text-slate-500">{useAI ? '.xlsx, .xls, .xml, .pdf' : '.xlsx, .xls, .xml (Tally)'}</span>
+                  </div>
+                  <input type="file" accept={useAI ? ".xlsx,.xls,.xml,.pdf" : ".xlsx,.xls,.xml"} onChange={handleFileUpload} disabled={loading} className="hidden" />
                 </label>
               </div>
 
-              {/* Status Messages */}
-              {status.type === 'success' && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex gap-3">
-                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-green-900">{status.message}</p>
-                    <p className="text-xs text-green-700 mt-1">
-                      {importStats.products} products, {importStats.customers} customers
-                    </p>
-                  </div>
-                </div>
-              )}
-
               {status.type === 'error' && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                  <p className="text-sm font-medium text-red-900">{status.message}</p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex gap-2 text-red-700 text-sm">
+                  <AlertCircle className="w-5 h-5 shrink-0" /> {status.message}
                 </div>
               )}
 
               {loading && (
                 <div className="flex items-center justify-center gap-2 py-4">
                   <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-                  <span className="text-sm text-slate-600">
-                    {useAI ? '🤖 AI is analyzing your file...' : 'Processing...'}
-                  </span>
+                  <span className="text-sm text-slate-600">Processing file...</span>
                 </div>
               )}
 
-              {/* AI Info */}
-              {useAI && !loading && status.type === 'idle' && (
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-3">
-                  <p className="text-xs text-purple-900">
-                    <span className="font-bold">🤖 AI Smart Import</span><br />
-                    Gemini AI will automatically detect and extract:<br />
-                    • Products with name, price, quantity, HSN, GST%<br />
-                    • Customers with name, phone, address, GSTIN
-                  </p>
-                  {!AIService.isConfigured() && (
-                    <p className="text-xs text-red-600 mt-2 font-medium">
-                      ⚠️ API key not set! Go to Settings → AI Settings to add your free Gemini API key.
-                    </p>
-                  )}
+              <button onClick={() => setStep('MODE_SELECT')} className="w-full py-2.5 border border-slate-300 rounded-lg text-slate-600 font-medium hover:bg-slate-50 transition-colors text-sm">
+                ← Back to Mode Selection
+              </button>
+            </>
+          )}
+
+          {/* STEP 3: Preview */}
+          {step === 'PREVIEW' && previewData && (
+            <>
+              <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <Eye className="w-5 h-5 text-blue-600" />
+                <span className="text-sm font-bold text-blue-900">Preview - Review before adding</span>
+              </div>
+
+              {/* Products */}
+              {previewData.products.length > 0 && (
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  <div className="bg-slate-100 px-4 py-2.5 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <Package className="w-4 h-4 text-slate-600" />
+                      <span className="text-sm font-bold text-slate-700">Products</span>
+                    </div>
+                    <span className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded-full font-bold">{previewData.products.length}</span>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto divide-y divide-slate-100">
+                    {previewData.products.map((p, i) => (
+                      <div key={i} className="px-4 py-2.5 flex justify-between items-center hover:bg-slate-50">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-800 truncate">{p.name}</p>
+                          <p className="text-xs text-slate-500">Stock: {p.stock} | {p.category}</p>
+                        </div>
+                        <span className="text-sm font-bold text-green-600 ml-2">₹{p.price.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              {/* Info Box */}
-              <div className={`rounded-lg p-3 ${company?.gst_enabled ? 'bg-blue-50 border border-blue-200' : 'bg-amber-50 border border-amber-200'}`}>
-                <p className={`text-xs ${company?.gst_enabled ? 'text-blue-900' : 'text-amber-900'}`}>
-                  <span className="font-medium">Supported formats:</span><br />
-                  • Excel: Products sheet with Name, Price, Stock{company?.gst_enabled ? ', HSN, GST Rate' : ''}<br />
-                  • Excel: Customers sheet with Name, Email, Phone, Address{company?.gst_enabled ? ', State, GSTIN' : ''}<br />
-                  • Tally XML: Extract ITEM and LEDGER masters
-                  {!company?.gst_enabled && <><br /><br /><span className="font-medium">⚠️ GST is currently disabled</span> - GST fields will be ignored</>}
-                </p>
+              {/* Customers */}
+              {previewData.customers.length > 0 && (
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  <div className="bg-slate-100 px-4 py-2.5 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-slate-600" />
+                      <span className="text-sm font-bold text-slate-700">Customers</span>
+                    </div>
+                    <span className="text-xs bg-purple-600 text-white px-2.5 py-1 rounded-full font-bold">{previewData.customers.length}</span>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto divide-y divide-slate-100">
+                    {previewData.customers.map((c, i) => (
+                      <div key={i} className="px-4 py-2.5 hover:bg-slate-50">
+                        <p className="text-sm font-medium text-slate-800">{c.name}</p>
+                        {c.phone && <p className="text-xs text-slate-500">{c.phone}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button onClick={handleCancelPreview} className="flex-1 px-4 py-3 border border-slate-300 rounded-lg text-slate-700 font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+                  <X className="w-4 h-4" /> Cancel
+                </button>
+                <button onClick={handleConfirmImport} disabled={loading} className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors shadow-lg shadow-green-500/30 flex items-center justify-center gap-2 disabled:opacity-50">
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  {loading ? 'Adding...' : 'Add All'}
+                </button>
               </div>
             </>
           )}
+
+          {/* Success Message */}
+          {status.type === 'success' && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-green-700 text-sm flex items-center gap-2">
+              <Check className="w-5 h-5" /> {status.message}
+            </div>
+          )}
         </div>
 
-        <button
-          onClick={onClose}
-          disabled={loading}
-          className="w-full mt-6 px-4 py-2 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50 font-medium transition-colors disabled:opacity-50"
-          data-testid="button-close-import"
-        >
-          Close
-        </button>
+        {/* Footer */}
+        {step !== 'PREVIEW' && (
+          <div className="px-6 pb-6">
+            <button onClick={onClose} className="w-full py-2.5 border border-slate-300 rounded-lg text-slate-600 font-medium hover:bg-slate-50 transition-colors text-sm">
+              Close
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

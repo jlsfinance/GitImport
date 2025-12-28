@@ -15,6 +15,8 @@ import {
 
 interface AllInvoicesProps {
   invoices?: Invoice[];
+  title?: string;
+  createLabel?: string;
   onView?: (invoice: Invoice) => void;
   onEdit?: (invoice: Invoice) => void;
   onDelete?: (invoice: Invoice) => void;
@@ -24,6 +26,8 @@ interface AllInvoicesProps {
 
 const AllInvoices: React.FC<AllInvoicesProps> = ({
   invoices: propInvoices,
+  title = 'Invoices',
+  createLabel = 'Add Invoice',
   onView,
   onEdit,
   onDelete,
@@ -63,7 +67,7 @@ const AllInvoices: React.FC<AllInvoicesProps> = ({
       <div className="sticky top-0 z-30 px-4 pt-14 pb-4 bg-background/95 backdrop-blur-md">
         <div className="max-w-5xl mx-auto">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold font-heading text-foreground tracking-tight">Invoices</h1>
+            <h1 className="text-3xl font-bold font-heading text-foreground tracking-tight">{title}</h1>
             <span className="px-3 py-1 bg-surface-container-highest text-muted-foreground text-[10px] font-bold rounded-full border border-border uppercase tracking-widest">
               {filteredInvoices.length} Bills
             </span>
@@ -311,9 +315,10 @@ const AllInvoices: React.FC<AllInvoicesProps> = ({
               HapticService.medium();
               onCreate();
             }}
-            className="w-14 h-14 bg-google-blue text-white rounded-[20px] shadow-lg shadow-google-blue/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+            className="h-14 px-5 bg-google-blue text-white rounded-[28px] shadow-lg shadow-google-blue/40 flex items-center gap-3 hover:scale-105 active:scale-95 transition-all"
           >
-            <Plus className="w-7 h-7" />
+            <Plus className="w-6 h-6" />
+            <span className="font-bold text-sm tracking-tight">{createLabel}</span>
           </button>
         </motion.div>
       )}

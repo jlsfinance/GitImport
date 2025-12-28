@@ -71,6 +71,38 @@ const Inventory: React.FC = () => {
     }
   };
 
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelection = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredProducts.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredProducts.map(p => p.id)));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (window.confirm(`Delete ${selectedIds.size} selected items?`)) {
+      let updated = [...products];
+      selectedIds.forEach(id => {
+        updated = updated.filter(p => p.id !== id);
+        StorageService.deleteProduct(id);
+      });
+      setProducts(updated);
+      setSelectedIds(new Set());
+    }
+  };
+
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -88,18 +120,33 @@ const Inventory: React.FC = () => {
             <h1 className="text-4xl md:text-5xl font-black font-heading text-foreground tracking-tight leading-none">Inventory</h1>
           </div>
 
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              setIsAdding(true);
-              setOriginalId(null);
-              setNewProduct({ name: '', price: 0, stock: 0, category: 'General' });
-            }}
-            className="bg-primary text-white px-8 py-4 rounded-full flex items-center justify-center gap-3 font-black text-sm uppercase tracking-widest shadow-google hover:shadow-google-lg transition-all"
-          >
-            <Plus className="w-5 h-5" strokeWidth={3} /> Add New Item
-          </motion.button>
+          <div className="flex gap-4">
+            {selectedIds.size > 0 && (
+              <motion.button
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleBulkDelete}
+                className="bg-google-red text-white px-6 py-4 rounded-full flex items-center justify-center gap-2 font-black text-sm uppercase tracking-widest shadow-lg hover:shadow-google-red/30 transition-all"
+              >
+                <Trash2 className="w-5 h-5" /> Delete ({selectedIds.size})
+              </motion.button>
+            )}
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                setIsAdding(true);
+                setOriginalId(null);
+                setNewProduct({ name: '', price: 0, stock: 0, category: 'General' });
+              }}
+              className="bg-primary text-white px-8 py-4 rounded-full flex items-center justify-center gap-3 font-black text-sm uppercase tracking-widest shadow-google hover:shadow-google-lg transition-all"
+            >
+              <Plus className="w-5 h-5" strokeWidth={3} /> Add New Item
+            </motion.button>
+          </div>
         </div>
       </div>
 
@@ -140,18 +187,31 @@ const Inventory: React.FC = () => {
           </div>
         </div>
 
-        {/* M3 Search Bar */}
-        <div className="relative group">
-          <div className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-google-blue transition-colors">
-            <Search className="w-6 h-6" />
+        {/* M3 Search Bar & Select All */}
+        <div className="flex gap-4 items-center">
+          <div className="relative group flex-1">
+            <div className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-google-blue transition-colors">
+              <Search className="w-6 h-6" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search items by name or category..."
+              className="w-full pl-16 pr-8 py-6 bg-surface-container-high border-2 border-transparent focus:border-google-blue/20 rounded-[32px] shadow-sm focus:ring-4 focus:ring-google-blue/5 outline-none font-bold text-foreground transition-all placeholder:text-muted-foreground/40"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-          <input
-            type="text"
-            placeholder="Search items by name or category..."
-            className="w-full pl-16 pr-8 py-6 bg-surface-container-high border-2 border-transparent focus:border-google-blue/20 rounded-[32px] shadow-sm focus:ring-4 focus:ring-google-blue/5 outline-none font-bold text-foreground transition-all placeholder:text-muted-foreground/40"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          {products.length > 0 && (
+            <button
+              onClick={handleSelectAll}
+              className={`px-6 py-6 rounded-[32px] border-2 font-black text-sm uppercase tracking-widest transition-all ${selectedIds.size === filteredProducts.length && filteredProducts.length > 0
+                  ? 'bg-google-blue text-white border-google-blue'
+                  : 'bg-surface-container-high border-transparent text-muted-foreground hover:bg-surface-container-highest'
+                }`}
+            >
+              {selectedIds.size === filteredProducts.length && filteredProducts.length > 0 ? 'Deselect All' : 'Select All'}
+            </button>
+          )}
         </div>
 
         {/* Products Grid */}
@@ -164,17 +224,25 @@ const Inventory: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-surface border border-border p-6 rounded-[32px] shadow-sm hover:shadow-google-lg hover:border-google-blue/20 transition-all group relative overflow-hidden active:scale-[0.98]"
+                className={`bg-surface border p-6 rounded-[32px] shadow-sm hover:shadow-google-lg transition-all group relative overflow-hidden active:scale-[0.98] ${selectedIds.has(product.id) ? 'border-google-blue ring-2 ring-google-blue/20 bg-google-blue/5' : 'border-border hover:border-google-blue/20'
+                  }`}
+                onClick={() => toggleSelection(product.id)}
               >
+                <div className="absolute top-4 left-4 z-10">
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${selectedIds.has(product.id) ? 'bg-google-blue border-google-blue' : 'border-muted-foreground/30 bg-surface group-hover:border-google-blue/50'
+                    }`}>
+                    {selectedIds.has(product.id) && <div className="w-2.5 h-2.5 bg-white rounded-full" />}
+                  </div>
+                </div>
+
                 <div className="absolute top-0 right-0 w-32 h-32 bg-google-blue/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-google-blue/10 transition-colors" />
 
-                <div className="flex justify-between items-start mb-6 relative">
+                <div className="flex justify-between items-start mb-6 relative pl-8">
                   <div className="w-14 h-14 rounded-2xl bg-surface-container-high flex items-center justify-center text-google-blue shadow-inner group-hover:scale-110 transition-transform">
                     <Package className="w-7 h-7" />
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleEdit(product)} className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-google-blue hover:bg-google-blue/5 rounded-full"><Edit2 className="w-4 h-4" /></button>
-                    <button onClick={() => handleDelete(product.id)} className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-google-red hover:bg-google-red/5 rounded-full"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={(e) => { e.stopPropagation(); handleEdit(product); }} className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-google-blue hover:bg-google-blue/5 rounded-full"><Edit2 className="w-4 h-4" /></button>
                   </div>
                 </div>
 

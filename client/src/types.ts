@@ -49,6 +49,7 @@ export interface Product {
   category: string;
   hsn?: string;
   gstRate?: number;
+  description?: string;
 }
 
 export interface CustomerNotification {

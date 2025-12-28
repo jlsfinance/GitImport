@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { ViewState } from '../types';
-import { LayoutDashboard, FileText, Package, Menu, Plus, Users, Settings, LogOut, Upload, X, Receipt, ArrowDownLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, FileText, Menu, Plus, Users, Settings, LogOut, Upload, X, Receipt, ArrowDownLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { HapticService } from '@/services/hapticService';
@@ -110,7 +110,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, onChange
         )}
       </AnimatePresence>
 
-      {/* Floating Action Button (M3 Large FAB) - Official Google Style */}
+      {/* Floating Action Button (M3 Extended FAB) - Context Aware */}
       <div className="fixed bottom-28 right-6 z-40">
         <motion.button
           whileHover={{ scale: 1.05 }}
@@ -123,9 +123,14 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, onChange
               handleNavClick(ViewState.CREATE_INVOICE);
             }
           }}
-          className="w-16 h-16 rounded-[24px] bg-google-blue text-white shadow-google-lg flex items-center justify-center hover:shadow-google transition-all border-none"
+          className="h-14 px-5 rounded-[28px] bg-google-blue text-white shadow-google-lg flex items-center gap-3 hover:shadow-google transition-all border-none"
         >
-          <Plus className="w-8 h-8" strokeWidth={3} />
+          <Plus className="w-6 h-6" strokeWidth={3} />
+          <span className="font-bold text-sm tracking-tight">
+            {currentView === ViewState.PURCHASES ? 'Add Purchase' :
+              currentView === ViewState.PAYMENTS ? 'Add Receipt' :
+                'Add Sale'}
+          </span>
         </motion.button>
       </div>
 

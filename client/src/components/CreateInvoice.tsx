@@ -709,13 +709,12 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
 
     const customer = customers.find(c => c.id === selectedCustomerId);
     if (!customer) return alert('Select a customer');
-    if (items.length === 0) return alert('Add at least one item');
+    // Filter out items with no product selected (ghost rows)
+    const validItems = items.filter(i => i.productId && i.productId.trim() !== '');
 
-    for (let i = 0; i < items.length; i++) {
-      if (!items[i].productId) return alert(`Please select a product for Item ${i + 1}`);
-    }
+    if (validItems.length === 0) return alert('Add at least one item');
 
-    const cleanedItems: InvoiceItem[] = items.map(item => ({
+    const cleanedItems: InvoiceItem[] = validItems.map(item => ({
       ...item,
       quantity: Number(item.quantity) || 1,
       rate: Number(item.rate) || 0,
@@ -858,10 +857,6 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
               onChange={(val) => {
                 setSelectedCustomerId(val);
                 setHasChanges(true);
-                const prediction = StorageService.predictNextItem(val);
-                if (prediction && items.length === 1 && items[0].productId === '') {
-                  handleUpdateItem(0, 'productId', prediction.id);
-                }
               }}
               onCreate={handleCreateCustomer}
               placeholder="Search Customer..."
