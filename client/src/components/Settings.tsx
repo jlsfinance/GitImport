@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CompanyProfile, FirebaseConfig } from '../types';
 import { StorageService } from '../services/storageService';
-import { Save, Building2, Phone, Mail, MapPin, Database, Download, Upload, AlertCircle, Cloud, CheckCircle, XCircle, Wand2, ExternalLink, Wifi, WifiOff, Loader2 } from 'lucide-react';
+import { AIService } from '../services/aiService';
+import { Save, Building2, Phone, Mail, MapPin, Database, Download, Upload, AlertCircle, Cloud, CheckCircle, XCircle, Wand2, ExternalLink, Wifi, WifiOff, Loader2, Sparkles, Key, Trash2 } from 'lucide-react';
 import { FirebaseService } from '../services/firebaseService';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,6 +34,8 @@ const Settings: React.FC = () => {
   const [rawConfigInput, setRawConfigInput] = useState('');
   const [connectionStatus, setConnectionStatus] = useState<{ success: boolean, message: string } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [isGeminiConfigured, setIsGeminiConfigured] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,6 +64,12 @@ const Settings: React.FC = () => {
       setFirebaseConfig(fbConfig);
     }
     setIsFirebaseReady(FirebaseService.isReady());
+
+    // Load Gemini API key status
+    setIsGeminiConfigured(AIService.isConfigured());
+    if (AIService.getApiKey()) {
+      setGeminiApiKey('••••••••••••••••••••'); // Masked
+    }
   }, [company]);
 
   const handleChange = (field: keyof CompanyProfile, value: string) => {
@@ -220,6 +229,25 @@ const Settings: React.FC = () => {
           alert("Error deleting account: " + (e.message || "Unknown error") + "\n\nNote: For security, you may need to sign out and sign in again before deleting your account.");
         }
       }
+    }
+  };
+
+  const handleSaveGeminiKey = () => {
+    if (!geminiApiKey || geminiApiKey.startsWith('••')) {
+      alert('Please enter a valid API key');
+      return;
+    }
+    AIService.setApiKey(geminiApiKey);
+    setIsGeminiConfigured(true);
+    setGeminiApiKey('••••••••••••••••••••');
+    alert('✅ Gemini API key saved successfully!');
+  };
+
+  const handleRemoveGeminiKey = () => {
+    if (confirm('Remove Gemini API key?')) {
+      AIService.removeApiKey();
+      setGeminiApiKey('');
+      setIsGeminiConfigured(false);
     }
   };
 
@@ -567,6 +595,74 @@ const Settings: React.FC = () => {
                   Data restored successfully!
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+
+        {/* AI Settings Section */}
+        <div className="lg:col-span-2">
+          <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-[32px] shadow-sm border border-purple-200 dark:border-purple-800 overflow-hidden">
+            <div className="px-6 py-5 border-b border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex justify-between items-center">
+              <h3 className="text-lg font-black text-purple-900 dark:text-purple-100 flex items-center gap-3 uppercase italic tracking-tight">
+                <Sparkles className="w-6 h-6 text-purple-600" /> AI Smart Import
+              </h3>
+              {isGeminiConfigured ? (
+                <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1.5 rounded-full">
+                  <CheckCircle className="w-3 h-3" /> Ready
+                </span>
+              ) : (
+                <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-3 py-1.5 rounded-full">
+                  <Key className="w-3 h-3" /> Key Required
+                </span>
+              )}
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-purple-800 dark:text-purple-300 font-medium">
+                Use Google Gemini AI to automatically extract products and customers from Excel files.
+              </p>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-black uppercase tracking-widest text-purple-600 dark:text-purple-400">Gemini API Key</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={geminiApiKey}
+                    onChange={(e) => setGeminiApiKey(e.target.value)}
+                    placeholder="Paste your Gemini API key here..."
+                    className="flex-1 rounded-2xl border border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-800 p-3.5 text-sm font-mono text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                  />
+                  {isGeminiConfigured ? (
+                    <button
+                      type="button"
+                      onClick={handleRemoveGeminiKey}
+                      className="px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-2xl hover:bg-red-200 transition-colors"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSaveGeminiKey}
+                      className="px-6 py-2 bg-purple-600 text-white rounded-2xl font-bold hover:bg-purple-700 transition-colors shadow-lg shadow-purple-500/30"
+                    >
+                      Save
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full text-center p-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all shadow-xl shadow-purple-500/30"
+              >
+                🔑 Get Free Gemini API Key (Google AI Studio)
+              </a>
+
+              <div className="text-xs text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/20 p-3 rounded-xl">
+                <strong>Free tier includes:</strong> 60 requests/minute, 1500 requests/day. No credit card required!
+              </div>
             </div>
           </div>
         </div>

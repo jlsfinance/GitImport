@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Upload, AlertCircle, CheckCircle, Loader2, Download } from 'lucide-react';
+import { Upload, AlertCircle, CheckCircle, Loader2, Download, Sparkles, Zap } from 'lucide-react';
 import { StorageService } from '../services/storageService';
+import { AIService } from '../services/aiService';
 import { Product, Customer } from '../types';
 import { useCompany } from '@/contexts/CompanyContext';
 import * as XLSX from 'xlsx';
@@ -15,6 +16,7 @@ interface ImportProps {
 const Import: React.FC<ImportProps> = ({ onClose, onImportComplete }) => {
   const { company } = useCompany();
   const [loading, setLoading] = useState(false);
+  const [useAI, setUseAI] = useState(false);
   const [status, setStatus] = useState<{ type: 'idle' | 'success' | 'error', message: string }>({ type: 'idle', message: '' });
   const [importStats, setImportStats] = useState({ products: 0, customers: 0 });
 
@@ -290,12 +292,95 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete }) => {
     }
   };
 
+  // AI-powered file upload handler
+  const handleAIUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check if API key is configured
+    if (!AIService.isConfigured()) {
+      setStatus({
+        type: 'error',
+        message: 'Gemini API key not set! Please add it in Settings → AI Settings.'
+      });
+      return;
+    }
+
+    setLoading(true);
+    setStatus({ type: 'idle', message: '' });
+
+    try {
+      // Convert Excel to text
+      const textContent = await AIService.excelToText(file);
+      console.log('Excel converted to text, length:', textContent.length);
+
+      // Send to Gemini for extraction
+      const result = await AIService.extractFromExcel(textContent, file.name);
+
+      // Save to Firebase
+      if (result.products.length > 0) {
+        result.products.forEach(product => {
+          StorageService.saveProduct(product);
+        });
+      }
+
+      if (result.customers.length > 0) {
+        result.customers.forEach(customer => {
+          StorageService.saveCustomer(customer);
+        });
+      }
+
+      setImportStats({
+        products: result.products.length,
+        customers: result.customers.length
+      });
+
+      setStatus({
+        type: 'success',
+        message: `🎉 AI extracted ${result.products.length} products and ${result.customers.length} customers!`
+      });
+
+      setTimeout(() => {
+        onImportComplete();
+        onClose();
+      }, 2500);
+    } catch (error: any) {
+      console.error('AI Import error:', error);
+      setStatus({
+        type: 'error',
+        message: error.message || 'AI extraction failed. Please try again.'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
         <h2 className="text-xl font-bold text-slate-900 mb-4">Import Data</h2>
 
         <div className="space-y-4">
+          {/* Mode Toggle */}
+          <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
+            <button
+              onClick={() => setUseAI(false)}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${!useAI ? 'bg-white shadow text-blue-600' : 'text-slate-600 hover:text-slate-900'
+                }`}
+            >
+              <Upload className="w-4 h-4" />
+              Normal
+            </button>
+            <button
+              onClick={() => setUseAI(true)}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${useAI ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow text-white' : 'text-slate-600 hover:text-slate-900'
+                }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              AI Smart Import
+            </button>
+          </div>
+
           <button
             onClick={handleDownloadSample}
             className="w-full flex items-center justify-center gap-2 mb-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold border border-blue-100 hover:bg-blue-100 transition-colors"
@@ -305,19 +390,31 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete }) => {
           </button>
 
           {/* File Upload Area */}
-          <div className="border-2 border-dashed border-blue-200 rounded-lg p-6 text-center hover:bg-blue-50 transition-colors">
+          <div className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${useAI
+              ? 'border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100'
+              : 'border-blue-200 hover:bg-blue-50'
+            }`}>
             <label className="cursor-pointer flex flex-col items-center gap-2">
-              <Upload className="w-8 h-8 text-blue-500" />
+              {useAI ? (
+                <Sparkles className="w-8 h-8 text-purple-500" />
+              ) : (
+                <Upload className="w-8 h-8 text-blue-500" />
+              )}
               <span className="text-sm font-medium text-slate-700">
-                Drop or click to upload
+                {useAI ? 'Upload for AI Analysis' : 'Drop or click to upload'}
               </span>
               <span className="text-xs text-slate-500">
-                .xlsx, .xls, or Tally .xml
+                .xlsx, .xls{!useAI && ', or Tally .xml'}
               </span>
+              {useAI && (
+                <span className="text-xs text-purple-600 font-medium mt-1">
+                  ✨ AI will extract products & customers automatically
+                </span>
+              )}
               <input
                 type="file"
-                accept=".xlsx,.xls,.xml"
-                onChange={handleFileUpload}
+                accept={useAI ? ".xlsx,.xls" : ".xlsx,.xls,.xml"}
+                onChange={useAI ? handleAIUpload : handleFileUpload}
                 disabled={loading}
                 className="hidden"
                 data-testid="file-input-import"
@@ -348,7 +445,26 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete }) => {
           {loading && (
             <div className="flex items-center justify-center gap-2 py-4">
               <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-              <span className="text-sm text-slate-600">Processing...</span>
+              <span className="text-sm text-slate-600">
+                {useAI ? '🤖 AI is analyzing your file...' : 'Processing...'}
+              </span>
+            </div>
+          )}
+
+          {/* AI Info */}
+          {useAI && !loading && status.type === 'idle' && (
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-3">
+              <p className="text-xs text-purple-900">
+                <span className="font-bold">🤖 AI Smart Import</span><br />
+                Gemini AI will automatically detect and extract:<br />
+                • Products with name, price, quantity, HSN, GST%<br />
+                • Customers with name, phone, address, GSTIN
+              </p>
+              {!AIService.isConfigured() && (
+                <p className="text-xs text-red-600 mt-2 font-medium">
+                  ⚠️ API key not set! Go to Settings → AI Settings to add your free Gemini API key.
+                </p>
+              )}
             </div>
           )}
 
