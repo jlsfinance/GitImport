@@ -77,14 +77,14 @@ const Terms: React.FC = () => {
                     <section className="space-y-3">
                         <h2 className="text-2xl font-black text-[#004a99] dark:text-blue-300 leading-tight">1. Eligibility</h2>
                         <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-sm">
-                            Eligibility criteria (age, income, citizenship) are determined by the finance company managing your records. {APP_NAME} only facilitates the digital record-keeping of these assessments and does not influence approval or rejection decisions.
+                            Eligibility criteria (age, income, citizenship) are determined by the business managing your records. {APP_NAME} only facilitates the digital record-keeping of these assessments and does not influence approval or rejection decisions.
                         </p>
                     </section>
 
                     <section className="space-y-3">
                         <h2 className="text-2xl font-black text-[#004a99] dark:text-blue-300 leading-tight">2. Service Charges</h2>
                         <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-sm">
-                            Any processing fees or documentation charges are levied by your respective finance company. {APP_NAME} is a platform to view and manage these records and does not collect any loan-related fees from users directly.
+                            Any processing fees or documentation charges are levied by your respective business. {APP_NAME} is a platform to view and manage these records and does not collect any loan-related fees from users directly.
                         </p>
                     </section>
 
@@ -98,7 +98,7 @@ const Terms: React.FC = () => {
                     <section className="space-y-3">
                         <h2 className="text-2xl font-black text-[#004a99] dark:text-blue-300 leading-tight">4. Data Usage Agreement</h2>
                         <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-sm">
-                            By using {APP_NAME}, you agree to our collection of financial data as per our Privacy Policy. This data is used solely for credit evaluation and loan management.
+                            By using {APP_NAME}, you agree to our collection of data as per our Privacy Policy. This data is used solely for record management.
                         </p>
                     </section>
                 </div>

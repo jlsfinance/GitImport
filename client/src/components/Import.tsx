@@ -163,7 +163,7 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete }) => {
     const wsCust = XLSX.utils.json_to_sheet(customerData);
     XLSX.utils.book_append_sheet(wb, wsCust, "Customers");
 
-    XLSX.writeFile(wb, "BillBook_Import_Sample.xlsx");
+    XLSX.writeFile(wb, "JLS_Suite_Import_Sample.xlsx");
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

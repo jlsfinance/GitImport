@@ -68,7 +68,7 @@ const AppLogo: React.FC<AppLogoProps> = ({ size = 48, className = '', variant = 
                 <rect x="30" y="160" width="120" height="14" rx="7"
                     className="fill-pink-600 dark:fill-pink-400" fillOpacity="0.5" />
 
-                {/* Checkmark Circle (Paid/Finance) */}
+                {/* Checkmark Circle (Paid/Verified) */}
                 <circle cx="150" cy="250" r="45"
                     className="fill-indigo-600 dark:fill-indigo-400" />
                 <path
@@ -142,7 +142,7 @@ export const AppLogoWithText: React.FC<{ size?: number; className?: string }> = 
                     JLS Suite
                 </span>
                 <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 tracking-wider uppercase -mt-0.5">
-                    Bill & Finance
+                    Business Suite
                 </span>
             </div>
         </div>

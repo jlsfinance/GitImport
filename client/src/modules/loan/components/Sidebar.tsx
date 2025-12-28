@@ -23,9 +23,9 @@ const Sidebar: React.FC = () => {
     const { theme, setTheme } = useTheme();
     const { signOut } = useLoanAuth();
 
-    // We keep 'Loans' and 'Finance' expanded by default or based on path? 
+    // We keep 'Loans' and 'Accounts' expanded by default or based on path? 
     // Let's keep specific logic if needed, but for now simple state.
-    const [expandedMenus, setExpandedMenus] = useState<string[]>(['Loans', 'Finance']);
+    const [expandedMenus, setExpandedMenus] = useState<string[]>(['Loans', 'Accounts']);
     const [showAbout, setShowAbout] = useState(false);
 
     const handleLogout = async () => {
@@ -66,7 +66,7 @@ const Sidebar: React.FC = () => {
             ]
         },
         {
-            title: 'Finance',
+            title: 'Accounts',
             icon: 'payments',
             submenu: [
                 { title: 'Overview', path: '/loan/finance', icon: 'finance' },
@@ -106,7 +106,7 @@ const Sidebar: React.FC = () => {
                     <div className="flex items-center justify-between mb-8">
                         <div className="flex items-center gap-4">
                             <div className="w-14 h-14 rounded-[20px] bg-white dark:bg-slate-800 p-2 shadow-google border border-border flex items-center justify-center">
-                                {/* Use text logo or image similar to BillBook */}
+                                {/* App Logo Icon */}
                                 <div className="text-2xl font-black text-google-blue">J</div>
                             </div>
                             <div>

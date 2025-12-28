@@ -87,7 +87,7 @@ export const PublicBillView: React.FC<PublicBillViewProps> = ({ billId }) => {
                     <ShieldCheck className="absolute inset-0 m-auto w-8 h-8 text-blue-600" />
                 </div>
                 <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-[0.3em] animate-pulse">Verifying Secure Invoice</h2>
-                <p className="text-[10px] text-slate-400 font-bold mt-2 uppercase tracking-widest">Powered by BillBook Enterprise</p>
+                <p className="text-[10px] text-slate-400 font-bold mt-2 uppercase tracking-widest">Powered by JLS Suite</p>
             </div>
         );
     }
@@ -284,7 +284,7 @@ export const PublicBillView: React.FC<PublicBillViewProps> = ({ billId }) => {
                             <ShieldCheck className="w-8 h-8" />
                         </div>
                         <div className="text-center">
-                            <h4 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tighter italic leading-none">BillBook Digital Trust</h4>
+                            <h4 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tighter italic leading-none">JLS Suite Digital Trust</h4>
                             <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.4em] mt-2">Financially Validated • Security Encrypted</p>
                         </div>
                     </div>

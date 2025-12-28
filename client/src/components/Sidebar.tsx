@@ -47,8 +47,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCloudCon
                 <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
               </div>
               <div>
-                <h1 className="text-2xl font-black font-heading tracking-tight text-foreground leading-none">BillBook</h1>
-                <p className="text-[10px] font-bold text-google-blue uppercase tracking-[0.2em] mt-1">Premium Edition</p>
+                <h1 className="text-2xl font-black font-heading tracking-tight text-foreground leading-none">JLS Suite</h1>
+                <p className="text-[10px] font-bold text-google-blue uppercase tracking-[0.2em] mt-1">Business Suite</p>
               </div>
             </div>
 

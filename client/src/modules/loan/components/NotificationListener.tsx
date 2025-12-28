@@ -31,6 +31,44 @@ const NotificationListener: React.FC = () => {
         };
         checkPerms();
 
+        // Setup Real Push Notifications (FCM)
+        const setupPush = async () => {
+            try {
+                const { PushNotifications } = await import('@capacitor/push-notifications');
+
+                const perm = await PushNotifications.checkPermissions();
+                if (perm.receive !== 'granted') {
+                    const req = await PushNotifications.requestPermissions();
+                    if (req.receive !== 'granted') return;
+                }
+
+                await PushNotifications.register();
+
+                PushNotifications.addListener('registration', (token) => {
+                    console.log('Push Registration Token:', token.value);
+                    // TODO: Save this token to user's profile in Firestore if needed for backend targeting
+                });
+
+                PushNotifications.addListener('registrationError', (error) => {
+                    console.error('Push Registration Error:', error);
+                });
+
+                PushNotifications.addListener('pushNotificationReceived', (notification) => {
+                    console.log('Push Received:', notification);
+                    // Show as local notification if app is open, or rely on system handling
+                });
+
+                PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+                    console.log('Push Action:', notification);
+                    // Handle navigation if needed
+                });
+
+            } catch (e) {
+                console.warn("Push Notifications not available", e);
+            }
+        };
+        setupPush();
+
         let unsubscribe: any;
 
         const setupListener = (userId: string | null) => {
@@ -129,6 +167,7 @@ const NotificationListener: React.FC = () => {
         return () => {
             if (unsubscribe) unsubscribe();
             authUnsub();
+            // Cleanup push listeners if needed, usually RemoveAllListeners but imported dynamically
         };
     }, []);
 

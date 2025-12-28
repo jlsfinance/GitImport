@@ -183,7 +183,7 @@ const AccountingApp: React.FC = () => {
                     </div>
                 </div>
                 <div className="text-center">
-                    <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">BillBook</h1>
+                    <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">JLS Suite</h1>
                     <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Initializing Secure Session</p>
                 </div>
             </div>
@@ -261,7 +261,7 @@ const AccountingApp: React.FC = () => {
                             </button>
                             <div className="flex-1 text-center px-4 overflow-hidden">
                                 <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-tighter truncate leading-tight">
-                                    {company?.name || 'BillBook'}
+                                    {company?.name || 'JLS Suite'}
                                 </h2>
                                 <p className="text-[9px] text-blue-600 dark:text-blue-400 font-black uppercase tracking-widest leading-tight">
                                     {currentView.replace('_', ' ')}

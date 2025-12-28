@@ -156,7 +156,7 @@ const Settings: React.FC = () => {
   };
 
   const showDetailedTerms = () => {
-    const text = `TERMS OF USE\n\n1. USAGE\n- This application is a tool for inventory and invoice management. You are responsible for the accuracy of invoices generated.\n\n2. DATA\n- You own all the data you create. BillBook is just a facilitator. \n- Data is stored locally on your device. Clearing browser history/cache may delete your data if not synced to cloud.\n\n3. WARRANTY\n- The application is provided 'AS IS'. We do not guarantee 100% uptime but strive for it.\n\n4. LIMITATION OF LIABILITY\n- Developers of BillBook are not liable for any financial losses, tax calculation errors, or data loss incidents.\n\n5. GOVERNING LAW\n- These terms are governed by Indian laws and subject to Jaipur jurisdiction.`;
+    const text = `TERMS OF USE\n\n1. USAGE\n- This application is a tool for inventory and invoice management. You are responsible for the accuracy of invoices generated.\n\n2. DATA\n- You own all the data you create. JLS Suite is just a facilitator. \n- Data is stored locally on your device. Clearing browser history/cache may delete your data if not synced to cloud.\n\n3. WARRANTY\n- The application is provided 'AS IS'. We do not guarantee 100% uptime but strive for it.\n\n4. LIMITATION OF LIABILITY\n- Developers of JLS Suite are not liable for any financial losses, tax calculation errors, or data loss incidents.\n\n5. GOVERNING LAW\n- These terms are governed by Indian laws and subject to Jaipur jurisdiction.`;
     alert(text);
   };
 
@@ -607,10 +607,10 @@ const Settings: React.FC = () => {
             <div className="flex flex-wrap justify-center gap-4 mb-8">
               <button onClick={showDetailedPrivacy} className="px-6 py-2 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 rounded-full text-xs font-bold shadow-sm">Privacy Policy</button>
               <button onClick={showDetailedTerms} className="px-6 py-2 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 rounded-full text-xs font-bold shadow-sm">Terms of Use</button>
-              <button onClick={() => alert("Refund Policy:\n\nBillBook is currently free to use. Should we introduce premium features, refunds will be processed via Google Play Store as per their standard policy. Contact support for any billing disputes.")} className="px-6 py-2 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 rounded-full text-xs font-bold shadow-sm">Refund Policy</button>
+              <button onClick={() => alert("Pricing & Refund Policy:\n\nJLS Suite is completely FREE to download and use.\n\n• No subscription required\n• No in-app purchases\n• All features are available at no cost\n\nFor any queries, contact: lovneetrathi@gmail.com")} className="px-6 py-2 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 rounded-full text-xs font-bold shadow-sm">Refund Policy</button>
             </div>
             <div className="pt-6 border-t border-slate-200 dark:border-slate-800">
-              <p className="text-sm font-bold text-slate-800 dark:text-slate-200 italic">BillBook - Version 1.3.4 (STABLE)</p>
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-200 italic">JLS Suite - Version 1.3.4 (STABLE)</p>
               <p className="text-xs text-slate-500 mt-1">Play Console Verified & Compliant</p>
               <div className="mt-4 flex justify-center items-center gap-2 text-[10px] text-slate-400">
                 <CheckCircle className="w-3 h-3 text-green-500" /> Trusted for Play Console

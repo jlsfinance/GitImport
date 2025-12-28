@@ -73,7 +73,7 @@ const CustomerLogin: React.FC = () => {
       }
 
       if (snapshot.empty) {
-        setError('No account found with this phone number. Please contact your finance company.');
+        setError('No account found with this phone number. Please contact your service provider.');
         setLoading(false);
         return;
       }

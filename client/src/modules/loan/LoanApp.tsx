@@ -49,11 +49,11 @@ import { Menu as SidebarIcon, Sun, Moon } from 'lucide-react';
 import { HapticService } from '@/services/hapticService';
 import { APP_NAME } from './constants';
 import { AnimatePresence, motion } from 'framer-motion';
-import PremiumSplash from './components/PremiumSplash';
+import LoadingSplash from './components/LoadingSplash';
 
 import './loan.css';
 
-const LoadingScreen = PremiumSplash;
+const LoadingScreen = LoadingSplash;
 
 const ProtectedRoute = ({ children, requireCompany = true }: { children?: React.ReactNode; requireCompany?: boolean }) => {
     const { user, loading } = useLoanAuth();
@@ -115,7 +115,7 @@ const LoanAppContent = () => {
         if (path === '/loan') return 'Dashboard';
         if (path.includes('/customers')) return 'Customers';
         if (path.includes('/loans')) return 'Loan Management';
-        if (path.includes('/finance')) return 'Finance';
+        if (path.includes('/finance')) return 'Accounts';
         if (path.includes('/tools')) return 'Tools';
         if (path.includes('/settings')) return 'Settings';
         return 'Overview';

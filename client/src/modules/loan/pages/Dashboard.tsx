@@ -390,7 +390,7 @@ const Dashboard: React.FC = () => {
         const { data, columns } = getModalContent();
         if (!data || data.length === 0) { alert("No data available."); return; }
         const doc = new jsPDF('l', 'mm', 'a4');
-        doc.text((currentCompany?.name || "Finance Company") + " Report - " + activeCard, 14, 15);
+        doc.text((currentCompany?.name || APP_NAME) + " Report - " + activeCard, 14, 15);
 
         let tableRows: any[] = [];
 

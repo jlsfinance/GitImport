@@ -185,7 +185,7 @@ const BottomNav: React.FC = () => {
             isActive={activePath.includes('/loan/finance')}
             onClick={() => handleNavClick('/loan/finance')}
             icon="account_balance_wallet"
-            label="Finance"
+            label="Accounts"
           />
           <NavButton
             isActive={isMenuOpen}
