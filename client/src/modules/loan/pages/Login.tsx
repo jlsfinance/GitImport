@@ -82,9 +82,9 @@ const Login: React.FC = () => {
         {/* Header Section */}
         <div className="text-center">
           <div className="mb-4 flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-purple-500/30">
-            <span className="material-symbols-outlined text-3xl text-white">admin_panel_settings</span>
+            <span className="material-symbols-outlined text-3xl text-white">store</span>
           </div>
-          <h1 className="text-2xl font-bold mb-1">Admin Login</h1>
+          <h1 className="text-2xl font-bold mb-1">Business Login</h1>
           <p className="text-white/60 text-xs">Secure Access to {APP_NAME}</p>
         </div>
 
@@ -197,6 +197,11 @@ const Login: React.FC = () => {
 
         <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-2">
           App Created by {DEVELOPER_NAME}
+        </p>
+
+        <p className="text-[9px] text-white/40 text-center leading-tight max-w-xs mt-4">
+          <strong>DISCLAIMER: NOT A LENDER</strong><br />
+          {APP_NAME} is a financial record-keeping and accounting tool. We are NOT a bank, NBFC, or lender. We do not disburse loans, collect payments, or provide credit services. All data is user-generated and stored locally or on your personal cloud.
         </p>
 
       </div>

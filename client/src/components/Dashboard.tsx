@@ -2,7 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import { Invoice } from '../types';
 import { StorageService } from '../services/storageService';
-import { Users, Package, MessageCircle, Plus, FileText, TrendingUp, ArrowDownLeft, Calculator, CheckCircle, ChevronRight, Eye, Trash2, MoreVertical } from 'lucide-react';
+import { Users, Package, MessageCircle, Plus, FileText, TrendingUp, ArrowDownLeft, Calculator, CheckCircle, ChevronRight, Eye, MoreVertical, Download } from 'lucide-react';
+import { InvoicePdfService } from '../services/invoicePdfService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HapticService } from '@/services/hapticService';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -48,8 +49,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     };
 
     const item = {
-        hidden: { opacity: 0, y: 20 },
-        show: { opacity: 1, y: 0 }
+        hidden: { opacity: 0 },
+        show: { opacity: 1 }
     };
 
     // Derived State
@@ -74,7 +75,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     return (
         <div className="pb-32 md:pb-6 bg-background min-h-screen font-sans" >
             {/* Google Static Top Bar / Header */}
-            < div className="pt-14 pb-4 px-6 sticky top-0 z-30 bg-background/95 backdrop-blur-sm" >
+            < div className="pt-14 pb-4 px-6 sticky top-0 z-30 bg-background" >
                 <div className="max-w-5xl mx-auto flex items-center justify-between">
                     <div className="flex flex-col">
                         <span className="text-[11px] font-bold text-google-blue uppercase tracking-widest mb-0.5">
@@ -156,7 +157,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                         ₹{totalRevenue.toLocaleString('en-IN')}
                                     </h2>
                                 </div>
-                                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center border border-white/10 backdrop-blur-md">
+                                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center border border-white/10">
                                     <TrendingUp className="w-6 h-6" />
                                 </div>
                             </div>
@@ -267,10 +268,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                             setSelectedForAction(inv);
                                         }}
                                     >
-                                        <div className="flex items-center gap-4 min-w-0">
-                                            <div className="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-google-blue font-bold border border-border">
-                                                {inv.customerName.charAt(0)}
-                                            </div>
+                                        <div className="flex items-center gap-2 min-w-0">
                                             <div className="min-w-0">
                                                 <p className="text-sm font-bold text-foreground truncate">{inv.customerName}</p>
                                                 <p className="text-[10px] text-muted-foreground font-bold flex items-center gap-1.5 uppercase tracking-widest">
@@ -306,13 +304,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setSelectedForAction(null)}
-                            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+                            className="fixed inset-0 bg-black/60 z-[100]"
                         />
                         <motion.div
                             initial={{ y: "100%" }}
                             animate={{ y: 0 }}
                             exit={{ y: "100%" }}
-                            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                            transition={{ type: "tween", duration: 0.2 }}
                             className="fixed bottom-0 left-0 right-0 bg-surface-container-highest z-[101] rounded-t-[32px] p-6 pb-12 shadow-google-lg"
                         >
                             <div className="w-12 h-1.5 bg-border rounded-full mx-auto mb-6" />
@@ -329,6 +327,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <div className="space-y-2">
                                 {[
                                     { icon: Eye, label: 'View Details', sub: 'View or print full bill', color: 'bg-google-blue/10 text-google-blue', action: () => onViewInvoice(selectedForAction) },
+                                    {
+                                        icon: Download, label: 'Download PDF', sub: 'Save as PDF file', color: 'bg-google-blue/10 text-google-blue', action: async () => {
+                                            if (company) {
+                                                const customer = StorageService.getCustomers().find(c => c.id === selectedForAction.customerId) || null;
+                                                await InvoicePdfService.generatePDF(selectedForAction, company as any, customer);
+                                            }
+                                        }
+                                    },
                                     { icon: Users, label: 'Customer Ledger', sub: 'Statement & history', color: 'bg-google-red/10 text-google-red', action: () => onViewCustomerLedger(selectedForAction.customerId) },
                                     { icon: MessageCircle, label: 'Share Bill', sub: 'Send via WhatsApp', color: 'bg-google-green/10 text-google-green', action: () => onQuickShare(selectedForAction) },
                                 ].map((opt, i) => (

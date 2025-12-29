@@ -7,6 +7,8 @@ import { ThemeProvider } from 'next-themes';
 import ModuleSelector from './components/ModuleSelector';
 import AccountingApp from './modules/accounting/AccountingApp';
 import LoanApp from './modules/loan/LoanApp';
+import { StorageService } from './services/storageService';
+import { PrivacyDisclosureModal } from './components/PrivacyDisclosureModal';
 
 const RootApp: React.FC = () => {
   const [selectedModule, setSelectedModule] = useState<'accounting' | 'loan' | null>(() => {
@@ -19,7 +21,18 @@ const RootApp: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // FIX: Force StatusBar to NOT overlay WebView (Native)
+  // Privacy Disclosure
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+
+  useEffect(() => {
+    // Check Privacy Acceptance
+    const accepted = StorageService.getPrivacyAccepted();
+    if (!accepted) {
+      setShowPrivacyModal(true);
+    }
+  }, []);
+
+  // Configure StatusBar
   useEffect(() => {
     const configureStatusBar = async () => {
       try {
@@ -39,7 +52,6 @@ const RootApp: React.FC = () => {
     };
 
     configureStatusBar();
-
   }, []);
 
   // Handle Deep Links and Path-based module selection
@@ -102,7 +114,12 @@ const RootApp: React.FC = () => {
     );
   }
 
-  return <ModuleSelector onSelect={handleSelectModule} />;
+  return (
+    <>
+      <PrivacyDisclosureModal isOpen={showPrivacyModal} onAccept={() => setShowPrivacyModal(false)} />
+      <ModuleSelector onSelect={handleSelectModule} />
+    </>
+  );
 };
 
 const App: React.FC = () => {

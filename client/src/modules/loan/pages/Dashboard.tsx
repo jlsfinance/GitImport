@@ -255,9 +255,9 @@ const Dashboard: React.FC = () => {
         let renderRow: (row: any, index: number) => React.ReactNode = () => null;
 
         switch (activeCard) {
-            case 'Total Disbursed Loans':
+            case 'Total Disbursed':
                 modalData = loans.filter(l => ['Disbursed', 'Active', 'Completed', 'Overdue'].includes(l.status));
-                columns = ['Customer', 'Loan ID', 'Amount', 'Disbursal', 'EMI', 'Status'];
+                columns = ['Customer', 'Record ID', 'Amount', 'Date', 'Installment', 'Status'];
                 renderRow = (row, index) => (
                     <tr key={index} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800">
                         <td className="px-4 py-4 font-medium">{row.customerName}</td>
@@ -271,7 +271,7 @@ const Dashboard: React.FC = () => {
                     </tr>
                 );
                 break;
-            case 'Active Loans':
+            case 'Active Records':
                 modalData = loans.filter(l => ['Disbursed', 'Active', 'Overdue'].includes(l.status)).map(l => {
                     const totalPI = (Number(l.emi) || 0) * (Number(l.tenure) || 0);
                     const paidEmis = (l.repaymentSchedule || []).filter((e: any) => e.status === 'Paid');
@@ -279,7 +279,7 @@ const Dashboard: React.FC = () => {
                     const pendingPI = Math.max(0, totalPI - paidAmount);
                     return { ...l, loanAmountPI: totalPI, emiPI: l.emi, emisPaidCount: `${paidEmis.length} / ${l.tenure}`, amountPendingPI: pendingPI };
                 });
-                columns = ['Customer', 'Total (P+I)', 'EMI', 'Paid', 'Pending'];
+                columns = ['Customer', 'Total (P+I)', 'Installment', 'Paid', 'Pending'];
                 renderRow = (row, index) => (
                     <tr key={index} className="hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
                         <td className="px-4 py-4 font-medium">{row.customerName}</td>
@@ -290,7 +290,7 @@ const Dashboard: React.FC = () => {
                     </tr>
                 );
                 break;
-            case 'Active Loan Value':
+            case 'Active Record Value':
                 modalData = loans.filter(l => ['Disbursed', 'Active', 'Overdue'].includes(l.status)).map(l => {
                     const principal = Number(l.amount) || 0;
                     const emi = Number(l.emi) || 0;
@@ -304,7 +304,7 @@ const Dashboard: React.FC = () => {
                     const pendingPI = Math.max(0, totalPI - paidAmount);
                     return { ...l, principal, totalInterest, totalLoanPI: totalPI, emiPrincipal, emiInterest, emi, totalReceivedPI: paidAmount, balancePI: pendingPI };
                 });
-                columns = ['Customer', 'Principal', 'Interest', 'Total', 'EMI (P)', 'EMI (I)', 'EMI', 'Received', 'Balance'];
+                columns = ['Customer', 'Principal', 'Interest', 'Total', 'Inst (P)', 'Inst (I)', 'Installment', 'Received', 'Balance'];
                 renderRow = (row, index) => (
                     <tr key={index} className="hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
                         <td className="px-4 py-4 font-medium">{row.customerName}</td>
@@ -394,7 +394,7 @@ const Dashboard: React.FC = () => {
 
         let tableRows: any[] = [];
 
-        if (activeCard === 'Total Disbursed Loans') {
+        if (activeCard === 'Total Disbursed') {
             tableRows = data.map((row: any) => [
                 row.customerName || '-',
                 row.id || '-',
@@ -403,7 +403,7 @@ const Dashboard: React.FC = () => {
                 formatCurrency(row.emi),
                 row.status || '-'
             ]);
-        } else if (activeCard === 'Active Loans') {
+        } else if (activeCard === 'Active Records') {
             tableRows = data.map((row: any) => [
                 row.customerName || '-',
                 formatCurrency(row.loanAmountPI),
@@ -560,9 +560,9 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         {[
-                            { link: "/loan/loans/new", icon: "add", color: "text-indigo-600", bg: "bg-indigo-50 dark:bg-indigo-950/30", label: "New Loan" },
+                            { link: "/loan/loans/new", icon: "add", color: "text-indigo-600", bg: "bg-indigo-50 dark:bg-indigo-950/30", label: "New Entry" },
                             { link: "/loan/customers/new", icon: "person_add", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/30", label: "Add Client" },
-                            { link: "/loan/due-list", icon: "payments", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30", label: "Collect EMI" },
+                            { link: "/loan/due-list", icon: "payments", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30", label: "Collect" },
                             { onClick: () => setShowFestivalListModal(true), icon: "festival", color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950/30", label: "Greetings" }
                         ].map((action: any, i) => (
                             action.link ? (
@@ -617,7 +617,7 @@ const Dashboard: React.FC = () => {
                     <div className="flex flex-col gap-4">
                         {/* Feature Card */}
                         <div
-                            onClick={() => setActiveCard('Total Disbursed Loans')}
+                            onClick={() => setActiveCard('Total Disbursed')}
                             className="group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer border border-slate-100 dark:border-slate-800"
                         >
                             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 dark:bg-indigo-900/20 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
@@ -628,10 +628,10 @@ const Dashboard: React.FC = () => {
                                         <div className="p-2 rounded-lg bg-indigo-50 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400">
                                             <span className="material-symbols-outlined text-xl">account_balance</span>
                                         </div>
-                                        <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400">Total Disbursed</h3>
+                                        <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400">Total Records</h3>
                                     </div>
                                     <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">{loading ? '...' : formatCurrency(metrics.totalDisbursedPrincipal)}</h2>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">{metrics.totalDisbursedCount} Loans in total</p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">{metrics.totalDisbursedCount} Entries in total</p>
                                 </div>
                                 <div className="p-2 rounded-full border border-slate-100 dark:border-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-800 transition-colors">
                                     <span className="material-symbols-outlined text-slate-400">arrow_forward</span>
@@ -641,18 +641,18 @@ const Dashboard: React.FC = () => {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div
-                                onClick={() => setActiveCard('Active Loans')}
+                                onClick={() => setActiveCard('Active Records')}
                                 className="group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm hover:shadow-lg transition-all border border-slate-100 dark:border-slate-800 cursor-pointer"
                             >
                                 <div className="p-2.5 w-fit rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 mb-3 group-hover:scale-110 transition-transform">
                                     <span className="material-symbols-outlined text-lg">trending_up</span>
                                 </div>
                                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{loading ? '...' : metrics.activeLoansCount}</h2>
-                                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1">Active Loans</p>
+                                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1">Active Records</p>
                             </div>
 
                             <div
-                                onClick={() => setActiveCard('Active Loan Value')}
+                                onClick={() => setActiveCard('Active Record Value')}
                                 className="group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm hover:shadow-lg transition-all border border-slate-100 dark:border-slate-800 cursor-pointer"
                             >
                                 <div className="p-2.5 w-fit rounded-xl bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 mb-3 group-hover:scale-110 transition-transform">
@@ -752,7 +752,7 @@ const Dashboard: React.FC = () => {
                                     </div>
                                     <div className="text-right">
                                         <p className="text-sm font-black text-slate-900 dark:text-white">{formatCurrency(loan.amount)}</p>
-                                        <p className="text-[10px] font-semibold text-slate-400">Loan #{loan.id.slice(0, 5)}</p>
+                                        <p className="text-[10px] font-semibold text-slate-400">Record #{loan.id.slice(0, 5)}</p>
                                     </div>
                                 </Link>
                             );

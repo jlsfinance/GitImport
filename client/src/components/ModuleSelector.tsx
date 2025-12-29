@@ -96,14 +96,21 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
 
             {/* BOTTOM SECTION CONTENT (Green) */}
             <div className="absolute bottom-0 inset-x-0 h-1/2 flex flex-col items-center justify-end pb-12 z-0 pointer-events-none">
-                <div className="mb-8 flex flex-col items-center animate-bounce opacity-60">
+                <div className="mb-4 flex flex-col items-center animate-bounce opacity-60">
                     <ChevronDown className="text-emerald-400" size={20} />
                     <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mt-1">Swipe Down</p>
                 </div>
 
-                <div className="text-center opacity-80">
-                    <h1 className="text-4xl font-black text-emerald-900 tracking-tighter">LOANS</h1>
-                    <h2 className="text-xs font-bold text-emerald-400 tracking-widest uppercase mt-1">Management</h2>
+                <div className="text-center opacity-80 mb-6">
+                    <h1 className="text-4xl font-black text-emerald-900 tracking-tighter">RECORDS</h1>
+                    <h2 className="text-xs font-bold text-emerald-400 tracking-widest uppercase mt-1">Ledger Keeping</h2>
+                </div>
+
+                {/* Disclaimer */}
+                <div className="pb-4 px-6 text-center z-50">
+                    <p className="text-[9px] font-bold text-black/20 uppercase tracking-wider leading-relaxed">
+                        Digital Ledger App • Not a Bank/NBFC • No Loans Provided
+                    </p>
                 </div>
             </div>
 
@@ -152,7 +159,7 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
                     >
                         <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-1 h-4 bg-amber-800" />
                         <div className="bg-emerald-100 px-3 py-1 rounded-full w-full text-center mb-1">
-                            <span className="text-[10px] font-black uppercase text-emerald-600 tracking-wider">Loans</span>
+                            <span className="text-[10px] font-black uppercase text-emerald-600 tracking-wider">Credit Ledger</span>
                         </div>
                         <span className="text-5xl filter drop-shadow-sm transform hover:scale-110 transition-transform">🦁</span>
                     </motion.div>

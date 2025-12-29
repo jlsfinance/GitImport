@@ -83,9 +83,12 @@ export interface Payment {
   date: string;
   amount: number;
   mode: 'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE';
-  type?: 'RECEIVED' | 'PAID'; // RECEIVED = In from Customer, PAID = Out to Vendor
+  type?: 'RECEIVED' | 'PAID' | 'RECEIPT'; // RECEIVED = In from Customer, PAID = Out to Vendor, RECEIPT = Against Invoice
   reference?: string; // Cheque number or UPI Ref
   note?: string;
+  notes?: string; // Alias for note
+  invoiceId?: string; // Link to Invoice for receipts
+  invoiceNumber?: string; // Invoice number for reference
 }
 
 export interface InvoiceItem {
@@ -127,8 +130,10 @@ export interface Invoice {
   roundUpTo?: 0 | 10 | 100; // 0 = no rounding, 10 = round to nearest 10, 100 = round to nearest 100
   roundUpAmount?: number; // Amount added by rounding (calculated, not user set)
   total: number;
-  status: 'PAID' | 'PENDING' | 'OVERDUE';
+  status: 'PAID' | 'PENDING' | 'PARTIAL' | 'OVERDUE';
   paymentMode?: 'CASH' | 'CREDIT' | 'ONLINE';
+  amountReceived?: number; // Amount received at the time of sale
+  balanceDue?: number; // Remaining balance
   discountType?: 'PERCENTAGE' | 'AMOUNT';
   discountValue?: number;
   discountAmount?: number;

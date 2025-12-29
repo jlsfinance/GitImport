@@ -256,13 +256,13 @@ const Loans: React.FC = () => {
             pdfDoc.setFontSize(18);
             pdfDoc.text(companyDetails.name, pdfDoc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
             pdfDoc.setFontSize(14);
-            pdfDoc.text("LOAN AGREEMENT", pdfDoc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
+            pdfDoc.text("DEBT AGREEMENT", pdfDoc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
 
             const agreementDate = loan.disbursalDate ? format(new Date(loan.disbursalDate), 'do MMMM yyyy') : format(new Date(), 'do MMMM yyyy');
             pdfDoc.setFontSize(10);
             pdfDoc.setFont("helvetica", "normal");
             pdfDoc.text(`Date: ${agreementDate} `, pdfDoc.internal.pageSize.getWidth() - 15, 20, { align: 'right' });
-            pdfDoc.text(`Loan ID: ${loan.id} `, pdfDoc.internal.pageSize.getWidth() - 15, 26, { align: 'right' });
+            pdfDoc.text(`Record ID: ${loan.id} `, pdfDoc.internal.pageSize.getWidth() - 15, 26, { align: 'right' });
 
             let startY = 40;
             const partiesBody = [[`This agreement is made between: \n\nTHE LENDER: \n${companyDetails.name} \n${companyDetails.address || '[Company Address]'} \n\nAND\n\nTHE BORROWER: \n${customer.name} \n${customer.address || 'Address not provided'} \nMobile: ${customer.phone} `]];
@@ -286,7 +286,7 @@ const Loans: React.FC = () => {
 
             pdfDoc.setFontSize(12);
             pdfDoc.setFont("helvetica", "bold");
-            const agreementTitle = loan.topUpHistory && loan.topUpHistory.length > 0 ? "LOAN SUMMARY (TOP-UP UPDATED)" : "LOAN SUMMARY";
+            const agreementTitle = loan.topUpHistory && loan.topUpHistory.length > 0 ? "LEDGER SUMMARY (TOP-UP UPDATED)" : "LEDGER SUMMARY";
             pdfDoc.text(agreementTitle, 14, startY);
             startY += 4;
 
@@ -294,13 +294,13 @@ const Loans: React.FC = () => {
             const totalInterest = totalRepayment - loan.amount;
 
             const summaryBody = [
-                [{ content: 'Loan Amount (Principal)', styles: { fontStyle: 'bold' } }, `${formatCurrency(loan.amount)} (${toWords(loan.amount)} Only)`],
-                [{ content: 'Loan Tenure', styles: { fontStyle: 'bold' } }, `${loan.tenure} Months`],
-                [{ content: 'EMI', styles: { fontStyle: 'bold' } }, formatCurrency(loan.emi)],
+                [{ content: 'Principal Amount', styles: { fontStyle: 'bold' } }, `${formatCurrency(loan.amount)} (${toWords(loan.amount)} Only)`],
+                [{ content: 'Tenure', styles: { fontStyle: 'bold' } }, `${loan.tenure} Months`],
+                [{ content: 'Installment', styles: { fontStyle: 'bold' } }, formatCurrency(loan.emi)],
                 [{ content: 'Processing Fee', styles: { fontStyle: 'bold' } }, formatCurrency(loan.processingFee || 0)],
                 [{ content: 'Total Interest Payable', styles: { fontStyle: 'bold' } }, formatCurrency(totalInterest)],
                 [{ content: 'Total Amount Repayable', styles: { fontStyle: 'bold' } }, formatCurrency(totalRepayment)],
-                [{ content: 'Disbursal Date', styles: { fontStyle: 'bold' } }, loan.disbursalDate ? format(new Date(loan.disbursalDate), 'do MMMM yyyy') : 'N/A'],
+                [{ content: 'Credit Date', styles: { fontStyle: 'bold' } }, loan.disbursalDate ? format(new Date(loan.disbursalDate), 'do MMMM yyyy') : 'N/A'],
             ];
 
             if (loan.topUpHistory && loan.topUpHistory.length > 0) {
@@ -350,12 +350,12 @@ const Loans: React.FC = () => {
             pdfDoc.setFont("helvetica", "normal");
 
             const clauses = [
-                "The Borrower agrees to repay the loan amount along with interest in the form of EMIs as specified in the loan summary.",
+                "The Borrower agrees to repay the credit amount along with interest in the form of Installments as specified in the ledger summary.",
                 "All payments shall be made on or before the due date of each month.",
-                "In case of a delay in payment of EMI, a penal interest/late fee as per the company's prevailing policy will be charged.",
-                "Default in repayment of three or more consecutive EMIs shall entitle the Lender to recall the entire loan amount and initiate legal proceedings for recovery.",
-                "The Borrower confirms that all information provided in the loan application is true and correct.",
-                "This loan is unsecured. No collateral has been provided by the Borrower.",
+                "In case of a delay in payment of Installment, a penal interest/late fee as per the company's prevailing policy will be charged.",
+                "Default in repayment of three or more consecutive Installments shall entitle the Lender to recall the entire credit amount and initiate legal proceedings for recovery.",
+                "The Borrower confirms that all information provided in the credit application is true and correct.",
+                "This credit is unsecured. No collateral has been provided by the Borrower.",
                 "Any disputes arising out of this agreement shall be subject to the jurisdiction of the courts.",
             ];
 
@@ -428,7 +428,7 @@ const Loans: React.FC = () => {
             pdfDoc.text(companyDetails.name, pageWidth / 2, y, { align: 'center' });
             y += 8;
             pdfDoc.setFontSize(12);
-            pdfDoc.text('Loan Summary Card', pageWidth / 2, y, { align: 'center' });
+            pdfDoc.text('Ledger Summary Card', pageWidth / 2, y, { align: 'center' });
 
             // Show Top-Up Status (Same as LoanDetails)
             if (loan.topUpHistory && loan.topUpHistory.length > 0) {
@@ -449,9 +449,9 @@ const Loans: React.FC = () => {
             pdfDoc.setFontSize(10);
 
             const details = [
-                [{ label: "Customer Name", value: loan.customerName }, { label: "Loan ID", value: loan.id }],
-                [{ label: "Loan Amount", value: formatCurrency(loan.amount) }, { label: "Tenure", value: `${loan.tenure} Months` }],
-                [{ label: "Monthly EMI", value: formatCurrency(loan.emi) }, { label: "Disbursal Date", value: loan.disbursalDate ? format(parseISO(loan.disbursalDate), 'dd-MMM-yyyy') : 'N/A' }],
+                [{ label: "Customer Name", value: loan.customerName }, { label: "Record ID", value: loan.id }],
+                [{ label: "Principal", value: formatCurrency(loan.amount) }, { label: "Tenure", value: `${loan.tenure} Months` }],
+                [{ label: "Monthly Inst.", value: formatCurrency(loan.emi) }, { label: "Start Date", value: loan.disbursalDate ? format(parseISO(loan.disbursalDate), 'dd-MMM-yyyy') : 'N/A' }],
             ];
 
             details.forEach(row => {
@@ -600,7 +600,7 @@ const Loans: React.FC = () => {
                     </div>
                     <Link to="/loan/loans/new" className="h-11 px-5 rounded-xl bg-primary text-white shadow-md shadow-primary/30 font-bold uppercase tracking-wider flex items-center gap-2 hover:brightness-110 active:scale-95 transition-all">
                         <span className="material-symbols-outlined text-[20px] material-symbols-fill">add_circle</span>
-                        <span className="hidden sm:inline">New Loan</span>
+                        <span className="hidden sm:inline">New Entry</span>
                     </Link>
                 </div>
             </div>
@@ -667,7 +667,7 @@ const Loans: React.FC = () => {
                         <div className="h-20 w-20 bg-slate-100 dark:bg-slate-800/50 rounded-full flex items-center justify-center mb-4">
                             <span className="material-symbols-outlined text-4xl opacity-50">search_off</span>
                         </div>
-                        <p className="font-medium">No loans found</p>
+                        <p className="font-medium">No records found</p>
                         <p className="text-sm opacity-60">Try adjusting your search</p>
                     </div>
                 )}
@@ -697,7 +697,7 @@ const Loans: React.FC = () => {
                                             </div>
                                             <div className="min-w-0 flex-1">
                                                 <h3 className="font-bold text-lg text-slate-900 dark:text-white truncate">{selectedLoan.customerName}</h3>
-                                                <p className="text-sm text-slate-500 truncate">Loan ID: #{selectedLoan.id.slice(0, 8)}</p>
+                                                <p className="text-sm text-slate-500 truncate">Record ID: #{selectedLoan.id.slice(0, 8)}</p>
                                             </div>
                                             <button
                                                 onClick={() => setActiveMenuId(null)}
@@ -731,7 +731,7 @@ const Loans: React.FC = () => {
                                                     <span className="material-symbols-outlined">credit_card</span>
                                                 </div>
                                                 <div className="flex-1 text-left min-w-0">
-                                                    <p className="font-semibold text-slate-900 dark:text-white truncate">Loan Card</p>
+                                                    <p className="font-semibold text-slate-900 dark:text-white truncate">Ledger Card</p>
                                                     <p className="text-xs text-slate-500 truncate">Download customer ID card</p>
                                                 </div>
                                                 <span className="material-symbols-outlined text-slate-400 shrink-0">chevron_right</span>
@@ -747,7 +747,7 @@ const Loans: React.FC = () => {
                                                 </div>
                                                 <div className="flex-1 text-left min-w-0">
                                                     <p className="font-semibold text-slate-900 dark:text-white truncate">Agreement</p>
-                                                    <p className="text-xs text-slate-500 truncate">Download loan agreement</p>
+                                                    <p className="text-xs text-slate-500 truncate">Download ledger agreement</p>
                                                 </div>
                                                 <span className="material-symbols-outlined text-slate-400 shrink-0">chevron_right</span>
                                             </button>
@@ -760,7 +760,7 @@ const Loans: React.FC = () => {
                                                     <span className="material-symbols-outlined">delete</span>
                                                 </div>
                                                 <div className="flex-1 text-left min-w-0">
-                                                    <p className="font-semibold text-red-600 dark:text-red-400 truncate">Delete Loan</p>
+                                                    <p className="font-semibold text-red-600 dark:text-red-400 truncate">Delete Record</p>
                                                     <p className="text-xs text-red-400/70 truncate">Permanently remove record</p>
                                                 </div>
                                             </button>
@@ -779,9 +779,9 @@ const Loans: React.FC = () => {
                 showDeleteConfirm && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                         <div className="bg-white dark:bg-[#1e2736] rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95">
-                            <h3 className="text-lg font-bold mb-2">Delete Loan?</h3>
+                            <h3 className="text-lg font-bold mb-2">Delete Record?</h3>
                             <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
-                                Are you sure you want to delete the loan for <strong>{loanToDelete?.customerName}</strong>? This action cannot be undone.
+                                Are you sure you want to delete the ledger for <strong>{loanToDelete?.customerName}</strong>? This action cannot be undone.
                             </p>
                             <div className="flex gap-3 justify-end">
                                 <button

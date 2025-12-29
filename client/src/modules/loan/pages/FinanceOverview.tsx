@@ -151,7 +151,7 @@ const FinanceOverview: React.FC = () => {
                     // Debit: Loan Amount Out (Original / Base)
                     flatLedgerEntries.push({
                         date: disbursalDate,
-                        particulars: `Loan to ${loan.customerName}`,
+                        particulars: `Credit to ${loan.customerName}`,
                         type: 'debit',
                         category: 'loan',
                         amount: amountToShowAtDisbursal,

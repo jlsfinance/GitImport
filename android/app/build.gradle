@@ -3,6 +3,12 @@ apply plugin: 'com.android.application'
 android {
     namespace = "com.jls.suite"
     compileSdk = rootProject.ext.compileSdkVersion
+
+    def localProperties = new Properties()
+    def localPropertiesFile = rootProject.file('local.properties')
+    if (localPropertiesFile.exists()) {
+        localProperties.load(new FileInputStream(localPropertiesFile))
+    }
     defaultConfig {
         applicationId "com.jls.suite"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -17,18 +23,17 @@ android {
         }
     }
     signingConfigs {
-        release {
             storeFile file('../jls-release-key.keystore')
-            storePassword 'JLSuite@2024'
+            storePassword localProperties['KEY_STORE_PASSWORD']
             keyAlias 'jls-key-alias'
-            keyPassword 'JLSuite@2024'
-        }
+            keyPassword localProperties['KEY_ALIAS_PASSWORD']
     }
     buildTypes {
         release {
             signingConfig signingConfigs.release
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }

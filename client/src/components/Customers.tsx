@@ -4,11 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Customer, Invoice, Payment } from '../types';
 import { StorageService } from '../services/storageService';
 import { WhatsAppService } from '../services/whatsappService';
-import { UserPlus, Search, Phone, Mail, MapPin, ArrowLeft, FileText, Calendar, Bell, Send, Download, TrendingUp, AlertCircle, Eye, Plus, X, Banknote, CreditCard, MessageCircle, Edit, Trash2 } from 'lucide-react';
+import { Search, Phone, Mail, MapPin, ArrowLeft, FileText, Download, TrendingUp, Eye, X, Banknote, MessageCircle, Edit, Trash2, Plus } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import InvoiceView from './InvoiceView';
 import { HapticService } from '@/services/hapticService';
-import { ContactService } from '../services/contactService';
 
 interface CustomersProps {
   onEditInvoice?: (invoice: Invoice) => void;
@@ -60,7 +59,6 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack }) => {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // Edit Customer Modal State
   const [showEditCustomer, setShowEditCustomer] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -928,7 +926,7 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack }) => {
             onClick={() => setShowAddCustomer(true)}
             className="bg-primary text-white px-8 py-4 rounded-full flex items-center justify-center gap-3 font-black text-sm uppercase tracking-widest shadow-google hover:shadow-google-lg transition-all"
           >
-            <UserPlus className="w-5 h-5" />
+            <Plus className="w-5 h-5" />
             <span className="hidden sm:inline">Add Customer</span>
           </motion.button>
         </div>
@@ -999,7 +997,7 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack }) => {
         {filteredCustomers.length === 0 && (
           <div className="text-center py-24 bg-surface-container-high/30 rounded-[40px] border-2 border-dashed border-border mt-8">
             <div className="w-24 h-24 bg-surface-container-highest rounded-[32px] flex items-center justify-center mx-auto mb-6">
-              <UserPlus className="w-10 h-10 text-muted-foreground/40" />
+              <Plus className="w-10 h-10 text-muted-foreground/40" />
             </div>
             <h3 className="text-2xl font-black text-foreground mb-2 font-heading">{searchTerm ? 'No Matching Customers' : 'No Customers Yet'}</h3>
             <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">{searchTerm ? 'Try adjusting your search terms' : 'Add your first client to get started'}</p>
@@ -1046,18 +1044,7 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack }) => {
                         type="text"
                         required
                         value={newCustomer.name}
-                        onChange={async (e) => {
-                          const val = e.target.value;
-                          setNewCustomer({ ...newCustomer, name: val });
-                          if (val.length >= 2) {
-                            const results = await ContactService.getCombinedContacts(val);
-                            setSuggestions(results);
-                            setShowSuggestions(true);
-                          } else {
-                            setShowSuggestions(false);
-                          }
-                        }}
-                        onFocus={() => { if (newCustomer.name.length >= 2) setShowSuggestions(true); }}
+                        onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
                         className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-lg font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all placeholder:text-muted-foreground/30"
                         placeholder="Full Name"
                       />
@@ -1093,31 +1080,15 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack }) => {
 
                     <div className="relative space-y-2">
                       <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Phone Number</label>
-                      <input
-                        type="tel"
-                        value={newCustomer.phone}
-                        onChange={async (e) => {
-                          const val = e.target.value;
-                          setNewCustomer({ ...newCustomer, phone: val });
-
-                          const res = await ContactService.resolveName(val);
-                          if (res.name && !newCustomer.name) {
-                            setNewCustomer(prev => ({ ...prev, name: res.name, phone: val }));
-                          }
-
-                          if (val.length >= 2) {
-                            const results = await ContactService.getCombinedContacts(val);
-                            setSuggestions(results);
-                            setShowSuggestions(true);
-                          } else {
-                            setShowSuggestions(false);
-                          }
-                        }}
-                        onFocus={() => { if (newCustomer.phone.length >= 2) setShowSuggestions(true); }}
-                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                        className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-base font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all placeholder:text-muted-foreground/30"
-                        placeholder="10-digit number"
-                      />
+                      <div className="relative">
+                        <input
+                          type="tel"
+                          value={newCustomer.phone}
+                          onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
+                          className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-base font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all placeholder:text-muted-foreground/30"
+                          placeholder="10-digit number"
+                        />
+                      </div>
 
                       {showSuggestions && suggestions.length > 0 && (
                         <motion.div

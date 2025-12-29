@@ -114,7 +114,7 @@ const LoanAppContent = () => {
         const path = location.pathname;
         if (path === '/loan') return 'Dashboard';
         if (path.includes('/customers')) return 'Customers';
-        if (path.includes('/loans')) return 'Loan Management';
+        if (path.includes('/loans')) return 'Ledger Management'; // Rebranded from Loan Management
         if (path.includes('/finance')) return 'Accounts';
         if (path.includes('/tools')) return 'Tools';
         if (path.includes('/settings')) return 'Settings';

@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 const EMICalculator: React.FC = () => {
   const [amount, setAmount] = useState(10000);
   const [rate, setRate] = useState(12.5);
-  const [tenure, setTenure] = useState(2); // in years
+  const [tenure] = useState(2); // in years
 
   // Simple EMI Calculation Logic (Mock visualization of updates)
   const monthlyInterest = rate / 12 / 100;
@@ -27,7 +27,7 @@ const EMICalculator: React.FC = () => {
         <Link to="/loan/tools" className="flex items-center justify-center p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
           <span className="material-symbols-outlined">arrow_back</span>
         </Link>
-        <h1 className="text-lg font-bold flex-1 text-center pr-10">EMI Calculator</h1>
+        <h1 className="text-lg font-bold flex-1 text-center pr-10">Installment Calculator</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
@@ -57,13 +57,13 @@ const EMICalculator: React.FC = () => {
         <div className="bg-white dark:bg-[#1a2233] rounded-2xl p-5 shadow-sm space-y-8">
           <div className="space-y-4">
             <div className="flex justify-between items-end">
-              <label className="font-semibold text-base">Loan Amount</label>
+              <label className="font-semibold text-base">Principal Amount</label>
               <div className="flex items-center bg-background-light dark:bg-background-dark rounded-lg px-3 py-2 w-32 border border-transparent focus-within:border-primary transition-all">
                 <span className="text-slate-500 font-medium mr-1">₹</span>
                 <input className="bg-transparent border-none p-0 w-full text-right font-bold focus:ring-0" type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
               </div>
             </div>
-            <input type="range" min="1000" max="50000" value={amount} onChange={(e) => setAmount(Number(e.target.value))} className="w-full accent-primary h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700" />
+            <input type="range" min="1000" max="500000" value={amount} onChange={(e) => setAmount(Number(e.target.value))} className="w-full accent-primary h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700" />
           </div>
 
           <div className="space-y-4">

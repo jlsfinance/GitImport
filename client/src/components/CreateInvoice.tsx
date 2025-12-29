@@ -28,7 +28,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
 
   const gstEnabled = company?.gst_enabled ?? true;
   const [paymentMode, setPaymentMode] = useState<'CREDIT' | 'CASH'>('CREDIT');
-  const [roundUpTo, setRoundUpTo] = useState<0 | 10 | 100>(company?.roundUpDefault ?? 0);
+  const [roundUpTo] = useState<0 | 10 | 100>(company?.roundUpDefault ?? 0);
   const [notes, setNotes] = useState('');
 
   // Global Discount State
@@ -39,6 +39,11 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
   const [showSmartCalculator, setShowSmartCalculator] = useState(false);
   const [smartCalcInput, setSmartCalcInput] = useState('');
   const [calcError, setCalcError] = useState('');
+
+  // Smart Calculator Credit Flow States
+  const [showAmountReceivedModal, setShowAmountReceivedModal] = useState(false);
+  const [amountReceived, setAmountReceived] = useState<number>(0);
+  const [pendingCreditInvoice, setPendingCreditInvoice] = useState<Invoice | null>(null);
 
   // Initialize with Smart Calc if requested
   useEffect(() => {
@@ -71,35 +76,8 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
   const [showEditWarning, setShowEditWarning] = useState(false);
 
   // Focus navigation
-  const inputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
 
-  const handleKeyDown = (e: React.KeyboardEvent, index: number, field: string) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const nextMap: Record<string, string> = {
-        'productId': `rate-${index}`,
-        'rate': `quantity-${index}`,
-        'quantity': `next-${index}`
-      };
-
-      const nextId = nextMap[field];
-      if (nextId === `next-${index}`) {
-        if (index === items.length - 1) {
-          handleAddItem();
-          setTimeout(() => {
-            const nextRowProduct = inputRefs.current[`productId-${index + 1}`];
-            if (nextRowProduct) nextRowProduct.focus();
-          }, 100);
-        } else {
-          const nextRowProduct = inputRefs.current[`productId-${index + 1}`];
-          if (nextRowProduct) nextRowProduct.focus();
-        }
-      } else {
-        const nextInput = inputRefs.current[`${nextId}`];
-        if (nextInput) nextInput.focus();
-      }
-    }
-  };
+  // handleKeyDown was unused and removed
 
   useEffect(() => {
     setCustomers(StorageService.getCustomers());
@@ -173,34 +151,11 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
       return;
     }
 
-    // 2. Identify Customer (Default to CASH if none)
+    // 2. Identify Customer
     let finalCustomerId = selectedCustomerId;
     let finalCustomer = customers.find(c => c.id === finalCustomerId);
 
-    if (!finalCustomerId) {
-      let cashCust = customers.find(c => c.name.toUpperCase() === 'CASH');
-      if (!cashCust) {
-        cashCust = {
-          id: crypto.randomUUID(),
-          name: 'CASH',
-          company: 'CASH SALES',
-          phone: '',
-          email: '',
-          address: '',
-          gstin: '',
-          balance: 0,
-          notifications: []
-        };
-        StorageService.saveCustomer(cashCust);
-        setCustomers(StorageService.getCustomers()); // Update local state immediately
-      }
-      finalCustomer = cashCust;
-      finalCustomerId = cashCust!.id;
-    }
-
-    if (!finalCustomer) return; // Should not happen
-
-    // 3. Prepare Invoice Data
+    // 3. Prepare Invoice Data First (we'll need it for both flows)
     const cleanedItems: InvoiceItem[] = items.filter(i => i.productId).map(item => ({
       ...item,
       quantity: Number(item.quantity) || 1,
@@ -213,9 +168,6 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
       totalAmount: Number(item.totalAmount) || 0
     }));
 
-    const status = 'PAID'; // Smart Calc assumes Cash/Paid usually? Or 'CASH' payment mode.
-    // User requested "Auto-save invoice". Defaulting to PAID makes sense for fast counter billing.
-
     // Calculate totals
     const subtotal = cleanedItems.reduce((sum, item) => sum + (item.baseAmount || 0), 0);
     const totalCgst = cleanedItems.reduce((sum, item) => sum + (item.cgstAmount || 0), 0);
@@ -223,7 +175,6 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     const totalIgst = cleanedItems.reduce((sum, item) => sum + (item.igstAmount || 0), 0);
 
     const supplier = company as any;
-    const taxType = (supplier?.state || 'Delhi') === (finalCustomer.state || '') ? 'INTRA_STATE' : 'INTER_STATE';
 
     // Calculate Discount
     let globalDiscountAmount = 0;
@@ -243,6 +194,68 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
       roundedTotal = Math.ceil(finalTotal / roundUpTo) * roundUpTo;
       roundUpAmount = roundedTotal - finalTotal;
     }
+
+    // CASE A: No Customer Selected -> CASH SALE (Quick Sale)
+    if (!finalCustomerId) {
+      let cashCust = customers.find(c => c.name.toUpperCase() === 'CASH');
+      if (!cashCust) {
+        cashCust = {
+          id: crypto.randomUUID(),
+          name: 'CASH',
+          company: 'CASH SALES',
+          phone: '',
+          email: '',
+          address: '',
+          gstin: '',
+          balance: 0,
+          notifications: []
+        };
+        StorageService.saveCustomer(cashCust);
+        setCustomers(StorageService.getCustomers());
+      }
+      finalCustomer = cashCust;
+      finalCustomerId = cashCust!.id;
+
+      const taxType = (supplier?.state || 'Delhi') === (finalCustomer.state || '') ? 'INTRA_STATE' : 'INTER_STATE';
+
+      const invoiceData: Invoice = {
+        id: crypto.randomUUID(),
+        invoiceNumber: StorageService.generateInvoiceNumber(finalCustomerId!, date),
+        customerId: finalCustomerId!,
+        customerName: finalCustomer.company || finalCustomer.name,
+        customerAddress: finalCustomer.address || '',
+        customerState: finalCustomer.state || '',
+        customerGstin: finalCustomer.gstin || '',
+        supplierGstin: supplier?.gstin || '',
+        taxType: taxType,
+        date,
+        dueDate,
+        items: cleanedItems,
+        discountType,
+        discountValue,
+        discountAmount: Math.round(globalDiscountAmount * 100) / 100,
+        subtotal: Math.round(subtotal * 100) / 100,
+        totalCgst: Math.round(totalCgst * 100) / 100,
+        totalSgst: Math.round(totalSgst * 100) / 100,
+        totalIgst: Math.round(totalIgst * 100) / 100,
+        gstEnabled: gstEnabled && cleanedItems.some(i => (i.gstRate || 0) > 0),
+        roundUpTo: roundUpTo,
+        roundUpAmount: Math.round(roundUpAmount * 100) / 100,
+        total: Math.round(roundedTotal * 100) / 100,
+        status: 'PAID',
+        paymentMode: 'CASH',
+        notes: notes
+      };
+
+      onSave(invoiceData, true);
+      setShowSmartCalculator(false);
+      return;
+    }
+
+    // CASE B: Customer Selected -> CREDIT FLOW (Ask for Amount Received)
+    if (!finalCustomer) return;
+
+    const taxType = (supplier?.state || 'Delhi') === (finalCustomer.state || '') ? 'INTRA_STATE' : 'INTER_STATE';
 
     const invoiceData: Invoice = {
       id: crypto.randomUUID(),
@@ -268,14 +281,82 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
       roundUpTo: roundUpTo,
       roundUpAmount: Math.round(roundUpAmount * 100) / 100,
       total: Math.round(roundedTotal * 100) / 100,
-      status: status,
-      paymentMode: 'CASH', // Explicitly set payment mode for Smart Calc
+      status: 'PENDING', // Credit Sale - PENDING until fully paid
+      paymentMode: 'CREDIT',
       notes: notes
     };
 
-    // 4. Save & Trigger Success Actions
-    onSave(invoiceData, true); // true = show post-save actions
-    setShowSmartCalculator(false);
+    // Store the invoice and show Amount Received Modal
+    setPendingCreditInvoice(invoiceData);
+    setAmountReceived(invoiceData.total); // Default to full amount
+    setShowAmountReceivedModal(true);
+    setShowSmartCalculator(false); // Hide Smart Calc, show Amount modal
+  };
+
+  // Function to finalize Credit Sale with Amount Received
+  const handleSaveWithPayment = () => {
+    if (!pendingCreditInvoice) return;
+
+    const receivedAmt = amountReceived || 0;
+    const totalAmt = pendingCreditInvoice.total;
+
+    // Determine status based on payment
+    let finalStatus: 'PAID' | 'PARTIAL' | 'PENDING' = 'PENDING';
+    if (receivedAmt >= totalAmt) {
+      finalStatus = 'PAID';
+    } else if (receivedAmt > 0) {
+      finalStatus = 'PARTIAL';
+    }
+
+    // Update invoice with payment info
+    const updatedInvoice: Invoice = {
+      ...pendingCreditInvoice,
+      status: finalStatus,
+      amountReceived: Math.round(receivedAmt * 100) / 100,
+      balanceDue: Math.round((totalAmt - receivedAmt) * 100) / 100
+    };
+
+    // Save Invoice
+    onSave(updatedInvoice, true);
+
+    // If amount received > 0, also create a Receipt entry
+    if (receivedAmt > 0) {
+      const receiptEntry = {
+        id: crypto.randomUUID(),
+        customerId: updatedInvoice.customerId,
+        invoiceId: updatedInvoice.id,
+        invoiceNumber: updatedInvoice.invoiceNumber,
+        amount: receivedAmt,
+        date: date,
+        mode: 'CASH' as const, // Default mode for Smart Calc receipts
+        type: 'RECEIPT' as const,
+        notes: `Payment received against ${updatedInvoice.invoiceNumber}`
+      };
+      StorageService.savePayment(receiptEntry);
+    }
+
+    // Reset Credit Flow States
+    setPendingCreditInvoice(null);
+    setAmountReceived(0);
+    setShowAmountReceivedModal(false);
+  };
+
+  // Function to skip payment (Full Credit)
+  const handleSkipPayment = () => {
+    if (!pendingCreditInvoice) return;
+
+    // Save as full credit (no payment received)
+    const updatedInvoice: Invoice = {
+      ...pendingCreditInvoice,
+      status: 'PENDING',
+      amountReceived: 0,
+      balanceDue: pendingCreditInvoice.total
+    };
+
+    onSave(updatedInvoice, true);
+    setPendingCreditInvoice(null);
+    setAmountReceived(0);
+    setShowAmountReceivedModal(false);
   };
 
   const [activeItemIndex, setActiveItemIndex] = useState<number | null>(null);
@@ -741,8 +822,8 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     } else {
       globalDiscountAmount = discountValue;
     }
-    const totalBeforeDiscount = subtotal + totalCgst + totalSgst + totalIgst;
-    const finalTotal = totalBeforeDiscount - globalDiscountAmount;
+    // const totalBeforeDiscount = subtotal + totalCgst + totalSgst + totalIgst;
+    // const finalTotal = totalBeforeDiscount - globalDiscountAmount;
 
     const roundedTotal = calculateRoundedTotal();
     const roundUpAmount = getRoundUpAmount();
@@ -770,7 +851,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
       gstEnabled: gstEnabled && cleanedItems.some(i => (i.gstRate || 0) > 0),
       roundUpTo: roundUpTo,
       roundUpAmount: Math.round(roundUpAmount * 100) / 100,
-      total: Math.round(finalTotal * 100) / 100,
+      total: Math.round(roundedTotal * 100) / 100,
       status: status,
       notes: notes,
       paymentMode: paymentMode
@@ -790,7 +871,7 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     <div className="bg-background min-h-screen pb-48 font-sans">
       {/* Edit Warning Modal */}
       {showEditWarning && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4">
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white dark:bg-slate-800 rounded-[24px] shadow-2xl w-full max-w-sm p-6 text-center">
             <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-8 h-8" />
@@ -807,8 +888,8 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
 
       {/* Top App Bar/Header - Google Activity Style */}
       <motion.div
-        className={`sticky top-0 pt-safe z-30 transition-all duration-300 ${isScrolled
-          ? 'bg-background/95 backdrop-blur-xl border-b border-border shadow-sm'
+        className={`sticky top-0 pt-safe z-30 ${isScrolled
+          ? 'bg-background border-b border-border shadow-sm'
           : 'bg-background border-b border-transparent'
           }`}
       >
@@ -838,17 +919,14 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
         </div>
       </motion.div>
 
-      <div className="max-w-5xl mx-auto space-y-4 pt-6 px-4">
-        {/* Customer Section */}
-        <div className="bg-surface-container p-6 md:p-8 rounded-[32px] border border-border shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-google-blue/10 flex items-center justify-center text-google-blue border border-google-blue/10">
-              <UserPlus className="w-6 h-6" />
+      <div className="max-w-5xl mx-auto space-y-3 pt-3 px-3">
+        {/* Customer Section - Compact */}
+        <div className="bg-surface-container p-4 rounded-2xl border border-border shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-xl bg-google-blue/10 flex items-center justify-center text-google-blue">
+              <UserPlus className="w-4 h-4" />
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-foreground">Bill To</h2>
-              <p className="text-xs text-muted-foreground font-medium">Select or create client</p>
-            </div>
+            <h2 className="text-sm font-bold text-foreground">Bill To</h2>
           </div>
           <div className="relative group">
             <Autocomplete
@@ -887,76 +965,74 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4 mt-6">
+          <div className="grid grid-cols-2 gap-2 mt-3">
             <div>
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-2 mb-1 block">Date</label>
-              <div className="relative bg-surface-container-high rounded-[20px] overflow-hidden border border-border">
-                <input type="date" value={date} onChange={(e) => { setDate(e.target.value); setHasChanges(true); }} className="w-full bg-transparent p-3 text-sm font-bold text-foreground outline-none" />
+              <label className="text-[9px] font-bold text-muted-foreground uppercase px-1 mb-0.5 block">Date</label>
+              <div className="relative bg-surface-container-high rounded-xl overflow-hidden border border-border">
+                <input type="date" value={date} onChange={(e) => { setDate(e.target.value); setHasChanges(true); }} className="w-full bg-transparent p-2 text-xs font-bold text-foreground outline-none" />
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-2 mb-1 block">Due Date</label>
-              <div className="relative bg-surface-container-high rounded-[20px] overflow-hidden border border-border">
-                <input type="date" value={dueDate} onChange={(e) => { setDueDate(e.target.value); setHasChanges(true); }} className="w-full bg-transparent p-3 text-sm font-bold text-foreground outline-none" />
+              <label className="text-[9px] font-bold text-muted-foreground uppercase px-1 mb-0.5 block">Due Date</label>
+              <div className="relative bg-surface-container-high rounded-xl overflow-hidden border border-border">
+                <input type="date" value={dueDate} onChange={(e) => { setDueDate(e.target.value); setHasChanges(true); }} className="w-full bg-transparent p-2 text-xs font-bold text-foreground outline-none" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* payment Mode */}
-        <div className="bg-surface-container p-1 rounded-full border border-border flex items-center shadow-sm">
+        {/* payment Mode - Compact */}
+        <div className="bg-surface-container p-1 rounded-full border border-border flex items-center">
           <button
             onClick={() => { setPaymentMode('CREDIT'); setHasChanges(true); }}
-            className={`flex-1 py-3 px-6 rounded-full flex items-center justify-center gap-2 transition-all ${paymentMode === 'CREDIT'
-              ? 'bg-google-red text-white font-bold shadow-google'
+            className={`flex-1 py-2 px-4 rounded-full flex items-center justify-center gap-1 transition-all text-xs ${paymentMode === 'CREDIT'
+              ? 'bg-google-red text-white font-bold'
               : 'text-muted-foreground font-bold hover:bg-surface-container-high'
               }`}
           >
-            <CreditCard className="w-5 h-5" /> <span>Credit Bill</span>
+            <CreditCard className="w-4 h-4" /> <span>Credit</span>
           </button>
           <button
             onClick={() => { setPaymentMode('CASH'); setHasChanges(true); }}
-            className={`flex-1 py-3 px-6 rounded-full flex items-center justify-center gap-2 transition-all ${paymentMode === 'CASH'
-              ? 'bg-google-green text-white font-bold shadow-google'
+            className={`flex-1 py-2 px-4 rounded-full flex items-center justify-center gap-1 transition-all text-xs ${paymentMode === 'CASH'
+              ? 'bg-google-green text-white font-bold'
               : 'text-muted-foreground font-bold hover:bg-surface-container-high'
               }`}
           >
-            <Banknote className="w-5 h-5" /> <span>Cash Bill</span>
+            <Banknote className="w-4 h-4" /> <span>Cash</span>
           </button>
         </div>
 
-        <div className="space-y-4 pt-4">
-          <div className="flex items-center justify-between px-2">
-            <h2 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Added Items</h2>
-            <button onClick={handleAddItem} className="text-[11px] font-bold text-google-blue uppercase tracking-widest bg-google-blue/10 px-4 py-2 rounded-full border border-google-blue/10">Add Row</button>
+        <div className="space-y-2 pt-2">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Items</h2>
+            <button onClick={handleAddItem} className="text-[10px] font-bold text-google-blue uppercase bg-google-blue/10 px-3 py-1.5 rounded-full">+ Add</button>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             <AnimatePresence mode="popLayout">
               {items.filter(i => i.productId).map((item, idx) => (
                 <motion.div
                   key={idx}
                   layout
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   onClick={() => handleOpenItemModal(items.indexOf(item))}
-                  className="bg-surface-container p-5 rounded-[32px] border border-border flex gap-4 items-center active:scale-[0.98] transition-all cursor-pointer group hover:bg-surface-container-high hover:shadow-google"
+                  className="bg-surface-container p-3 rounded-xl border border-border flex gap-3 items-center active:scale-[0.98] transition-all cursor-pointer"
                 >
-                  <div className="w-14 h-14 rounded-full bg-google-blue/10 flex items-center justify-center text-google-blue shrink-0 group-hover:bg-google-blue group-hover:text-white transition-all transform group-hover:rotate-6 border border-google-blue/10">
-                    <Package className="w-7 h-7" />
+                  <div className="w-10 h-10 rounded-full bg-google-blue/10 flex items-center justify-center text-google-blue shrink-0">
+                    <Package className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-base font-bold text-foreground truncate tracking-tight">{item.description}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="px-2.5 py-0.5 rounded-full bg-surface-container-highest text-[10px] font-bold text-muted-foreground uppercase tracking-widest border border-border">{item.quantity} Unit</span>
-                      <span className="text-[10px] font-bold text-muted-foreground">@</span>
-                      <span className="text-[11px] font-bold text-foreground">₹{item.rate}</span>
+                    <p className="text-sm font-bold text-foreground truncate">{item.description}</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="px-2 py-0.5 rounded-full bg-surface-container-highest text-[9px] font-bold text-muted-foreground">{item.quantity}x</span>
+                      <span className="text-[10px] text-muted-foreground">@ ₹{item.rate}</span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-xl font-bold font-heading text-foreground">₹{(item.totalAmount || 0).toLocaleString('en-IN')}</p>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest opacity-60">Subtotal</p>
+                    <p className="text-base font-bold text-foreground">₹{(item.totalAmount || 0).toLocaleString('en-IN')}</p>
                   </div>
                 </motion.div>
               ))}
@@ -965,11 +1041,9 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
 
           <button
             onClick={handleAddItemAndOpen}
-            className="w-full py-6 rounded-[28px] border-2 border-dashed border-blue-200 dark:border-slate-800 bg-blue-50/30 dark:bg-slate-900/40 text-blue-600 dark:text-blue-400 font-black flex items-center justify-center gap-3 hover:bg-blue-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98] group"
+            className="w-full py-4 rounded-xl border-2 border-dashed border-blue-200 dark:border-slate-700 bg-blue-50/30 dark:bg-slate-900/40 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center gap-2 hover:bg-blue-50 transition-all active:scale-[0.98] text-sm"
           >
-            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/40">
-              <Plus className="w-5 h-5" />
-            </div>
+            <Plus className="w-5 h-5" />
             <span>Add Item</span>
           </button>
         </div>
@@ -1247,8 +1321,25 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
               <button onClick={() => setShowCustomerModal(false)} className="bg-slate-100 p-2 rounded-full"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6 space-y-4">
-              <input type="text" autoFocus placeholder="Customer Name" className="w-full p-4 bg-slate-50 rounded-xl font-bold outline-none focus:ring-2 focus:ring-blue-500" value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} />
-              <input type="text" placeholder="Phone Number" className="w-full p-4 bg-slate-50 rounded-xl font-medium outline-none focus:ring-2 focus:ring-blue-500" value={newCustomerPhone} onChange={(e) => setNewCustomerPhone(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveNewCustomer()} />
+              <input
+                type="text"
+                autoFocus
+                placeholder="Customer Name"
+                className="w-full p-4 bg-slate-50 rounded-xl font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                value={newCustomerName}
+                onChange={(e) => setNewCustomerName(e.target.value)}
+                onFocus={() => { }}
+              />
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Phone Number"
+                  className="w-full p-4 bg-slate-50 rounded-xl font-medium outline-none focus:ring-2 focus:ring-blue-500 pr-12"
+                  value={newCustomerPhone}
+                  onChange={(e) => setNewCustomerPhone(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && saveNewCustomer()}
+                />
+              </div>
               <button onClick={saveNewCustomer} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold mt-4">Save Customer</button>
             </div>
           </motion.div>
@@ -1278,6 +1369,120 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
           </motion.div>
         </div>
       )}
+
+      {/* Amount Received Modal for Credit Sales */}
+      {showAmountReceivedModal && pendingCreditInvoice && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[120] p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ type: "spring", damping: 20 }}
+            className="bg-white dark:bg-slate-800 rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden"
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 p-6 text-white">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Banknote className="w-6 h-6" />
+                  <h3 className="text-lg font-bold">Amount Received</h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowAmountReceivedModal(false);
+                    setPendingCreditInvoice(null);
+                    setAmountReceived(0);
+                  }}
+                  className="bg-white/20 p-2 rounded-full hover:bg-white/30 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="text-center">
+                <p className="text-emerald-100 text-sm mb-1">Bill Total</p>
+                <p className="text-4xl font-black tracking-tighter">
+                  ₹{pendingCreditInvoice.total.toLocaleString('en-IN')}
+                </p>
+                <p className="text-emerald-200 text-sm mt-2">
+                  Customer: {pendingCreditInvoice.customerName}
+                </p>
+              </div>
+            </div>
+
+            {/* Amount Input */}
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                  Enter Amount Received
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-slate-400">₹</span>
+                  <input
+                    type="number"
+                    autoFocus
+                    value={amountReceived || ''}
+                    onChange={(e) => setAmountReceived(Number(e.target.value) || 0)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSaveWithPayment()}
+                    placeholder="0"
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-900 dark:text-white rounded-2xl text-3xl font-black outline-none focus:ring-2 focus:ring-emerald-500 text-right"
+                  />
+                </div>
+              </div>
+
+              {/* Quick Amount Buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setAmountReceived(pendingCreditInvoice.total)}
+                  className="flex-1 py-2 px-3 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-colors"
+                >
+                  Full: ₹{pendingCreditInvoice.total.toLocaleString('en-IN')}
+                </button>
+                <button
+                  onClick={() => setAmountReceived(Math.round(pendingCreditInvoice.total / 2))}
+                  className="flex-1 py-2 px-3 bg-amber-50 text-amber-700 rounded-xl text-xs font-bold hover:bg-amber-100 transition-colors"
+                >
+                  Half: ₹{Math.round(pendingCreditInvoice.total / 2).toLocaleString('en-IN')}
+                </button>
+                <button
+                  onClick={() => setAmountReceived(0)}
+                  className="flex-1 py-2 px-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors"
+                >
+                  None
+                </button>
+              </div>
+
+              {/* Balance Display */}
+              {amountReceived > 0 && amountReceived < pendingCreditInvoice.total && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-700">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-bold text-amber-700 dark:text-amber-300">Balance Due:</span>
+                    <span className="text-xl font-black text-amber-700 dark:text-amber-300">
+                      ₹{(pendingCreditInvoice.total - amountReceived).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={handleSkipPayment}
+                  className="flex-1 py-4 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl font-bold text-sm hover:bg-slate-200 transition-colors"
+                >
+                  Full Credit
+                </button>
+                <button
+                  onClick={handleSaveWithPayment}
+                  className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-emerald-500/30 hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Save className="w-5 h-5" />
+                  Save Receipt
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Sticky Bottom Summary Bar - Google Premium Style */}
       <div className="fixed bottom-0 left-0 right-0 bg-surface-container/80 backdrop-blur-xl border-t border-border z-40 pb-safe">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -1316,7 +1521,8 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
           </div>
         </div>
       </div>
-    </div >
+
+    </div>
   );
 };
 

@@ -240,7 +240,7 @@ const CustomerPortal: React.FC = () => {
         {/* Quick Actions Panel */}
         <div className="mx-6 -mt-10 bg-white dark:bg-gray-800 p-5 rounded-[2.5rem] shadow-[0_20px_40px_rgba(0,0,0,0.1)] border border-gray-100 dark:border-gray-700 grid grid-cols-4 gap-3 relative z-30">
           {[
-            { label: 'Pay EMI', icon: 'payments', bg: 'btn-kadak', color: 'text-white', isSpecial: true, action: () => { if (nextEmi && primaryLoan) { setSelectedLoan(primaryLoan); setSelectedEmi(nextEmi); setShowPaymentModal(true); } else alert("No pending EMI found!"); } },
+            { label: 'Pay Installment', icon: 'payments', bg: 'btn-kadak', color: 'text-white', isSpecial: true, action: () => { if (nextEmi && primaryLoan) { setSelectedLoan(primaryLoan); setSelectedEmi(nextEmi); setShowPaymentModal(true); } else alert("No pending Installment found!"); } },
             { label: 'History', icon: 'history', bg: 'bg-purple-50 dark:bg-purple-900/20', color: 'text-purple-600 dark:text-purple-400', action: () => setCurrentTab('history') },
             // Replaced Support with Test Notif for debugging
             {
@@ -293,7 +293,7 @@ const CustomerPortal: React.FC = () => {
               {activeLoans.length === 0 ? (
                 <div className="p-12 text-center text-gray-400 font-bold bg-white dark:bg-gray-800 rounded-3xl border-4 border-dashed border-gray-100 dark:border-gray-700">
                   <span className="material-symbols-outlined text-6xl mb-3 opacity-20">contract_edit</span>
-                  <p>No active loans found at the moment.</p>
+                  <p>No active records found at the moment.</p>
                 </div>
               ) : activeLoans.map(loan => (
                 <div key={loan.id} className="bg-white dark:bg-gray-800 p-6 rounded-[2.5rem] shadow-[0_5px_20px_rgba(0,0,0,0.03)] border border-gray-100 dark:border-gray-700 relative overflow-hidden group active:scale-[0.98] transition-all">
@@ -412,7 +412,7 @@ const CustomerPortal: React.FC = () => {
                     }
                   },
                   {
-                    label: 'Loan Clearance Certificate',
+                    label: 'Ledger Clearance Certificate',
                     icon: 'workspace_premium',
                     action: async () => {
                       if (!customer || !company) return alert("Please wait, data is still loading...");
@@ -479,7 +479,7 @@ const CustomerPortal: React.FC = () => {
       <nav className="fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border-t border-gray-100 dark:border-gray-800 pt-4 px-2 flex justify-between items-center z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] rounded-t-[3rem]" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
         {[
           { id: 'home', icon: 'home', label: 'Home' },
-          { id: 'loans', icon: 'account_balance_wallet', label: 'Loans' },
+          { id: 'loans', icon: 'account_balance_wallet', label: 'Ledger' },
           { id: 'qr', icon: 'qr_code_scanner', label: 'Pay Now' },
           { id: 'history', icon: 'history', label: 'History' },
           { id: 'profile', icon: 'person', label: 'Account' },
@@ -556,7 +556,7 @@ const CustomerPortal: React.FC = () => {
             <div className="p-10">
               <div className="flex justify-between items-center mb-10">
                 <div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Net Payable</p><p className="font-black text-3xl text-gray-900 dark:text-white">{formatCurrency(selectedEmi.amount)}</p></div>
-                <div className="text-right"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">EMI REF</p><p className="font-black text-lg text-blue-600 bg-blue-50 px-3 py-1 rounded-lg">#{selectedEmi.emiNumber}</p></div>
+                <div className="text-right"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">INST REF</p><p className="font-black text-lg text-blue-600 bg-blue-50 px-3 py-1 rounded-lg">#{selectedEmi.emiNumber}</p></div>
               </div>
               <button
                 onClick={async () => {
@@ -564,7 +564,7 @@ const CustomerPortal: React.FC = () => {
                     const upiId = company?.upiId || UPI_ID;
                     const payeeName = encodeURIComponent(company?.name || 'JLS Suite');
                     const amount = selectedEmi.amount;
-                    const transactionNote = encodeURIComponent(`EMI_PAYMENT_LOAN_${selectedLoan?.id}_EMI_${selectedEmi.emiNumber}`);
+                    const transactionNote = encodeURIComponent(`INST_PAYMENT_RECORD_${selectedLoan?.id}_INST_${selectedEmi.emiNumber}`);
                     const upiUrl = `upi://pay?pa=${upiId}&pn=${payeeName}&am=${amount}&cu=INR&tn=${transactionNote}`;
 
                     if (Capacitor.isNativePlatform()) {
@@ -594,7 +594,7 @@ const CustomerPortal: React.FC = () => {
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 backdrop-blur-md animate-in slide-in-from-bottom-full duration-500">
           <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-t-[3.5rem] p-10 max-h-[88vh] overflow-y-auto shadow-[0_-20px_50px_rgba(0,0,0,0.2)]">
             <div className="flex justify-between items-center mb-8">
-              <div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Schedule for</p><h3 className="font-black text-2xl text-gray-900 dark:text-white">Loan #{selectedLoan.id}</h3></div>
+              <div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Schedule for</p><h3 className="font-black text-2xl text-gray-900 dark:text-white">Record #{selectedLoan.id}</h3></div>
               <button onClick={() => setShowDetailsModal(false)} className="w-12 h-12 flex items-center justify-center bg-gray-100 dark:bg-gray-900 rounded-full active:scale-90 transition-all border border-black/5"><span className="material-symbols-outlined text-xl">close</span></button>
             </div>
 
@@ -631,7 +631,7 @@ const CustomerPortal: React.FC = () => {
                   <div key={i} className={`p-5 rounded-[1.5rem] flex justify-between items-center transition-all ${e.status === 'Paid' ? 'bg-emerald-50/40 border border-emerald-100 grayscale-[0.5]' : e.status === 'Overdue' ? 'bg-red-50 border-red-100 animate-pulse' : 'bg-gray-50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700'}`}>
                     <div className="flex items-center gap-4">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs shadow-sm ${e.status === 'Paid' ? 'bg-emerald-600 text-white' : e.status === 'Overdue' ? 'bg-red-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-400'}`}>{e.emiNumber}</div>
-                      <div><p className="font-black text-sm text-gray-800 dark:text-white">EMI #{e.emiNumber}</p><p className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">{formatDate(e.dueDate)} • {e.status}</p></div>
+                      <div><p className="font-black text-sm text-gray-800 dark:text-white">Inst #{e.emiNumber}</p><p className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">{formatDate(e.dueDate)} • {e.status}</p></div>
                     </div>
                     <div className="text-right">
                       <p className="font-black text-base mb-1">{formatCurrency(e.amount)}</p>

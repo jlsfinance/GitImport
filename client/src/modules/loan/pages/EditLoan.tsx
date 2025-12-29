@@ -65,7 +65,7 @@ const EditLoan: React.FC = () => {
       const loanSnap = await getDoc(loanRef);
 
       if (!loanSnap.exists()) {
-        alert("Loan not found");
+        alert("Record not found");
         navigate('/loans');
         return;
       }
@@ -92,7 +92,7 @@ const EditLoan: React.FC = () => {
       }
     } catch (err) {
       console.error("Error loading loan:", err);
-      alert("Failed to load loan data");
+      alert("Failed to load record data");
       navigate('/loans');
     } finally {
       setLoading(false);
@@ -131,12 +131,12 @@ const EditLoan: React.FC = () => {
     e.preventDefault();
 
     if (!loanId || !loan) {
-      alert("Loan information is missing");
+      alert("Record information is missing");
       return;
     }
 
     if (form.amount < 1000) {
-      alert("Minimum loan amount is ₹1,000");
+      alert("Minimum credit amount is ₹1,000");
       return;
     }
 
@@ -155,11 +155,11 @@ const EditLoan: React.FC = () => {
         notes: form.notes || null,
       });
 
-      alert("Loan updated successfully!");
+      alert("Record updated successfully!");
       navigate(`/loans/${loanId}`);
     } catch (err) {
       console.error("Update failed:", err);
-      alert("Failed to update loan. Please try again.");
+      alert("Failed to update record. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -186,7 +186,7 @@ const EditLoan: React.FC = () => {
           <span className="material-symbols-outlined">arrow_back</span>
           <span className="font-bold text-sm hidden sm:inline">Back</span>
         </button>
-        <h1 className="text-lg font-bold">Edit Loan</h1>
+        <h1 className="text-lg font-bold">Edit Record</h1>
         <div className="w-10"></div>
       </div>
 
@@ -236,9 +236,9 @@ const EditLoan: React.FC = () => {
               <div className="flex items-start gap-3">
                 <span className="material-symbols-outlined text-amber-600 dark:text-amber-400">warning</span>
                 <div>
-                  <h4 className="font-bold text-amber-800 dark:text-amber-300">Warning: Editing an Active Loan</h4>
+                  <h4 className="font-bold text-amber-800 dark:text-amber-300">Warning: Editing an Active Record</h4>
                   <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
-                    This loan has already been {loan.status.toLowerCase()}. Any changes made here may impact the existing EMI schedule and financial records. Please proceed with caution. This action will not automatically regenerate the payment schedule.
+                    This record has already been {loan.status.toLowerCase()}. Any changes made here may impact the existing Installment schedule and financial records. Please proceed with caution. This action will not automatically regenerate the payment schedule.
                   </p>
                 </div>
               </div>
@@ -249,13 +249,13 @@ const EditLoan: React.FC = () => {
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
               <h2 className="font-bold text-base flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">account_balance</span>
-                Loan Details
+                Ledger Details
               </h2>
-              <p className="text-xs text-slate-500 mt-1">Loan ID: {loanId}</p>
+              <p className="text-xs text-slate-500 mt-1">Record ID: {loanId}</p>
             </div>
             <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Loan Amount (₹) *</label>
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Principal Amount (₹) *</label>
                 <input
                   type="number"
                   name="amount"
@@ -306,7 +306,7 @@ const EditLoan: React.FC = () => {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Application Date</label>
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Creation Date</label>
                 <input
                   type="date"
                   name="date"
@@ -331,7 +331,7 @@ const EditLoan: React.FC = () => {
                   name="notes"
                   value={form.notes}
                   onChange={handleInputChange}
-                  placeholder="Add any internal notes about this loan..."
+                  placeholder="Add any internal notes about this record..."
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#1a2230] focus:ring-2 focus:ring-primary outline-none resize-none h-24"
                 />
               </div>
@@ -349,7 +349,7 @@ const EditLoan: React.FC = () => {
                 <p className="text-xl font-bold text-slate-800 dark:text-white mt-1">₹{processingFee.toLocaleString('en-IN')}</p>
               </div>
               <div className="bg-white dark:bg-[#1e2736] rounded-xl p-4 text-center shadow-sm">
-                <p className="text-xs text-slate-500 uppercase tracking-wider">Monthly EMI</p>
+                <p className="text-xs text-slate-500 uppercase tracking-wider">Monthly Installment</p>
                 <p className="text-xl font-bold text-primary mt-1">₹{emi.toLocaleString('en-IN')}</p>
               </div>
               <div className="bg-white dark:bg-[#1e2736] rounded-xl p-4 text-center shadow-sm">
@@ -367,7 +367,7 @@ const EditLoan: React.FC = () => {
             {isSubmitting ? (
               <><div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div> Updating...</>
             ) : (
-              <>Update Loan <span className="material-symbols-outlined material-symbols-fill">check_circle</span></>
+              <>Update Record <span className="material-symbols-outlined material-symbols-fill">check_circle</span></>
             )}
           </button>
         </form>

@@ -2,9 +2,11 @@
 import React, { useState, useMemo, useCallback, memo } from 'react';
 import { Invoice } from '../types';
 import { StorageService } from '../services/storageService';
-import { Search, MoreVertical, FileText, Trash2, Users, Edit, Eye, ChevronRight, Plus, ChevronDown } from 'lucide-react';
+import { Search, MoreVertical, FileText, Trash2, Users, Edit, Eye, ChevronRight, Plus, ChevronDown, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HapticService } from '../services/hapticService';
+import { useCompany } from '../contexts/CompanyContext';
+import { InvoicePdfService } from '../services/invoicePdfService';
 import { isLowEndDevice, debounce } from '../utils/performance';
 
 // Check device capability once
@@ -50,10 +52,7 @@ const InvoiceCard = memo(({
         className="bg-surface-container-low p-4 flex justify-between items-center rounded-2xl border border-border cursor-pointer"
         onClick={handleClick}
       >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-google-blue/10 flex items-center justify-center text-google-blue font-bold text-sm">
-            {invoice.customerName.charAt(0)}
-          </div>
+        <div className="flex items-center gap-2">
           <div className="min-w-0">
             <h3 className="font-bold text-foreground text-sm truncate max-w-[140px]">{invoice.customerName}</h3>
             <p className="text-[10px] text-muted-foreground font-medium">
@@ -78,7 +77,7 @@ const InvoiceCard = memo(({
 
   // Full card with animations for capable devices
   return (
-    <div className="relative overflow-hidden rounded-[28px] group bg-surface-container-low border border-border shadow-sm hover:shadow-google transition-all">
+    <div className="relative overflow-hidden rounded-[28px] group bg-surface-container-low border border-border shadow-sm">
       <div className="absolute inset-0 bg-google-red flex justify-end items-center px-8">
         <Trash2 className="w-6 h-6 text-white" />
       </div>
@@ -97,10 +96,7 @@ const InvoiceCard = memo(({
         className="bg-surface-container-low p-5 flex justify-between items-center relative z-10 cursor-pointer"
         onClick={handleClick}
       >
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-google-blue/10 flex items-center justify-center text-google-blue font-bold text-lg border border-google-blue/5">
-            {invoice.customerName.charAt(0)}
-          </div>
+        <div className="flex items-center gap-2">
           <div className="min-w-0">
             <h3 className="font-bold text-foreground text-sm tracking-tight truncate max-w-[180px]">{invoice.customerName}</h3>
             <p className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1.5 mt-0.5">
@@ -144,6 +140,7 @@ const AllInvoices: React.FC<AllInvoicesProps> = ({
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PAID' | 'PENDING'>('ALL');
   const [selectedForAction, setSelectedForAction] = useState<Invoice | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const { company } = useCompany();
 
   // Debounced search handler
   const handleSearchChange = useMemo(
@@ -197,7 +194,7 @@ const AllInvoices: React.FC<AllInvoicesProps> = ({
   return (
     <div className="bg-background min-h-screen flex flex-col pb-32">
       {/* Google Search Style Header */}
-      <div className="sticky top-0 z-30 px-4 pt-14 pb-4 bg-background/95 backdrop-blur-md">
+      <div className="sticky top-0 z-30 px-4 pt-14 pb-4 bg-background">
         <div className="max-w-5xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold font-heading text-foreground tracking-tight">{title}</h1>
@@ -270,7 +267,7 @@ const AllInvoices: React.FC<AllInvoicesProps> = ({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setSelectedForAction(null)}
-                className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[100]"
+                className="fixed inset-0 bg-black/60 z-[100]"
               />
 
               {/* Sheet */}
@@ -278,7 +275,7 @@ const AllInvoices: React.FC<AllInvoicesProps> = ({
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                transition={{ type: "tween", duration: 0.2 }}
                 className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 z-[101] rounded-t-[32px] shadow-2xl overflow-hidden pb-8"
               >
                 {/* Drag Handle */}
@@ -317,6 +314,26 @@ const AllInvoices: React.FC<AllInvoicesProps> = ({
                     <div className="flex-1 text-left min-w-0">
                       <p className="font-bold text-slate-900 dark:text-slate-100 text-base">View Details</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">View or print breakdown</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                  </button>
+
+                  <button
+                    onClick={async () => {
+                      if (company && selectedForAction) {
+                        const customer = StorageService.getCustomers().find(c => c.id === selectedForAction.customerId) || null;
+                        await InvoicePdfService.generatePDF(selectedForAction, company as any, customer);
+                        setSelectedForAction(null);
+                      }
+                    }}
+                    className="w-full flex items-center gap-4 p-4 rounded-[24px] hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group active:scale-[0.98]"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                      <Download className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="font-bold text-slate-900 dark:text-slate-100 text-base">Download PDF</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Save as PDF file</p>
                     </div>
                     <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-slate-500 transition-colors" />
                   </button>

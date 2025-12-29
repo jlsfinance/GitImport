@@ -126,11 +126,11 @@ const Reports: React.FC = () => {
         const entries: any[] = [];
         customerLoans.forEach(l => {
             if (l.disbursalDate) {
-                entries.push({ date: l.disbursalDate, type: 'Debit', desc: `Loan Disbursed (ID: ${l.id})`, amount: l.amount });
+                entries.push({ date: l.disbursalDate, type: 'Debit', desc: `Credit Disbursed (ID: ${l.id})`, amount: l.amount });
             }
         });
         customerReceipts.forEach(r => {
-            entries.push({ date: r.paymentDate, type: 'Credit', desc: `Payment Recd (Loan: ${r.loanId})`, amount: r.amount });
+            entries.push({ date: r.paymentDate, type: 'Credit', desc: `Payment Recd (Record: ${r.loanId})`, amount: r.amount });
         });
         return entries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }, [loans, receipts, selectedCustomer]);
@@ -161,7 +161,7 @@ const Reports: React.FC = () => {
                     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-800">
-                                <p className="text-xs text-indigo-600 dark:text-indigo-300 font-bold uppercase">Total Disbursed</p>
+                                <p className="text-xs text-indigo-600 dark:text-indigo-300 font-bold uppercase">Total Credit Given</p>
                                 <p className="text-2xl font-bold text-indigo-900 dark:text-white">{formatCurrency(summaryData.totalLent)}</p>
                             </div>
                             <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-2xl border border-green-100 dark:border-green-800">
@@ -173,7 +173,7 @@ const Reports: React.FC = () => {
                                 <p className="text-2xl font-bold text-purple-900 dark:text-white">{formatCurrency(summaryData.totalOutstanding)}</p>
                             </div>
                             <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
-                                <p className="text-xs text-slate-500 font-bold uppercase">Active Loans</p>
+                                <p className="text-xs text-slate-500 font-bold uppercase">Active Records</p>
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">{summaryData.activeLoansCount}</p>
                             </div>
                         </div>
@@ -186,7 +186,7 @@ const Reports: React.FC = () => {
                         <div className="flex justify-between items-center">
                             <h3 className="font-bold text-lg">Arrears Report</h3>
                             <button
-                                onClick={() => downloadPDF('Arrears Report', ['Customer', 'Loan ID', 'Due Date', 'Amount'], arrearsData.map(a => [a.customerName, a.loanId, a.dueDate, formatCurrency(a.amount)]))}
+                                onClick={() => downloadPDF('Arrears Report', ['Customer', 'Record ID', 'Due Date', 'Amount'], arrearsData.map(a => [a.customerName, a.loanId, a.dueDate, formatCurrency(a.amount)]))}
                                 className="text-xs bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1"
                             >
                                 <span className="material-symbols-outlined text-sm">download</span> PDF
@@ -206,7 +206,7 @@ const Reports: React.FC = () => {
                                         <tr key={i}>
                                             <td className="px-4 py-2">
                                                 <div className="font-bold">{item.customerName}</div>
-                                                <div className="text-xs text-slate-500">#{item.loanId} (EMI {item.emiNumber})</div>
+                                                <div className="text-xs text-slate-500">#{item.loanId} (Inst {item.emiNumber})</div>
                                             </td>
                                             <td className="px-4 py-2 text-red-600">{item.dueDate}</td>
                                             <td className="px-4 py-2 text-right font-bold">{formatCurrency(item.amount)}</td>
@@ -229,7 +229,7 @@ const Reports: React.FC = () => {
                                 className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-sm font-bold"
                             />
                             <button
-                                onClick={() => downloadPDF(`Collections_${selectedMonth}`, ['Date', 'Customer', 'Loan ID', 'Amount'], monthlyCollectionData.map(r => [r.paymentDate, r.customerName, r.loanId, formatCurrency(r.amount)]))}
+                                onClick={() => downloadPDF(`Collections_${selectedMonth}`, ['Date', 'Customer', 'Record ID', 'Amount'], monthlyCollectionData.map(r => [r.paymentDate, r.customerName, r.loanId, formatCurrency(r.amount)]))}
                                 className="text-xs bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1"
                             >
                                 <span className="material-symbols-outlined text-sm">download</span> PDF
@@ -275,7 +275,7 @@ const Reports: React.FC = () => {
                                 className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-sm font-bold"
                             />
                             <button
-                                onClick={() => downloadPDF(`Lent_Report_${selectedMonth}`, ['Date', 'Customer', 'Loan ID', 'Amount', 'Rate'], lentData.map(l => [l.disbursalDate, l.customerName, l.id, formatCurrency(l.amount), l.interestRate + '%']))}
+                                onClick={() => downloadPDF(`Credit_Report_${selectedMonth}`, ['Date', 'Customer', 'Record ID', 'Amount', 'Rate'], lentData.map(l => [l.disbursalDate, l.customerName, l.id, formatCurrency(l.amount), l.interestRate + '%']))}
                                 className="text-xs bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1"
                             >
                                 <span className="material-symbols-outlined text-sm">download</span> PDF
@@ -297,7 +297,7 @@ const Reports: React.FC = () => {
                                             <td className="px-4 py-2 font-bold">{item.customerName}</td>
                                             <td className="px-4 py-2 text-right font-mono">{formatCurrency(item.amount)}</td>
                                         </tr>
-                                    )) : <tr><td colSpan={3} className="p-4 text-center text-slate-500">No loans disbursed this month.</td></tr>}
+                                    )) : <tr><td colSpan={3} className="p-4 text-center text-slate-500">No records disbursed this month.</td></tr>}
                                 </tbody>
                                 <tfoot className="bg-slate-50 dark:bg-slate-800 font-bold">
                                     <tr>
@@ -405,7 +405,7 @@ const Reports: React.FC = () => {
                         { id: 'summary', label: 'Summary', icon: 'dashboard' },
                         { id: 'arrears', label: 'Arrears', icon: 'warning' },
                         { id: 'monthly', label: 'Collection', icon: 'calendar_month' },
-                        { id: 'lent', label: 'Lent', icon: 'payments' },
+                        { id: 'lent', label: 'Credit Given', icon: 'payments' },
                         { id: 'ledger', label: 'Ledger', icon: 'menu_book' },
                     ].map(tab => (
                         <button

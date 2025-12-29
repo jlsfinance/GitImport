@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ---------------- USERS ---------------- */
+    match /users/{userId} {
+      allow get, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+    }
+
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    /* ---------------- COMPANIES ---------------- */
+    match /companies/{companyId} {
+      allow get, list: if request.auth != null;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    match /companies/{companyId}/{document=**} {
+      // Recommending: restriction to members should be added here later
+      allow read, write: if request.auth != null;
+    }
+
+    /* ---------------- COMPANY MEMBERS ---------------- */
+    match /companyMembers/{companyId} {
+      allow get, list: if request.auth != null;
+    }
+
+    match /companyMembers/{companyId}/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    /* ---------------- PENDING INVITES ---------------- */
+    match /pendingInvites/{inviteId} {
+      allow read, write: if request.auth != null;
+    }
+
+    /* ---------------- 🔐 PUBLIC BILL (TOKEN + EXPIRY) ---------------- */
+    match /publicBills/{billId} {
+
+      // ✅ OWNER ACCESS
+      allow read, write: if request.auth != null;
+
+      // ✅ PUBLIC ACCESS (Search only)
+      // Because Web SDK can't send 'query' for getDoc, we allow 'list' with strict filters
+      allow get, list: if 
+        request.query.publicToken == resource.data.publicToken &&
+        request.time < resource.data.expiresAt;
+    }
+  }
+}

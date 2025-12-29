@@ -126,8 +126,8 @@ export async function sendEMIReminderNotification(
 ): Promise<NotificationResponse> {
     return sendPushNotification(
         customerFcmToken,
-        '💰 EMI Payment Reminder',
-        `Dear ${customerName}, your EMI of ₹${amount.toLocaleString('en-IN')} is due on ${dueDate}. Please make the payment to avoid late fees.`,
+        '💰 Installment Payment Reminder',
+        `Dear ${customerName}, your installment of ₹${amount.toLocaleString('en-IN')} is due on ${dueDate}. Please make the payment to avoid late fees.`,
         {
             type: 'emi_reminder',
             loanId,
@@ -169,8 +169,8 @@ export async function sendLoanApprovedNotification(
 ): Promise<NotificationResponse> {
     return sendPushNotification(
         customerFcmToken,
-        '🎉 Loan Approved!',
-        `Congratulations ${customerName}! Your loan of ₹${loanAmount.toLocaleString('en-IN')} has been approved. Check your app for details.`,
+        '🎉 Record Approved!',
+        `Congratulations ${customerName}! Your credit of ₹${loanAmount.toLocaleString('en-IN')} has been approved. Check your app for details.`,
         {
             type: 'loan_approved',
             loanId,
@@ -191,8 +191,8 @@ export async function sendOverdueAlertToAdmin(
 ): Promise<NotificationResponse> {
     return sendPushNotification(
         adminFcmToken,
-        '⚠️ Overdue Payment Alert',
-        `${customerName}'s EMI of ₹${amount.toLocaleString('en-IN')} is ${daysPastDue} days overdue. Immediate follow-up required.`,
+        '⚠️ Overdue Installment Alert',
+        `${customerName}'s installment of ₹${amount.toLocaleString('en-IN')} is ${daysPastDue} days overdue. Immediate follow-up required.`,
         {
             type: 'overdue_alert',
             loanId,

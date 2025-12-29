@@ -99,7 +99,7 @@ const NewLoan: React.FC = () => {
 
   const handleCustomerSelect = (customerId: string) => {
     if (customersWithActiveLoans.has(customerId)) {
-      alert("This customer already has an active loan.");
+      alert("This customer already has an active record.");
       return;
     }
     setSelectedCustomerId(customerId);
@@ -124,7 +124,7 @@ const NewLoan: React.FC = () => {
     if (!selectedCustomer || !auth.currentUser) return;
 
     // Validation
-    if (form.amount < 1000) return alert("Minimum loan amount is 1000");
+    if (form.amount < 1000) return alert("Minimum amount is 1000");
     if (form.tenure < 1) return alert("Minimum tenure is 1 month");
 
     setIsSubmitting(true);
@@ -172,12 +172,12 @@ const NewLoan: React.FC = () => {
         return nextId;
       });
 
-      alert(`Loan Application Submitted Successfully! Loan ID: ${newLoanId}`);
+      alert(`New Entry Submitted Successfully! Record ID: ${newLoanId}`);
       navigate('/loans');
 
     } catch (error) {
       console.error("Submission failed:", error);
-      alert("Failed to submit loan application. Please try again.");
+      alert("Failed to submit entry. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -202,7 +202,7 @@ const NewLoan: React.FC = () => {
           <span className="material-symbols-outlined">arrow_back</span>
           <span className="font-bold text-sm hidden sm:inline">Back</span>
         </button>
-        <h1 className="text-lg font-bold">New Application</h1>
+        <h1 className="text-lg font-bold">New Ledger Entry</h1>
         <div className="w-10"></div> {/* Spacer */}
       </div>
 
@@ -301,7 +301,7 @@ const NewLoan: React.FC = () => {
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
               <h2 className="font-bold text-base flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">edit_document</span>
-                Loan Configuration
+                Ledger Configuration
               </h2>
             </div>
 
@@ -309,7 +309,7 @@ const NewLoan: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {/* Amount */}
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Loan Amount (₹)</label>
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Principal Amount (₹)</label>
                   <input
                     type="number"
                     name="amount"
@@ -379,7 +379,7 @@ const NewLoan: React.FC = () => {
               {/* Summary Box */}
               <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 grid grid-cols-2 gap-4">
                 <div className="text-center">
-                  <p className="text-xs text-slate-500 uppercase font-bold">Monthly EMI</p>
+                  <p className="text-xs text-slate-500 uppercase font-bold">Monthly Installment</p>
                   <p className="text-xl font-extrabold text-primary">₹{emi.toLocaleString('en-IN')}</p>
                 </div>
                 <div className="text-center">
@@ -396,7 +396,7 @@ const NewLoan: React.FC = () => {
                 {isSubmitting ? (
                   <><div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div> Processing...</>
                 ) : (
-                  <>Submit Application <span className="material-symbols-outlined material-symbols-fill">arrow_forward</span></>
+                  <>Create Record <span className="material-symbols-outlined material-symbols-fill">arrow_forward</span></>
                 )}
               </button>
             </form>

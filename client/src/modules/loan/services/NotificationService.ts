@@ -206,8 +206,8 @@ export const NotificationService = {
                     // If "isPast" (and not today), it's Overdue. 
 
                     let trigger: any = { at: scheduleDate };
-                    let body = `EMI of Rs. ${nextInstallment.amount} is due today for ${loan.customerName}`;
-                    let title = 'EMI Due Today';
+                    let body = `Installment of Rs. ${nextInstallment.amount} is due today for ${loan.customerName}`;
+                    let title = 'Installment Due Today';
 
                     if (isToday(dueDate)) {
                         // It's due today. 
@@ -218,8 +218,8 @@ export const NotificationService = {
                         }
                     } else if (isPast(dueDate)) {
                         // It is OVERDUE.
-                        title = 'EMI Overdue';
-                        body = `EMI of Rs. ${nextInstallment.amount} from ${loan.customerName} was due on ${nextInstallment.date}`;
+                        title = 'Installment Overdue';
+                        body = `Installment of Rs. ${nextInstallment.amount} from ${loan.customerName} was due on ${nextInstallment.date}`;
                         // Trigger immediately (5 sec delay)
                         trigger = { at: new Date(Date.now() + 1000 * 5) };
                     }
@@ -252,7 +252,7 @@ export const NotificationService = {
         // Always schedule a "Sync Complete" immediate notification to confirm logic ran
         notifications.push({
             title: 'Reminders Synced',
-            body: `Processed active loans. Alerts set for upcoming due dates.`,
+            body: `Processed active records. Alerts set for upcoming due dates.`,
             id: 999999,
             schedule: { at: new Date(Date.now() + 2000) },
             sound: 'beep.wav',

@@ -243,8 +243,8 @@ export const OneSignalService = {
     async sendEMIReminder(playerId: string, customerName: string, amount: number, dueDate: string, loanId: string): Promise<boolean> {
         return this.sendNotification(
             playerId,
-            '💰 EMI Payment Reminder',
-            `Dear ${customerName}, your EMI of ₹${amount.toLocaleString('en-IN')} is due on ${dueDate}.`,
+            '💰 Installment Payment Reminder',
+            `Dear ${customerName}, your installment of ₹${amount.toLocaleString('en-IN')} is due on ${dueDate}.`,
             { type: 'emi_reminder', loanId, amount: amount.toString(), dueDate }
         );
     },

@@ -13,7 +13,7 @@ import Daybook from '../../components/Daybook';
 import Expenses from '../../components/Expenses';
 import Payments from '../../components/Payments';
 import Import from '../../components/Import';
-import CustomerLedger from '../../components/CustomerLedger';
+
 import Dashboard from '../../components/Dashboard';
 import Reports from '../../components/Reports';
 import { PublicBillView } from '../../components/PublicBillView';
@@ -353,14 +353,7 @@ const AccountingApp: React.FC = () => {
                             />
                         )}
 
-                        {currentView === ViewState.CUSTOMER_LEDGER && selectedCustomerId && (
-                            <CustomerLedger
-                                customerId={selectedCustomerId}
-                                onBack={() => { setSelectedCustomerId(null); setCurrentView(ViewState.CUSTOMERS); }}
-                                onViewInvoice={handleViewInvoice}
-                                onEditPayment={handleEditPayment}
-                            />
-                        )}
+
 
                         {(currentView === ViewState.CREATE_INVOICE || currentView === ViewState.EDIT_INVOICE) && (
                             <CreateInvoice

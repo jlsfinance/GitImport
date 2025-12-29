@@ -36,6 +36,7 @@ const Settings: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [isGeminiConfigured, setIsGeminiConfigured] = useState(false);
+  const [isKeysVisible, setIsKeysVisible] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -183,15 +184,46 @@ const Settings: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const content = e.target?.result;
       if (typeof content === 'string') {
-        const success = StorageService.importData(content);
-        if (success) {
-          setImportStatus('SUCCESS');
-          setTimeout(() => window.location.reload(), 1500);
-        } else {
+        const confirmRestore = confirm("Restoring will OVERWRITE your current data.\nIf you are connected to Cloud, it will also update the Cloud.\n\nAre you sure?");
+        if (!confirmRestore) {
+          setImportStatus('IDLE');
+          return;
+        }
+
+        // Show loading state (reuse isSyncing or add new state if strictly needed, reusing isSyncing is cleaner)
+        setImportStatus('IDLE'); // Reset status
+
+        // Use a temporary loading indicator via alert or UI
+        // Since we are inside a callback, let's try to set status to something like 'SYNCING'? 
+        // But importStatus only has IDLE/SUCCESS/ERROR. 
+        // Let's use isSyncing for UI feedback if possible, or just block UI.
+        // const originalText = "Restoring...";
+
+        try {
+          // Show a busy indicator if possible, though browser keeps UI responsive mostly
+          // We can use the isSyncing state as a proxy for "Busy" if desired
+          setIsSyncing(true);
+
+          const result = await StorageService.importData(content);
+
+          setIsSyncing(false);
+
+          if (result.success) {
+            setImportStatus('SUCCESS');
+            alert("✅ " + result.message);
+            window.location.reload();
+          } else {
+            setImportStatus('ERROR');
+            alert("❌ Restore Failed: " + result.message);
+          }
+        } catch (err: any) {
+          setIsSyncing(false);
+          console.error(err);
           setImportStatus('ERROR');
+          alert("❌ Critical Error: " + (err.message || "Unknown error occurred"));
         }
       }
     };
@@ -473,19 +505,38 @@ const Settings: React.FC = () => {
               <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl text-[10px] text-blue-800 dark:text-blue-300 border border-blue-100 dark:border-blue-900/20 mb-6 font-black uppercase tracking-wider italic">
                 Paste config code using the button above or fill manually.
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'].map((key) => (
-                  <div key={key}>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{key}</label>
-                    <input
-                      type="text"
-                      className="w-full border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/50 p-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-orange-500 outline-none"
-                      value={firebaseConfig[key as keyof FirebaseConfig]}
-                      onChange={e => handleConfigChange(key as keyof FirebaseConfig, e.target.value)}
-                    />
-                  </div>
-                ))}
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-xs font-black uppercase tracking-widest text-slate-500">Configuration Keys</div>
+                <button
+                  type="button"
+                  onClick={() => setIsKeysVisible(!isKeysVisible)}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                  {isKeysVisible ? 'Hide Configuration' : 'View / Edit Configuration'}
+                </button>
               </div>
+
+              {isKeysVisible ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-200">
+                  {['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'].map((key) => (
+                    <div key={key}>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{key}</label>
+                      <input
+                        type="password"
+                        className="w-full border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/50 p-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-orange-500 outline-none"
+                        value={firebaseConfig[key as keyof FirebaseConfig]}
+                        onChange={e => handleConfigChange(key as keyof FirebaseConfig, e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-center gap-3 text-slate-400">
+                  <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600"></div>
+                  <div className="text-xs font-black uppercase tracking-widest">Configuration is Hidden</div>
+                  <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600"></div>
+                </div>
+              )}
 
               {/* Connection Status Display */}
               {connectionStatus && (
@@ -745,6 +796,9 @@ const Settings: React.FC = () => {
                     <Wand2 className="w-7 h-7 text-purple-600" /> Smart Auto-Fill
                   </h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">Paste the configuration code from Firebase console.</p>
+                  <p className="text-[10px] text-red-500 font-bold mt-1 uppercase tracking-wider">
+                    ⚠️ Do not share screen while pasting. Keep your keys private.
+                  </p>
                 </div>
                 <button onClick={() => setShowAutoFill(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
                   <XCircle className="w-7 h-7 text-slate-300 hover:text-red-500 transition-colors" />

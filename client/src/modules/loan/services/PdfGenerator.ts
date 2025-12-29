@@ -138,10 +138,10 @@ const toBase64 = (url: string): Promise<string> => {
 };
 
 const LOAN_TERMS = [
-    "1. The borrower agrees to pay the EMI on or before the due date.",
+    "1. The borrower agrees to pay the Installment on or before the due date.",
     "2. Default in payment will attract penalty charges as per company policy.",
-    "3. The loan is secured against the collateral provided (if any).",
-    "4. The company reserves the right to recall the loan in case of default.",
+    "3. The credit is secured against the collateral provided (if any).",
+    "4. The company reserves the right to recall the credit in case of default.",
     "5. Pre-closure charges may apply as per the agreement.",
     "6. This agreement is subject to the jurisdiction of the local courts.",
 ];
@@ -165,7 +165,7 @@ export class PdfGenerator {
         // Title
         pdf.setFontSize(16);
         pdf.setTextColor(0);
-        pdf.text("LOAN AGREEMENT", 105, 45, { align: "center" });
+        pdf.text("CREDIT AGREEMENT", 105, 45, { align: "center" });
 
         // Loan Details Box
         pdf.setDrawColor(200);
@@ -173,14 +173,14 @@ export class PdfGenerator {
         pdf.rect(15, 55, 180, 40, "FD");
 
         pdf.setFontSize(11);
-        pdf.text(`Loan Account No: ${loan.id}`, 20, 65);
+        pdf.text(`Record Account No: ${loan.id}`, 20, 65);
         pdf.text(`Date: ${safeFormatDate(loan.date)}`, 140, 65);
 
-        pdf.text(`Loan Amount: ${formatCurrency(loan.amount)}`, 20, 75);
+        pdf.text(`Credit Amount: ${formatCurrency(loan.amount)}`, 20, 75);
         pdf.text(`Interest Rate: ${loan.interestRate}% p.a.`, 140, 75);
 
         pdf.text(`Tenure: ${loan.tenure} Months`, 20, 85);
-        pdf.text(`EMI Amount: ${formatCurrency(loan.emi)}`, 140, 85);
+        pdf.text(`Installment Amount: ${formatCurrency(loan.emi)}`, 140, 85);
 
         // Borrower Details
         pdf.setFontSize(12);
@@ -270,7 +270,7 @@ export class PdfGenerator {
         pdf.text(`Received with thanks from: ${customer.name}`, 10, y);
 
         y += 8;
-        pdf.text(`Loan Account No: ${loan.id}`, 10, y);
+        pdf.text(`Record Account No: ${loan.id}`, 10, y);
 
         y += 8;
         pdf.text(`The sum of Rupees: ${toWords(emi.amountPaid || emi.amount)} Only`, 10, y);
@@ -283,7 +283,7 @@ export class PdfGenerator {
         y += 10;
         pdf.setFontSize(10);
         pdf.setFont("helvetica", "normal");
-        pdf.text(`Toward: EMI #${emi.emiNumber} | Payment Mode: ${emi.paymentMethod || 'Cash'}`, 10, y);
+        pdf.text(`Toward: Inst #${emi.emiNumber} | Payment Mode: ${emi.paymentMethod || 'Cash'}`, 10, y);
 
         // Footer
         pdf.setFontSize(8);
@@ -305,7 +305,7 @@ export class PdfGenerator {
         pdf.text(company.name, pageWidth / 2, 15, { align: 'center' });
 
         pdf.setFontSize(10);
-        pdf.text("LOAN REPAYMENT SCHEDULE", pageWidth / 2, 25, { align: 'center' });
+        pdf.text("REPAYMENT SCHEDULE", pageWidth / 2, 25, { align: 'center' });
         pdf.text(company.address || "", pageWidth / 2, 32, { align: 'center' });
 
         // Reset Text Color
@@ -316,7 +316,7 @@ export class PdfGenerator {
         pdf.setFontSize(11);
 
         pdf.text(`Customer Name: ${customer.name}`, 15, y);
-        pdf.text(`Loan ID: ${loan.id}`, 120, y);
+        pdf.text(`Record ID: ${loan.id}`, 120, y);
         y += 7;
 
         pdf.text(`Mobile: ${customer.phone}`, 15, y);
@@ -333,14 +333,14 @@ export class PdfGenerator {
 
         y += 7;
         pdf.setFont("helvetica", "bold");
-        pdf.text("LOAN SUMMARY", 20, y);
+        pdf.text("CREDIT SUMMARY", 20, y);
         pdf.setFont("helvetica", "normal");
         y += 8;
 
         pdf.text(`Amount: ${formatCurrency(loan.amount)}`, 20, y);
         pdf.text(`Interest: ${loan.interestRate}%`, 70, y);
         pdf.text(`Tenure: ${loan.tenure}M`, 110, y);
-        pdf.text(`EMI: ${formatCurrency(loan.emi)}`, 150, y);
+        pdf.text(`Inst: ${formatCurrency(loan.emi)}`, 150, y);
 
         y += 20;
 
@@ -395,7 +395,7 @@ export class PdfGenerator {
             transactions.push({
                 date: loan.date,
                 type: 'DISBURSAL',
-                ref: `Loan #${loan.id}`,
+                ref: `Credit #${loan.id}`,
                 debit: loan.amount,
                 credit: 0
             });
@@ -404,8 +404,8 @@ export class PdfGenerator {
             loan.repaymentSchedule?.filter(e => e.status === 'Paid').forEach(e => {
                 transactions.push({
                     date: e.paymentDate || loan.date,
-                    type: 'EMI PAYMENT',
-                    ref: `Loan #${loan.id} - EMI #${e.emiNumber}`,
+                    type: 'INSTALLMENT PAYMENT',
+                    ref: `Credit #${loan.id} - Inst #${e.emiNumber}`,
                     debit: 0,
                     credit: e.amountPaid || e.amount
                 });
@@ -464,14 +464,14 @@ export class PdfGenerator {
         // Certificate Title
         pdf.setFontSize(20);
         pdf.setTextColor(0);
-        pdf.text("NO DUES CERTIFICATE", pageWidth / 2, 80, { align: "center" });
+        pdf.text("LEDGER CLEARANCE CERTIFICATE", pageWidth / 2, 80, { align: "center" });
 
         // Content
         pdf.setFontSize(12);
         pdf.setFont("helvetica", "normal");
         let contentY = 100;
 
-        const certificateText = `This is to certify that Mr./Ms. ${customer.name} having Loan Account Number ${loan.id} has successfully repaid the entire loan amount along with all applicable interest and charges.
+        const certificateText = `This is to certify that Mr./Ms. ${customer.name} having Record Account Number ${loan.id} has successfully repaid the entire credit amount along with all applicable interest and charges.
 
 As on ${format(new Date(), 'dd-MMM-yyyy')}, there are no outstanding dues against the aforementioned loan account.
 
@@ -483,12 +483,12 @@ The company has no further claim or lien on any security/collateral provided for
         // Loan Details
         contentY += 60;
         pdf.setFont("helvetica", "bold");
-        pdf.text("LOAN DETAILS:", 30, contentY);
+        pdf.text("LEDGER DETAILS:", 30, contentY);
         pdf.setFont("helvetica", "normal");
         contentY += 10;
         pdf.text(`Total Sanctioned Amount: ${formatCurrency(loan.amount)}`, 35, contentY);
         contentY += 7;
-        pdf.text(`Loan Closure Date: ${format(new Date(), 'dd-MMM-yyyy')}`, 35, contentY);
+        pdf.text(`Record Closure Date: ${format(new Date(), 'dd-MMM-yyyy')}`, 35, contentY);
 
         // Signatures
         const signY = 240;

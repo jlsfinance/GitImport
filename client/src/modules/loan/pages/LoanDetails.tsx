@@ -181,14 +181,14 @@ const generateTopUpMessage = ({
     return `
 Dear ${customerName},
 
-Your loan (ID: ${loanId}) has been successfully TOP-UPPED.
+Your record (ID: ${loanId}) has been successfully TOP-UPPED.
 
 Outstanding before top-up: Rs. ${outstanding}
 Top-up amount: Rs. ${topUpAmount}
 
-New EMI: Rs. ${newEmi}
+New Installment: Rs. ${newEmi}
 Tenure: ${tenure} months
-First EMI Date: ${firstEmiDate}
+First Installment Date: ${firstEmiDate}
 
 Thank you for choosing ${companyName}.
 `;
@@ -236,21 +236,21 @@ async function toBase64(url: string, maxWidth: number = 200, quality: number = 0
 }
 
 const TOPUP_TERMS = [
-    "1. This agreement revises only the EMI schedule of the original loan.",
-    "2. All EMIs already paid by the borrower shall remain valid and unchanged.",
+    "1. This agreement revises only the Installment schedule of the original record.",
+    "2. All Installments already paid by the borrower shall remain valid and unchanged.",
     "3. The outstanding principal as on the top-up date is acknowledged by the borrower.",
     "4. An additional amount has been disbursed as top-up and merged with outstanding.",
-    "5. The borrower agrees to pay revised EMI as per the new repayment schedule.",
+    "5. The borrower agrees to pay revised Installment as per the new repayment schedule.",
     "6. Processing fees and other charges are applicable as per company policy.",
-    "7. All other terms and conditions of the original loan agreement remain unchanged.",
-    "7. All other terms and conditions of the original loan agreement remain unchanged.",
+    "7. All other terms and conditions of the original record agreement remain unchanged.",
+    "7. All other terms and conditions of the original record agreement remain unchanged.",
 ];
 
 const LOAN_TERMS = [
-    "1. The borrower agrees to pay the EMI on or before the due date.",
+    "1. The borrower agrees to pay the Installment on or before the due date.",
     "2. Default in payment will attract penalty charges as per company policy.",
     "3. The loan is secured against the collateral provided (if any).",
-    "4. The company reserves the right to recall the loan in case of default.",
+    "4. The company reserves the right to recall the credit in case of default.",
     "5. Pre-closure charges may apply as per the agreement.",
     "6. This agreement is subject to the jurisdiction of the local courts.",
 ];
@@ -449,7 +449,7 @@ const LoanDetails: React.FC = () => {
                 paymentDate: existingEmi.paymentDate || null,
                 remark: existingEmi.remark || '---',
                 receiptDownloadable: existingEmi.status === 'Paid',
-                type: isOldEmi ? 'OLD EMI' : 'TOP-UP EMI'
+                type: isOldEmi ? 'OLD INST' : 'TOP-UP INST'
             });
         }
         return schedule;
@@ -473,7 +473,7 @@ const LoanDetails: React.FC = () => {
 
         pdfDoc.setFontSize(14);
         pdfDoc.setFont("helvetica", "bold");
-        pdfDoc.text("LOAN FORECLOSURE CERTIFICATE", pdfDoc.internal.pageSize.getWidth() / 2, y, { align: 'center' });
+        pdfDoc.text("CREDIT FORECLOSURE CERTIFICATE", pdfDoc.internal.pageSize.getWidth() / 2, y, { align: 'center' });
         y += 10;
 
         pdfDoc.line(14, y, 196, y);
@@ -496,18 +496,18 @@ const LoanDetails: React.FC = () => {
         y += 10;
 
         pdfDoc.setFont("helvetica", "bold");
-        pdfDoc.text("LOAN DETAILS", 14, y);
+        pdfDoc.text("RECORD DETAILS", 14, y);
         y += 7;
         pdfDoc.setFont("helvetica", "normal");
-        pdfDoc.text(`Loan ID: ${loanData.id}`, 14, y);
+        pdfDoc.text(`Record ID: ${loanData.id}`, 14, y);
         y += 6;
-        pdfDoc.text(`Original Loan Amount: ${formatCurrency(loanData.amount)}`, 14, y);
+        pdfDoc.text(`Original Principal Amount: ${formatCurrency(loanData.amount)}`, 14, y);
         y += 6;
         pdfDoc.text(`Interest Rate: ${loanData.interestRate}% p.a.`, 14, y);
         y += 6;
         pdfDoc.text(`Tenure: ${loanData.tenure} Months`, 14, y);
         y += 6;
-        pdfDoc.text(`Monthly EMI: ${formatCurrency(loanData.emi)}`, 14, y);
+        pdfDoc.text(`Monthly Installment: ${formatCurrency(loanData.emi)}`, 14, y);
         y += 6;
         pdfDoc.text(`Disbursement Date: ${safeFormatDate(loanData.disbursalDate)}`, 14, y);
         y += 10;
@@ -520,9 +520,9 @@ const LoanDetails: React.FC = () => {
         const totalEmiPaid = paidEmis.reduce((sum, e) => sum + (e.amountPaid || e.amount), 0);
 
         pdfDoc.setFont("helvetica", "normal");
-        pdfDoc.text(`EMIs Paid: ${paidEmis.length} of ${loanData.tenure}`, 14, y);
+        pdfDoc.text(`Installments Paid: ${paidEmis.length} of ${loanData.tenure}`, 14, y);
         y += 6;
-        pdfDoc.text(`Total EMI Amount Paid: ${formatCurrency(totalEmiPaid)}`, 14, y);
+        pdfDoc.text(`Total Installment Amount Paid: ${formatCurrency(totalEmiPaid)}`, 14, y);
         y += 10;
 
         pdfDoc.setFont("helvetica", "bold");
@@ -546,9 +546,9 @@ const LoanDetails: React.FC = () => {
 
         pdfDoc.setFont("helvetica", "italic");
         pdfDoc.setFontSize(10);
-        pdfDoc.text("This certificate confirms that the above loan has been foreclosed and all dues have been cleared.", 14, y);
+        pdfDoc.text("This certificate confirms that the above credit has been foreclosed and all dues have been cleared.", 14, y);
         y += 6;
-        pdfDoc.text("The customer has no further liability towards this loan.", 14, y);
+        pdfDoc.text("The customer has no further liability towards this record.", 14, y);
         y += 15;
 
         pdfDoc.setFont("helvetica", "normal");
@@ -629,12 +629,12 @@ const LoanDetails: React.FC = () => {
             const pdfDoc = await generateForeclosurePDF({ ...loan, repaymentSchedule: updatedSchedule }, foreclosureData);
             await savePdf(pdfDoc, `Foreclosure_Certificate_${loan.id}.pdf`);
 
-            alert('Loan Pre-closed successfully. Certificate downloaded.');
+            alert('Record Pre-closed successfully. Certificate downloaded.');
             setIsPrecloseModalOpen(false);
             fetchLoanAndCustomer();
         } catch (error) {
             console.error("Failed to pre-close loan:", error);
-            alert('Error pre-closing loan.');
+            alert('Error pre-closing record.');
         } finally {
             setIsPreclosing(false);
         }
@@ -642,7 +642,7 @@ const LoanDetails: React.FC = () => {
 
     const handleUndoForeclosure = async () => {
         if (!loan) return;
-        if (!confirm('Are you sure you want to undo this foreclosure? The loan will become active again with pending EMIs restored.')) return;
+        if (!confirm('Are you sure you want to undo this foreclosure? The record will become active again with pending Installments restored.')) return;
 
         setIsUndoingForeclosure(true);
         try {
@@ -656,7 +656,7 @@ const LoanDetails: React.FC = () => {
                 foreclosureDetails: null
             });
 
-            alert('Foreclosure undone successfully. Loan is now active again.');
+            alert('Foreclosure undone successfully. Record is now active again.');
             fetchLoanAndCustomer();
         } catch (error) {
             console.error("Failed to undo foreclosure:", error);
@@ -795,9 +795,9 @@ const LoanDetails: React.FC = () => {
                 companyId: currentCompany?.id,
                 loanId: loan!.id,
                 customerId: loan!.customerId,
-                narration: `Top-up loan disbursement for Loan ${loan!.id}`,
+                narration: `Top-up disbursement for Record ${loan!.id}`,
                 entries: [
-                    { type: "Debit", account: "Loan Outstanding", amount: topUpAmount },
+                    { type: "Debit", account: "Credit Outstanding", amount: topUpAmount },
                     { type: "Credit", account: "Cash / Bank", amount: topUpAmount - processingFee },
                     { type: "Credit", account: "Processing Fee Income", amount: processingFee }
                 ]

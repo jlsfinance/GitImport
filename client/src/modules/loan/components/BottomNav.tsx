@@ -154,7 +154,7 @@ const BottomNav: React.FC = () => {
             handleNavClick('/loan/loans/new');
           }}
           className="w-16 h-16 rounded-[24px] bg-google-blue text-white shadow-google-lg flex items-center justify-center hover:shadow-google transition-all border-none"
-          title="New Loan"
+          title="New Record"
         >
           <span className="material-symbols-outlined text-[32px]">add</span>
         </motion.button>
@@ -179,7 +179,7 @@ const BottomNav: React.FC = () => {
             isActive={activePath.includes('/loan/loans') && !activePath.includes('new')}
             onClick={() => handleNavClick('/loan/loans')}
             icon="account_balance"
-            label="Loans"
+            label="Records"
           />
           <NavButton
             isActive={activePath.includes('/loan/finance')}

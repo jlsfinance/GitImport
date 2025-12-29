@@ -289,7 +289,7 @@ const UserManagement: React.FC = () => {
                       onChange={(e) => setEditedPermissions(p => ({ ...p, canViewLoans: e.target.checked }))}
                       className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
                     />
-                    <span className="text-sm">Can View Loans</span>
+                    <span className="text-sm">Can View Records</span>
                   </label>
                   <label className="flex items-center gap-3 p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
                     <input
@@ -298,7 +298,7 @@ const UserManagement: React.FC = () => {
                       onChange={(e) => setEditedPermissions(p => ({ ...p, canCollectEMI: e.target.checked }))}
                       className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
                     />
-                    <span className="text-sm">Can Collect EMI</span>
+                    <span className="text-sm">Can Collect Payments</span>
                   </label>
                 </div>
               )}
@@ -407,7 +407,7 @@ const UserManagement: React.FC = () => {
                       onChange={(e) => setNewStaffPermissions(p => ({ ...p, canViewLoans: e.target.checked }))}
                       className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
                     />
-                    <span className="text-sm">Can View Loans</span>
+                    <span className="text-sm">Can View Records</span>
                   </label>
                   <label className="flex items-center gap-3 p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
                     <input
@@ -416,7 +416,7 @@ const UserManagement: React.FC = () => {
                       onChange={(e) => setNewStaffPermissions(p => ({ ...p, canCollectEMI: e.target.checked }))}
                       className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
                     />
-                    <span className="text-sm">Can Collect EMI</span>
+                    <span className="text-sm">Can Collect Payments</span>
                   </label>
                 </div>
               )}

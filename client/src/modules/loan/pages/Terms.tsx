@@ -20,7 +20,7 @@ const Terms: React.FC = () => {
                 {/* Critical Red Disclosure */}
                 <div className="bg-red-50 dark:bg-red-900/10 border-2 border-red-100 dark:border-red-900/30 rounded-[2rem] p-8 text-center">
                     <p className="text-red-600 dark:text-red-400 font-black text-lg leading-relaxed">
-                        “This app is only for personal loan record and management. We do not provide loans, nor connect users with lenders.”
+                        “This app is only for personal credit record and management. We do not provide credits, nor connect users with lenders.”
                     </p>
                 </div>
 
@@ -30,7 +30,7 @@ const Terms: React.FC = () => {
                         <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white">
                             <span className="material-symbols-outlined text-xl">info</span>
                         </div>
-                        <h2 className="text-xl font-black text-[#004a99] dark:text-blue-300">Loan Disclosure (APR & Tenure)</h2>
+                        <h2 className="text-xl font-black text-[#004a99] dark:text-blue-300">Credit Disclosure (APR & Tenure)</h2>
                     </div>
 
                     <div className="space-y-6">
@@ -45,7 +45,7 @@ const Terms: React.FC = () => {
 
                         <div className="bg-white dark:bg-slate-900/50 rounded-3xl p-6 border border-blue-50 dark:border-blue-800">
                             <p className="text-slate-900 dark:text-white font-black mb-4">Representative Example:</p>
-                            <p className="text-slate-500 text-xs mb-4">For a loan of ₹10,000 at 24% APR for 12 months:</p>
+                            <p className="text-slate-500 text-xs mb-4">For a credit of ₹10,000 at 24% APR for 12 months:</p>
                             <ul className="space-y-2">
                                 <li className="flex justify-between text-sm">
                                     <span className="text-slate-500">• Principal Amount:</span>
@@ -60,11 +60,11 @@ const Terms: React.FC = () => {
                                     <span className="font-bold">₹300</span>
                                 </li>
                                 <li className="flex justify-between text-sm pt-2 border-t border-slate-100 dark:border-slate-800 mt-2">
-                                    <span className="text-slate-900 dark:text-white font-bold">• Total Cost of Loan:</span>
+                                    <span className="text-slate-900 dark:text-white font-bold">• Total Cost of Credit:</span>
                                     <span className="font-black text-blue-600">₹12,700</span>
                                 </li>
                                 <li className="flex justify-between text-sm">
-                                    <span className="text-slate-900 dark:text-white font-bold">• Monthly EMI:</span>
+                                    <span className="text-slate-900 dark:text-white font-bold">• Monthly Installment:</span>
                                     <span className="font-black text-blue-600">₹1,058.33</span>
                                 </li>
                             </ul>
@@ -84,14 +84,14 @@ const Terms: React.FC = () => {
                     <section className="space-y-3">
                         <h2 className="text-2xl font-black text-[#004a99] dark:text-blue-300 leading-tight">2. Service Charges</h2>
                         <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-sm">
-                            Any processing fees or documentation charges are levied by your respective business. {APP_NAME} is a platform to view and manage these records and does not collect any loan-related fees from users directly.
+                            Any processing fees or documentation charges are levied by your respective business. {APP_NAME} is a platform to view and manage these records and does not collect any credit-related fees from users directly.
                         </p>
                     </section>
 
                     <section className="space-y-3">
                         <h2 className="text-2xl font-black text-[#004a99] dark:text-blue-300 leading-tight">3. Late Payments</h2>
                         <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-sm">
-                            Delay in EMI payment will attract late payment penalties as per the loan agreement. Continuous defaults may lead to legal action and will negatively impact your credit score (CIBIL).
+                            Delay in Installment payment will attract late payment penalties as per the credit agreement. Continuous defaults may lead to legal action and will negatively impact your credit score (CIBIL).
                         </p>
                     </section>
 

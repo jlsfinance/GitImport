@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { APP_NAME, APP_VERSION } from '../constants';
+import { APP_NAME } from '../constants';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useSidebar } from '../context/SidebarContext';
 import { useCompany } from '../context/CompanyContext';
@@ -25,7 +25,7 @@ const Sidebar: React.FC = () => {
 
     // We keep 'Loans' and 'Accounts' expanded by default or based on path? 
     // Let's keep specific logic if needed, but for now simple state.
-    const [expandedMenus, setExpandedMenus] = useState<string[]>(['Loans', 'Accounts']);
+    const [expandedMenus, setExpandedMenus] = useState<string[]>(['Credit Ledger', 'Accounts']);
     const [showAbout, setShowAbout] = useState(false);
 
     const handleLogout = async () => {
@@ -50,19 +50,22 @@ const Sidebar: React.FC = () => {
 
     const handleLinkClick = () => {
         if (window.innerWidth < 1024) {
-            closeSidebar();
+            // Defer closing sidebar to allow navigation to start smoothly and prevent potential render conflicts/blank screen
+            setTimeout(() => {
+                closeSidebar();
+            }, 100);
         }
     };
 
     const menuItems: MenuItem[] = [
         { title: 'Dashboard', path: '/loan', icon: 'dashboard' },
         {
-            title: 'Loans',
+            title: 'Credit Ledger',
             icon: 'account_balance',
             submenu: [
-                { title: 'All Loans', path: '/loan/loans', icon: 'list_alt' },
-                { title: 'New Loan', path: '/loan/loans/new', icon: 'add_circle' },
-                { title: 'EMI Calculator', path: '/loan/tools/emi', icon: 'calculate' },
+                { title: 'All Records', path: '/loan/loans', icon: 'list_alt' },
+                { title: 'New Record', path: '/loan/loans/new', icon: 'add_circle' },
+                { title: 'Installment Calc', path: '/loan/tools/emi', icon: 'calculate' },
             ]
         },
         {

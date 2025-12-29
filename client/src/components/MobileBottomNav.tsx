@@ -39,13 +39,13 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, onChange
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMenuOpen(false)}
-              className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/40 z-40"
             />
             <motion.div
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              transition={{ type: 'tween', duration: 0.15 }}
               className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 rounded-t-3xl shadow-xl z-50 overflow-hidden pb-safe"
             >
               {/* Drag Handle */}
@@ -137,7 +137,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, onChange
       )}
 
       {/* Material 3 Bottom Navigation Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-surface-container/95 dark:bg-surface-container-low/95 backdrop-blur-2xl border-t border-border/50 pb-safe z-30 h-[88px]">
+      <div className="fixed bottom-0 left-0 right-0 bg-surface-container dark:bg-surface-container-low border-t border-border/50 pb-safe z-30 h-[88px]">
         <div className="flex justify-around items-center h-full px-4 max-w-lg mx-auto">
           <NavButton
             active={currentView === ViewState.DASHBOARD}

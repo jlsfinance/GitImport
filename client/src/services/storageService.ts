@@ -10,7 +10,9 @@ const KEYS = {
   EXPENSES: 'app_expenses',
   PURCHASES: 'app_purchases', // Added
   COMPANY: 'app_company',
-  FIREBASE_CONFIG: 'app_firebase_config'
+  FIREBASE_CONFIG: 'app_firebase_config',
+  CONTACT_PREFERENCE: 'app_contact_preference',
+  PRIVACY_ACCEPTED: 'app_privacy_accepted'
 };
 
 // YOUR FIREBASE CONFIGURATION (Hardcoded as requested)
@@ -70,12 +72,11 @@ export const StorageService = {
     if (cache.isLoaded) return;
 
     // 1. Always use the Hardcoded Config
-    const config = DEFAULT_FIREBASE_CONFIG;
-    // We also save it to local storage just to keep the settings UI in sync if visited
-    localStorage.setItem(KEYS.FIREBASE_CONFIG, JSON.stringify(config));
+    // Removed insecure localStorage.setItem(KEYS.FIREBASE_CONFIG, ...) violation.
 
     // 2. Init Firebase
-    const connected = FirebaseService.init(config);
+    // No config used here currently
+    const connected = FirebaseService.init(DEFAULT_FIREBASE_CONFIG);
 
     if (connected && userId) {
       // 3. Fetch Data from Firebase
@@ -169,10 +170,27 @@ export const StorageService = {
     return DEFAULT_FIREBASE_CONFIG;
   },
 
+  getContactPreference: (): 'ALL' | 'SELECTED' | 'NOT_SET' => {
+    return (localStorage.getItem(KEYS.CONTACT_PREFERENCE) as any) || 'NOT_SET';
+  },
+
+  setContactPreference: (pref: 'ALL' | 'SELECTED') => {
+    localStorage.setItem(KEYS.CONTACT_PREFERENCE, pref);
+  },
+
+  getPrivacyAccepted: (): boolean => {
+    return localStorage.getItem(KEYS.PRIVACY_ACCEPTED) === 'true';
+  },
+
+  setPrivacyAccepted: (accepted: boolean) => {
+    localStorage.setItem(KEYS.PRIVACY_ACCEPTED, String(accepted));
+  },
+
   // --- Setters ---
-  saveFirebaseConfig: (config: FirebaseConfig) => {
+  saveFirebaseConfig: (_config: FirebaseConfig) => {
     // No-op since we use hardcoded config, but keep for interface compatibility
-    localStorage.setItem(KEYS.FIREBASE_CONFIG, JSON.stringify(config));
+    // No-op: We do not persist sensitive config to LocalStorage for security reasons.
+    // Config is managed in code or via secure environment variables.
   },
 
   saveProduct: (product: Product) => {
@@ -280,7 +298,9 @@ export const StorageService = {
           phone: cache.company.phone,
           gstin: cache.company.gstin || cache.company.gst,
           upiId: cache.company.upiId
-        }
+        },
+        publicToken: crypto.randomUUID(),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
       });
     }
 
@@ -600,7 +620,9 @@ export const StorageService = {
           phone: cache.company.phone,
           gstin: cache.company.gstin || cache.company.gst,
           upiId: cache.company.upiId
-        }
+        },
+        publicToken: crypto.randomUUID(),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
       });
     }
 
@@ -752,23 +774,58 @@ export const StorageService = {
     return JSON.stringify(data);
   },
 
-  importData: (jsonString: string): boolean => {
+  importData: async (jsonString: string): Promise<{ success: boolean; message: string }> => {
     try {
-      const data = JSON.parse(jsonString);
+      let data;
+      try {
+        data = JSON.parse(jsonString);
+      } catch (parseError) {
+        return { success: false, message: "Invalid JSON file format." };
+      }
+
       if (data.products) cache.products = JSON.parse(data.products);
       if (data.customers) cache.customers = JSON.parse(data.customers);
       if (data.invoices) cache.invoices = JSON.parse(data.invoices);
       if (data.payments) cache.payments = JSON.parse(data.payments);
+      if (data.expenses) cache.expenses = JSON.parse(data.expenses);
       if (data.company) cache.company = JSON.parse(data.company);
+      // Purchases might be missing in older backups, handle safely
+      if (data.purchases) {
+        cache.purchases = JSON.parse(data.purchases);
+      } else if (data.products) {
+        // If no purchases data but products exist, we keep cache.purchases or init empty
+        cache.purchases = [];
+      }
 
       StorageService.persistToLocalStorage();
-      if (FirebaseService.isReady()) {
-        StorageService.init(cache.currentUserId);
+
+      if (FirebaseService.isReady() && cache.currentUserId) {
+        // Sync restored data UP to Firebase
+        try {
+          const userPath = `users/${cache.currentUserId}`;
+          const saveCollection = async (items: any[], name: string) => {
+            for (const item of items) {
+              await FirebaseService.saveDocument(`${userPath}/${name}`, item.id, item);
+            }
+          };
+
+          await FirebaseService.saveDocument(`${userPath}/company`, 'profile', cache.company);
+          await saveCollection(cache.products, 'products');
+          await saveCollection(cache.customers, 'customers');
+          await saveCollection(cache.invoices, 'invoices');
+          await saveCollection(cache.payments, 'payments');
+          await saveCollection(cache.expenses, 'expenses');
+          await saveCollection(cache.purchases, 'purchases');
+        } catch (cloudError: any) {
+          console.error("Cloud Sync Failed", cloudError);
+          return { success: true, message: "Local data restored, but Cloud Sync failed: " + (cloudError.message || "Unknown error") };
+        }
       }
-      return true;
-    } catch (e) {
-      console.error("Failed to import data", e);
-      return false;
+
+      return { success: true, message: "Data restored successfully!" };
+    } catch (e: any) {
+      console.error("Import failed", e);
+      return { success: false, message: "Import failed: " + (e.message || "Unknown error") };
     }
   },
 

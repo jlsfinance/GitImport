@@ -1,21 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { Invoice, CompanyProfile, DEFAULT_COMPANY, Customer } from '../types';
 import { StorageService } from '../services/storageService';
-import { GeminiService } from '../services/geminiService';
-import { WhatsAppService } from '../services/whatsappService';
-import { Printer, ArrowLeft, Play, Download, Edit, Trash2, MoreVertical, MessageCircle, Check, UserPlus, Users, ChevronRight } from 'lucide-react';
-import { jsPDF } from 'jspdf';
+import { Printer, ArrowLeft, Download, Edit, Trash2, MoreVertical, MessageCircle, Users, ChevronRight, FileText } from 'lucide-react';
 import { useCompany } from '@/contexts/CompanyContext';
-import { Filesystem, Directory } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
-import { Capacitor } from '@capacitor/core';
+import { InvoicePdfService } from '../services/invoicePdfService';
 import QRCode from 'qrcode';
-import { Contacts, PhoneType } from '@capacitor-community/contacts';
+import { Contacts } from '@capacitor-community/contacts';
+import { Capacitor } from '@capacitor/core';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { ContactService } from '../services/contactService';
+import ContactPermissionModal from './ContactPermissionModal';
 
 interface InvoiceViewProps {
   invoice: Invoice;
@@ -24,74 +20,21 @@ interface InvoiceViewProps {
   onViewLedger?: (customerId: string) => void;
   showPostSaveActions?: boolean;
   onClosePostSaveActions?: () => void;
+  isPublicView?: boolean; // Added for public read-only mode
 }
 
-// Helper to group items by HSN and calculate totals
-const getHSNSummary = (invoice: Invoice, company: CompanyProfile) => {
-  const hsnGroups: Record<string, any> = {};
 
-  invoice.items.forEach(item => {
-    const hsn = item.hsn || 'N/A';
-    if (!hsnGroups[hsn]) {
-      hsnGroups[hsn] = {
-        hsn,
-        description: item.description,
-        quantity: 0,
-        baseAmount: 0,
-        cgstAmount: 0,
-        sgstAmount: 0,
-        igstAmount: 0,
-        gstRate: item.gstRate || 0
-      };
-    }
-    hsnGroups[hsn].quantity += item.quantity;
-    hsnGroups[hsn].baseAmount += item.baseAmount || 0;
-    hsnGroups[hsn].cgstAmount += item.cgstAmount || 0;
-    hsnGroups[hsn].sgstAmount += item.sgstAmount || 0;
-    hsnGroups[hsn].igstAmount += item.igstAmount || 0;
-  });
 
-  return Object.values(hsnGroups);
-};
-
-// Helper for Amount in Words (Indian Format)
-const numberToWords = (num: number): string => {
-  const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
-  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
-
-  const convert = (n: number): string => {
-    if (n === 0) return "";
-    if (n < 20) return ones[n];
-    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? " " + ones[n % 10] : "");
-    if (n < 1000) return ones[Math.floor(n / 100)] + " Hundred" + (n % 100 !== 0 ? " and " + convert(n % 100) : "");
-    if (n < 100000) return convert(Math.floor(n / 1000)) + " Thousand" + (n % 1000 !== 0 ? " " + convert(n % 1000) : "");
-    if (n < 10000000) return convert(Math.floor(n / 100000)) + " Lakh" + (n % 100000 !== 0 ? " " + convert(n % 100000) : "");
-    return convert(Math.floor(n / 10000000)) + " Crore" + (n % 10000000 !== 0 ? " " + convert(n % 10000000) : "");
-  };
-
-  const integerPart = Math.floor(Math.abs(num));
-  const decimalPart = Math.round((Math.abs(num) - integerPart) * 100);
-
-  let result = integerPart === 0 ? "Zero" : convert(integerPart);
-
-  if (decimalPart > 0) {
-    result += " and " + convert(decimalPart) + " Paise";
-  }
-
-  return result + " Only";
-};
-
-const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onViewLedger, showPostSaveActions, onClosePostSaveActions }) => {
+const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, showPostSaveActions = false,
+  onClosePostSaveActions,
+  isPublicView = false
+}) => {
   const { company: firebaseCompany } = useCompany();
-  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [company, setCompany] = useState<CompanyProfile>(DEFAULT_COMPANY);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Toggles
-  const [showPreviousBalance, setShowPreviousBalance] = useState(false);
-  const [showLedger, setShowLedger] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [isPosView, setIsPosView] = useState(invoice.customerName?.toUpperCase() === 'CASH' || invoice.customerName?.toUpperCase() === 'CASH SALES');
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
@@ -102,6 +45,8 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
   const [waName, setWaName] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const [showContactChoice, setShowContactChoice] = useState(false);
 
   useEffect(() => {
     let companyData: CompanyProfile;
@@ -128,185 +73,133 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
         show_hsn_summary: stored.show_hsn_summary ?? true
       };
     }
-
     setCompany(companyData);
-    const foundCustomer = StorageService.getCustomers().find(c => c.id === invoice.customerId);
-    setCustomer(foundCustomer || null);
+
+    // Get Customer Details
+    const cust = StorageService.getCustomers().find(c => c.id === invoice.customerId);
+    if (cust) {
+      setCustomer(cust);
+      setWaPhone(cust.phone || '');
+      setWaName(cust.company || cust.name || '');
+    }
 
     // Generate QR Code
-    if (companyData.upiId && invoice.total > 0) {
-      const upiLink = `upi://pay?pa=${companyData.upiId}&pn=${encodeURIComponent(companyData.name)}&am=${invoice.total}&cu=INR`;
-      QRCode.toDataURL(upiLink, { margin: 1, width: 128 }, (err, url) => {
-        if (!err) setQrCodeUrl(url);
-      });
+    if (companyData.upiId) {
+      const upiUrl = `upi://pay?pa=${companyData.upiId}&pn=${encodeURIComponent(companyData.name)}&am=${invoice.total}&cu=INR&tn=${encodeURIComponent(`Inv-${invoice.invoiceNumber}`)}`;
+      QRCode.toDataURL(upiUrl)
+        .then(url => setQrCodeUrl(url))
+        .catch(err => console.error(err));
     }
-
-  }, [invoice, firebaseCompany, company?.upiId]);
+  }, [invoice, firebaseCompany]);
 
   useEffect(() => {
-    // Determine if we should show POS view by default
-    // If user just saved from Smart Calc, they might prefer POS view
-    // But logic says: "If customer is CASH, show POS".
-    if (invoice.customerName.toUpperCase() === 'CASH') {
-      setIsPosView(true);
-    }
-    // Load Customer Phone for WhatsApp
-    const c = StorageService.getCustomers().find(cust => cust.id === invoice.customerId);
-    if (c && c.phone) setWaPhone(c.phone);
-  }, [invoice.customerId, invoice.customerName]);
-
-  const handlePrint = () => {
-    // If Actions Modal is open, close it first
-    if (onClosePostSaveActions) onClosePostSaveActions();
-
-    // Small timeout to ensure menu closes and UI updates before print dialog
-    setTimeout(() => {
-      window.print();
-    }, 100);
-  };
-
-  const handleSaveToPhoneDirect = async (phone: string, name: string) => {
-    const cleanedPhone = phone.replace(/\D/g, '').slice(-10);
-    if (cleanedPhone.length < 10) return alert("Please enter a valid phone number first.");
-    if (!name || name.trim() === '') return alert("Please enter a name first.");
-
-    try {
-      // 1. Check Permissions
-      const perm = await Contacts.checkPermissions();
-      if (perm.contacts !== 'granted') {
-        const req = await Contacts.requestPermissions();
-        if (req.contacts !== 'granted') {
-          return alert("Contact Permission Denied. Please enable it in Settings.");
-        }
-      }
-
-      // 2. Create Contact Directly
-      const nameParts = name.trim().split(/\s+/);
-      const firstName = nameParts[0];
-      const lastName = nameParts.slice(1).join(' ');
-
-      await Contacts.createContact({
-        contact: {
-          name: {
-            given: firstName,
-            family: lastName
-          },
-          phones: [{ type: PhoneType.Mobile, label: 'mobile', number: `+91${cleanedPhone}` }]
-        }
-      });
-
-      alert(`Contact "${name}" saved directly to your phone!`);
-    } catch (err) {
-      console.error("Save Contact Error:", err);
-      alert("Failed to save contact. Please check app permissions.");
-    }
-  };
-
-  const sendWhatsApp = (phone: string, nameInput: string) => {
-    // Clean phone
-    const cleanedPhone = phone.replace(/\D/g, '').slice(-10);
-    const finalName = nameInput.trim() || invoice.customerName || "Customer";
-
-    // --- AUTO-SAVE CUSTOMER LOGIC ---
-    if (cleanedPhone.length === 10) {
-      const allCustomers = StorageService.getCustomers();
-      let linkedCustomer = allCustomers.find(c => c.phone === cleanedPhone);
-
-      if (!linkedCustomer) {
-        // Create New Customer if not exists
-        linkedCustomer = {
-          id: crypto.randomUUID(),
-          name: finalName,
-          company: (finalName === invoice.customerName) ? (invoice.customerName || '') : '',
-          phone: cleanedPhone,
-          email: '',
-          address: invoice.customerAddress || '',
-          gstin: invoice.customerGstin || '',
-          balance: 0,
-          notifications: []
-        };
-        StorageService.saveCustomer(linkedCustomer);
-        setCustomer(linkedCustomer); // Update local state
-      } else if (linkedCustomer.name.toUpperCase().includes('CASH')) {
-        // Update existing CASH customer with a real name
-        linkedCustomer.name = finalName;
-        StorageService.updateCustomer(linkedCustomer);
-        setCustomer(linkedCustomer);
-      }
-
-      // Update Invoice to link to this customer (if it was anonymous/Cash previously)
-      if (linkedCustomer) {
-        const updatedInvoice = { ...invoice };
-        updatedInvoice.customerId = linkedCustomer.id;
-        updatedInvoice.customerName = linkedCustomer.name;
-        StorageService.updateInvoice(updatedInvoice);
-      }
-    }
-    // --------------------------------
-
-    // 📌 BULLETPROOF DATA (Fallback in case Firestore is slow/not synced)
-    const sanitizedData = {
-      invoiceNumber: invoice.invoiceNumber,
-      customerName: invoice.customerName,
-      customerAddress: invoice.customerAddress,
-      customerGstin: invoice.customerGstin,
-      date: invoice.date,
-      items: invoice.items,
-      subtotal: invoice.subtotal,
-      total: invoice.total,
-      totalCgst: invoice.totalCgst || 0,
-      totalSgst: invoice.totalSgst || 0,
-      totalIgst: invoice.totalIgst || 0,
-      gstEnabled: invoice.gstEnabled,
-      status: invoice.status,
-      notes: invoice.notes,
-      _company: {
-        name: company.name,
-        address: company.address,
-        phone: company.phone,
-        gstin: company.gstin || company.gst
-      }
-    };
-
-    const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(sanitizedData))));
-    const link = `https://git-import.vercel.app/view/${invoice.id}#d=${encodedData}`;
-
-    // Format Message
-    const companyName = company.name || "My Business";
-    const custName = finalName;
-
-    const itemsList = invoice.items.map((item, idx) =>
-      `${idx + 1}. ${item.description} x ${item.quantity} = ₹${Math.round((item.totalAmount || item.baseAmount) || 0)}`
-    ).join('\n');
-
-    const message = `*${companyName}*\n` +
-      `Invoice No: ${invoice.invoiceNumber}\n` +
-      `Date: ${new Date(invoice.date).toLocaleDateString()}\n` +
-      `Customer: ${custName}\n\n` +
-      `*Items:*\n${itemsList}\n\n` +
-      `Subtotal: ₹${invoice.subtotal.toFixed(2)}\n` +
-      ((invoice.discountAmount && invoice.discountAmount > 0) ? `Discount: -₹${invoice.discountAmount.toFixed(2)}\n` : '') +
-      `*Total Amount: ₹${invoice.total.toFixed(2)}*\n\n` +
-      `Thank you for your business!\n` +
-      `View your bill here:\n${link}`;
-
-    const encodedMsg = encodeURIComponent(message);
-
-    window.open(`https://wa.me/91${cleanedPhone}?text=${encodedMsg}`, '_blank');
-    setShowWhatsAppPhoneModal(false);
-  };
-
-  const handleWhatsAppClick = () => {
-    if (onClosePostSaveActions) onClosePostSaveActions();
-
-    const isDefaultName = !invoice.customerName || invoice.customerName.toUpperCase().includes('CASH');
-    setWaName(isDefaultName ? '' : invoice.customerName);
-
-    if (waPhone && waPhone.length >= 10) {
-      sendWhatsApp(waPhone, isDefaultName ? '' : invoice.customerName);
-    } else {
+    if (showPostSaveActions) {
       setShowWhatsAppPhoneModal(true);
     }
+  }, [showPostSaveActions]);
+
+  const handlePickContact = async () => {
+    const pref = StorageService.getContactPreference();
+    if (pref === 'NOT_SET' && Capacitor.isNativePlatform()) {
+      setShowContactChoice(true);
+      return;
+    }
+
+    const contact = await ContactService.pickContact();
+    if (contact) {
+      setWaPhone(ContactService.normalizePhone(contact.phone));
+      setWaName(contact.name);
+    }
+  };
+
+  const onContactChoice = async (choice: 'ALL' | 'SELECTED') => {
+    StorageService.setContactPreference(choice);
+    setShowContactChoice(false);
+    if (choice === 'ALL') {
+      await Contacts.requestPermissions();
+    } else {
+      handlePickContact();
+    }
+  };
+
+
+
+  const sendWhatsApp = async (phone: string, name: string) => {
+    let token = '';
+
+    // 1. Try to fetch existing publicToken
+    try {
+      const { doc, getDoc, setDoc } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      const snap = await getDoc(doc(db, 'publicBills', invoice.id));
+
+      if (snap.exists()) {
+        token = snap.data().publicToken;
+      }
+
+      // 2. SELF-HEALING: If token is missing (old invoice), regenerate it by saving again
+      if (!token) {
+        console.log("Token missing, regenerating for old invoice...");
+        // Trigger a save to generate token in publicBills (StorageService logic handles this)
+        // We clone invoice to avoid referential issues
+        StorageService.updateInvoice({ ...invoice });
+
+        // Wait a moment for firestore write (optimistic handling)
+        // Ideally we wait for promise but StorageService.updateInvoice is void/sync-like.
+        // Let's retry fetch or just rely on the fact that next time it works.
+        // But user clicked NOW. So we manual-patch for this instant share?
+        // Actually, let's manual generate one for the link, and hope the background save catches up?
+        // Safer: Generate one, save it manually to publicBills, then use it.
+
+        const newToken = crypto.randomUUID();
+        await setDoc(doc(db, 'publicBills', invoice.id), {
+          // We need to save MINIMAL data here to make it valid for the Rule
+          // But wait, StorageService.updateInvoice already does this.
+          // Let's just use the one StorageService likely generated or will generate.
+          // Actually, if we just updated, we can't get it back sync.
+
+          // FORCE UPDATE SPECIFICALLY FOR TOKEN
+          publicToken: newToken,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          // We must include other fields if it's a new doc, but merge: true?
+          // Let's rely on StorageService logic but force it to happen now-ish.
+        }, { merge: true });
+        token = newToken; // Use this new token immediately
+      }
+
+    } catch (e: any) {
+      console.error("Could not fetch/generate public token", e);
+      if (e.code === 'permission-denied') {
+        alert("Error: Permission Denied. Please ensure your Firestore Rules in Firebase Console are updated to allow Owners to read publicBills.");
+      } else {
+        alert("Network error. Please try again.");
+      }
+      return;
+    }
+
+    // Use proper domain for production links if we are on localhost
+    const origin = window.location.hostname === 'localhost' ? 'https://git-import.vercel.app' : window.location.origin;
+    const digitalLink = `${origin}/view/${invoice.id}?token=${token}`;
+
+    const message = `Namaste ${name || 'Customer'},\n\n*${company.name}* se judne ke liye dhanyavad.\n\nAapka Invoice *#${invoice.invoiceNumber}* amount *₹${invoice.total.toLocaleString()}* ka ready hai.\n\nLink par click karke bill dekhein aur download karein:\n${digitalLink}\n\nDhanyavad!`;
+
+    const url = `https://wa.me/91${phone}?text=${encodeURIComponent(message)}`;
+
+    if (Capacitor.isNativePlatform()) {
+      window.open(url, '_system');
+    } else {
+      window.open(url, '_blank');
+    }
+  };
+
+
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownload = async () => {
+    await InvoicePdfService.generatePDF(invoice, company, customer);
   };
 
   const handleDelete = () => {
@@ -314,1173 +207,332 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
     onBack();
   };
 
-  const handleReadAloud = async () => {
-    setIsLoadingAudio(true);
-    const amountInWords = numberToWords(invoice.total);
-    const textToRead = `
-      Invoice number ${invoice.invoiceNumber}.
-      Dated ${invoice.date}.
-      Billed to ${invoice.customerName}.
-      Total amount is ${invoice.total} Rupees.
-      ${amountInWords}.
-      Thank you for your business.
-    `;
-    await GeminiService.generateSpeech(textToRead);
-    setIsLoadingAudio(false);
-  };
-
-  const handleWhatsAppShare = () => {
-    if (customer && customer.phone && customer.phone.length >= 10) {
-      WhatsAppService.shareInvoice(invoice, customer, company);
-    } else {
-      // If customer has no phone (e.g. CASH), show the phone prompt
-      setWaPhone('');
-      const isDefaultName = !invoice.customerName || invoice.customerName.toUpperCase().includes('CASH');
-      setWaName(isDefaultName ? '' : invoice.customerName);
-      setShowWhatsAppPhoneModal(true);
-    }
-  };
-
-  const handleDownloadPDF = async () => {
-    setIsGeneratingPDF(true);
-    try {
-      // Create new PDF document (A4 size, units in mm)
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      // Standard A4 dimensions in mm
-      const a4Width = 210;
-      const leftMargin = 15;
-      const rightMargin = a4Width - 15;
-      let yPos = 15;
-
-      // Safe Strings
-      const safeCompany = {
-        name: company.name || 'Company Name',
-        address: company.address || '',
-        phone: company.phone || '',
-        email: company.email || ''
-      };
-
-      // --- Header ---
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(18);
-      doc.text(safeCompany.name, a4Width / 2, yPos, { align: "center" });
-      yPos += 6;
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(80);
-      doc.text(safeCompany.address, a4Width / 2, yPos, { align: "center" });
-      yPos += 4;
-      doc.text(`Ph: ${safeCompany.phone} | ${safeCompany.email}`, a4Width / 2, yPos, { align: "center" });
-      yPos += 4;
-
-      if (invoice.gstEnabled && company && (company.gstin || company.gst)) {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(9);
-        doc.setTextColor(34, 197, 94);
-        const gstin = company.gstin || company.gst || '';
-        doc.text(`GSTIN: ${gstin}`, a4Width / 2, yPos, { align: "center" });
-        yPos += 4;
-        doc.setTextColor(0);
-      }
-      yPos += 2;
-
-      doc.setDrawColor(0);
-      doc.setLineWidth(0.5);
-      doc.line(leftMargin, yPos, rightMargin, yPos);
-      yPos += 7;
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.setTextColor(0);
-      doc.text("TAX INVOICE", a4Width / 2, yPos, { align: "center" });
-      yPos += 10;
-
-      const infoStartY = yPos;
-
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.text("Bill To:", leftMargin, yPos);
-      yPos += 4;
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.text(invoice.customerName || 'Customer', leftMargin, yPos);
-      yPos += 4;
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      const addressLines = doc.splitTextToSize(invoice.customerAddress || '', 80);
-      doc.text(addressLines, leftMargin, yPos);
-
-      let rightColY = infoStartY;
-      const rightColX = 120;
-      const lineSpacing = 5;
-
-      doc.setFont("helvetica", "bold");
-      doc.text("Invoice #:", rightColX, rightColY);
-      doc.setFont("helvetica", "normal");
-      doc.text(invoice.invoiceNumber || '-', rightColX + 25, rightColY);
-      rightColY += lineSpacing;
-
-      doc.setFont("helvetica", "bold");
-      doc.text("Date:", rightColX, rightColY);
-      doc.setFont("helvetica", "normal");
-      doc.text(new Date(invoice.date).toLocaleDateString(), rightColX + 25, rightColY);
-      rightColY += lineSpacing;
-
-      doc.setFont("helvetica", "bold");
-      doc.text("Mode:", rightColX, rightColY);
-      doc.setFont("helvetica", "normal");
-      const modeText = invoice.status === 'PAID' ? 'Cash' : 'Credit';
-      doc.text(modeText, rightColX + 25, rightColY);
-
-      yPos = Math.max(yPos + (addressLines.length * 4), rightColY) + 8;
-
-      doc.setFillColor(245, 247, 250);
-      doc.rect(leftMargin, yPos, rightMargin - leftMargin, 8, 'F');
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.setTextColor(60);
-
-      const hasHSN = invoice.items.some(i => i.hsn);
-      const colX = {
-        idx: leftMargin + 5,
-        desc: leftMargin + 15,
-        hsn: leftMargin + 60,
-        qty: rightMargin - (invoice.gstEnabled ? 75 : 65),
-        rate: rightMargin - (invoice.gstEnabled ? 45 : 35),
-        gst: rightMargin - 20,
-        amount: rightMargin - 5
-      };
-
-      doc.text("#", colX.idx, yPos + 5);
-      doc.text("DESCRIPTION", colX.desc, yPos + 5);
-      if (hasHSN) doc.text("HSN", colX.hsn, yPos + 5);
-      doc.text("QTY", colX.qty, yPos + 5, { align: "right" });
-      doc.text("RATE", colX.rate, yPos + 5, { align: "right" });
-      if (invoice.gstEnabled) doc.text("GST%", colX.gst, yPos + 5, { align: "right" });
-      doc.text("AMOUNT", colX.amount, yPos + 5, { align: "right" });
-
-      yPos += 8;
-
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(0);
-      doc.setFontSize(9);
-
-      const rowHeight = 7;
-      const pageHeight = doc.internal.pageSize.getHeight();
-
-      invoice.items.forEach((item, i) => {
-        if (yPos > pageHeight - 30) {
-          doc.addPage();
-          yPos = 20;
-        }
-
-        doc.text(`${i + 1}`, colX.idx, yPos + 5);
-        doc.text(item.description || '-', colX.desc, yPos + 5);
-        if (hasHSN) doc.text(item.hsn || '-', colX.hsn, yPos + 5);
-        doc.text((item.quantity || 0).toString(), colX.qty, yPos + 5, { align: "right" });
-        doc.text(`Rs. ${(item.rate || 0).toFixed(2)}`, colX.rate, yPos + 5, { align: "right" });
-        if (invoice.gstEnabled) doc.text(`${((item.gstRate || 0)).toFixed(1)}%`, colX.gst, yPos + 5, { align: "right" });
-        doc.setFont("helvetica", "bold");
-        const amountWithGST = (item.totalAmount || item.baseAmount) || 0;
-        doc.text(`Rs. ${amountWithGST.toFixed(2)}`, colX.amount, yPos + 5, { align: "right" });
-        doc.setFont("helvetica", "normal");
-
-        doc.setDrawColor(230);
-        doc.line(leftMargin, yPos + rowHeight, rightMargin, yPos + rowHeight);
-        yPos += rowHeight;
-      });
-
-      yPos += 4;
-
-      const totalXLabel = rightMargin - 45;
-      const totalXValue = rightMargin - 5;
-
-      // Calculate Item Level Discounts
-      const itemDiscountTotal = invoice.items.reduce((sum, item) => {
-        const gross = item.quantity * item.rate;
-        const net = item.baseAmount || 0;
-        return sum + (gross - net);
-      }, 0);
-      const grossTotal = invoice.items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
-
-      if (itemDiscountTotal > 0.01) {
-        doc.setFont("helvetica", "normal");
-        doc.text("Gross Amount:", totalXLabel, yPos + 5, { align: "right" });
-        doc.text(`Rs. ${grossTotal.toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
-        yPos += 5;
-
-        doc.setTextColor(220, 38, 38); // Red
-        doc.text("Item Discount:", totalXLabel, yPos + 5, { align: "right" });
-        doc.text(`- Rs. ${itemDiscountTotal.toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
-        doc.setTextColor(0); // Reset
-        yPos += 5;
-      }
-
-      doc.setFont("helvetica", "bold");
-      doc.text("Subtotal:", totalXLabel, yPos + 5, { align: "right" });
-      doc.setFont("helvetica", "normal");
-      doc.text(`Rs. ${(invoice.subtotal || 0).toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
-      yPos += 5;
-
-      if (invoice.discountAmount && invoice.discountAmount > 0) {
-        doc.setFont("helvetica", "normal");
-        doc.text("Discount:", totalXLabel, yPos + 5, { align: "right" });
-        doc.text(`- Rs. ${(invoice.discountAmount).toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
-        yPos += 5;
-      }
-      yPos += 2;
-
-      const totalGSTAmount = (invoice.totalCgst || 0) + (invoice.totalSgst || 0) + (invoice.totalIgst || 0);
-      if (invoice.gstEnabled && totalGSTAmount > 0) {
-        if ((invoice.totalCgst || 0) > 0) {
-          doc.setFont("helvetica", "bold");
-          doc.setTextColor(34, 197, 94);
-          doc.text("CGST:", totalXLabel, yPos + 5, { align: "right" });
-          doc.setFont("helvetica", "normal");
-          doc.text(`Rs. ${(invoice.totalCgst || 0).toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
-          yPos += 5;
-        }
-        if ((invoice.totalSgst || 0) > 0) {
-          doc.setFont("helvetica", "bold");
-          doc.text("SGST:", totalXLabel, yPos + 5, { align: "right" });
-          doc.setFont("helvetica", "normal");
-          doc.text(`Rs. ${(invoice.totalSgst || 0).toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
-          yPos += 5;
-        }
-        if ((invoice.totalIgst || 0) > 0) {
-          doc.setFont("helvetica", "bold");
-          doc.text("IGST:", totalXLabel, yPos + 5, { align: "right" });
-          doc.setFont("helvetica", "normal");
-          doc.text(`Rs. ${(invoice.totalIgst || 0).toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
-          yPos += 5;
-        }
-        doc.setTextColor(0);
-        yPos += 2;
-      }
-
-      doc.setDrawColor(0);
-      doc.line(rightMargin - 70, yPos, rightMargin, yPos);
-      yPos += 2;
-
-      if (invoice.roundUpTo && invoice.roundUpTo > 0) {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.text("Original:", totalXLabel, yPos + 5, { align: "right" });
-        doc.text(`${(invoice.total - (invoice.roundUpAmount || 0)).toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
-        yPos += 5;
-        doc.text("Round Off:", totalXLabel, yPos + 5, { align: "right" });
-        doc.text(`${(invoice.roundUpAmount || 0).toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
-        yPos += 5;
-      }
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.text("Total:", totalXLabel, yPos + 5, { align: "right" });
-      doc.text(`Rs. ${invoice.total.toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
-      yPos += 8;
-
-      if (showPreviousBalance && customer) {
-        let previousBalance = customer.balance || 0;
-        if (invoice.status === 'PENDING') {
-          previousBalance = (customer.balance || 0) - invoice.total;
-        }
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.setTextColor(80);
-        doc.text("Prev Balance:", totalXLabel, yPos + 5, { align: "right" });
-        doc.text(`Rs. ${previousBalance.toFixed(2)}`, totalXValue, yPos + 5, { align: "right" });
-        yPos += 8;
-      }
-
-      // HSN Summary logic... (simplified for brevity)
-      if (invoice.gstEnabled && company.show_hsn_summary !== false) {
-        yPos += 8;
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "bold");
-        doc.text("HSN SUMMARY", leftMargin, yPos);
-        yPos += 5;
-
-        const hsnSummary = getHSNSummary(invoice, company);
-        hsnSummary.forEach(group => {
-          doc.setFont("helvetica", "normal");
-          doc.text(`${group.hsn || 'N/A'} - Taxable: ${(group.baseAmount || 0).toFixed(2)} - Tax: ${(group.cgstAmount + group.sgstAmount + group.igstAmount).toFixed(2)}`, leftMargin, yPos);
-          yPos += 5;
-        });
-      }
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(60);
-      doc.text("Amount in Words:", leftMargin, yPos);
-      doc.setTextColor(0);
-      doc.setFont("helvetica", "normal");
-
-      const amountToConvert = (showPreviousBalance && customer) ? (customer.balance || 0) : invoice.total;
-      const amountWords = numberToWords(amountToConvert);
-      const startX = leftMargin + 35;
-      const availableWidth = a4Width - startX - rightMargin + 50;
-      const splitWords = doc.splitTextToSize(amountWords, availableWidth);
-      doc.text(splitWords, startX, yPos);
-
-      let footerY = Math.max(yPos + 20, pageHeight - 25);
-      if (footerY > pageHeight - 20) {
-        doc.addPage();
-        footerY = pageHeight - 25;
-      }
-
-      // --- QR Code for Payments ---
-      if (qrCodeUrl) {
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "bold");
-        doc.text("Scan to Pay:", rightMargin - 25, footerY - 4, { align: "right" });
-        doc.addImage(qrCodeUrl, 'PNG', rightMargin - 30, footerY, 25, 25);
-      }
-
-      doc.setFontSize(8);
-      doc.setTextColor(0);
-      doc.setFont("helvetica", "bold");
-      doc.text("Terms:", leftMargin, footerY);
-      doc.setFont("helvetica", "normal");
-      doc.text("Payment due within 30 days", leftMargin, footerY + 4);
-      doc.text(`For ${safeCompany.name}`, rightMargin - 5, footerY + 30, { align: "right" });
-      doc.text("Authorized Signatory", rightMargin - 5, footerY + 35, { align: "right" });
-
-      try {
-        if (Capacitor.isNativePlatform()) {
-          // Request permissions before saving
-          try {
-            const status = await Filesystem.checkPermissions();
-            if (status.publicStorage !== 'granted') {
-              await Filesystem.requestPermissions();
-            }
-          } catch (pErr) {
-            console.warn("Permission check failed:", pErr);
-          }
-
-          const pdfBase64 = doc.output('datauristring').split(',')[1];
-          const fileName = `Invoice-${invoice.invoiceNumber}.pdf`;
-
-          // Save to Documents for permanent storage
-          await Filesystem.writeFile({
-            path: fileName,
-            data: pdfBase64,
-            directory: Directory.Documents,
-            recursive: true
-          });
-
-          // Also save to Cache for sharing
-          const cacheResult = await Filesystem.writeFile({
-            path: fileName,
-            data: pdfBase64,
-            directory: Directory.Cache
-          });
-
-          // Ask user what to do
-          const wantsToShare = confirm(`✅ ${fileName} saved!\n\nTap OK to SHARE/OPEN with another app\nTap Cancel to just SAVE.`);
-
-          if (wantsToShare) {
-            try {
-              await Share.share({
-                title: fileName,
-                url: cacheResult.uri,
-                dialogTitle: 'Share or Open with...'
-              });
-            } catch (shareErr) {
-              console.warn('Share cancelled or failed:', shareErr);
-            }
-          }
-        } else {
-          // Web Browser Logic (Keep explicit web logic or fallback)
-          const pdfBlob = doc.output('blob');
-          const pdfUrl = URL.createObjectURL(pdfBlob);
-
-          // Try Web Share API first
-          if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([pdfBlob], `Invoice-${invoice.invoiceNumber}.pdf`, { type: 'application/pdf' })] })) {
-            const file = new File([pdfBlob], `Invoice-${invoice.invoiceNumber}.pdf`, { type: 'application/pdf' });
-            await navigator.share({
-              files: [file],
-              title: `Invoice ${invoice.invoiceNumber}`,
-              text: `Invoice from ${safeCompany.name}`
-            });
-          } else {
-            doc.save(`Invoice-${invoice.invoiceNumber}.pdf`);
-          }
-          setTimeout(() => URL.revokeObjectURL(pdfUrl), 100);
-        }
-      } catch (saveError) {
-        console.warn("PDF Save/Share failed:", saveError);
-        alert(`Error: FAILED TO SAVE. ${saveError}`);
-      }
-    } catch (error) {
-      console.error("PDF Generation Error:", error);
-      alert("Error: FAILED TO SAVE. Please check app permissions.");
-    } finally {
-      setIsGeneratingPDF(false);
-    }
-  };
-
   return (
-    <div className="flex flex-col h-full bg-surface-container-low absolute inset-0 z-40 font-sans">
-      {/* Material 3 Expressive Top Bar */}
-      <div className="sticky top-0 z-50 bg-surface-container/95 backdrop-blur-xl border-b border-border px-6 h-20 flex items-center justify-between shadow-sm flex-shrink-0 print:hidden">
+    <div className="min-h-screen bg-surface-container-low pb-32">
+      {/* Custom Print Style */}
+      {/* Custom Print Style - Safe Implementation */}
+      <style>
+        {`
+            @media print {
+                body * { visibility: hidden; }
+                #printable-area, #printable-area * { visibility: visible; }
+                #printable-area { position: absolute; left: 0; top: 0; width: 100%; }
+                .no-print { display: none !important; }
+            }
+        `}
+      </style>
+
+      {/* Header */}
+      <div className="sticky top-0 z-[100] bg-surface-container-low/80 backdrop-blur-md px-6 py-6 border-b border-border flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <motion.button
-            whileTap={{ scale: 0.92 }}
+            whileTap={{ scale: 0.9 }}
             onClick={onBack}
-            className="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors"
-            aria-label="Back"
+            className="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-foreground hover:bg-surface-container-highest transition-colors"
           >
-            <ArrowLeft className="w-6 h-6 text-foreground" />
+            <ArrowLeft className="w-5 h-5" />
           </motion.button>
-          <div className="flex flex-col">
-            <h1 className="text-xl font-bold text-foreground tracking-tight font-heading">Invoice Summary</h1>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">#{invoice.invoiceNumber}</span>
-              <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${invoice.status === 'PAID'
-                ? 'bg-google-green text-white'
-                : 'bg-google-yellow text-white'
-                }`}>
-                {invoice.status}
-              </span>
+          <div>
+            <h2 className="text-xl font-black font-heading text-foreground">Invoice #{invoice.invoiceNumber}</h2>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className={`w-2 h-2 rounded-full ${invoice.status === 'PAID' ? 'bg-google-green' : 'bg-orange-400'}`} />
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{invoice.status}</span>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => onEdit(invoice)}
-            className="w-11 h-11 flex items-center justify-center rounded-full bg-surface-container-high text-google-blue border border-border hover:shadow-google transition-all"
-          >
-            <Edit className="w-5 h-5" />
-          </motion.button>
-
-          <div className="relative">
+          {!isPublicView && (
             <motion.button
-              whileTap={{ scale: 0.95 }}
+              whileTap={{ scale: 0.9 }}
               onClick={() => setShowOptions(!showOptions)}
-              className="w-11 h-11 flex items-center justify-center rounded-full bg-surface-container-high text-foreground border border-border hover:shadow-google transition-all"
+              className="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-foreground"
             >
               <MoreVertical className="w-5 h-5" />
             </motion.button>
-
-            <AnimatePresence>
-              {showOptions && (
-                <>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-40"
-                    onClick={() => setShowOptions(false)}
-                  />
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                    className="absolute right-0 mt-3 w-72 bg-surface-container-highest rounded-[32px] shadow-google-lg border border-border z-50 overflow-hidden p-2 origin-top-right backdrop-blur-2xl"
-                  >
-                    <div className="space-y-1">
-                      {[
-                        { icon: MessageCircle, label: 'Share on WhatsApp', color: 'text-google-green', action: handleWhatsAppShare },
-                        { icon: Download, label: 'Download PDF', color: 'text-google-blue', action: handleDownloadPDF },
-                        { icon: Users, label: 'Customer Ledger', color: 'text-google-blue', action: () => onViewLedger?.(invoice.customerId) },
-                        { icon: Printer, label: 'Print Draft', color: 'text-foreground/60', action: handlePrint },
-                        { icon: Play, label: 'Read Aloud', color: 'text-google-red', action: handleReadAloud },
-                      ].map((item, i) => (
-                        <button
-                          key={i}
-                          onClick={() => { setShowOptions(false); item.action(); }}
-                          className="w-full flex items-center gap-4 px-5 py-3.5 text-sm font-bold text-foreground hover:bg-surface-container-high rounded-[20px] transition-all group"
-                        >
-                          <item.icon className={`w-5 h-5 ${item.color} group-hover:scale-110 transition-transform`} />
-                          <span>{item.label}</span>
-                        </button>
-                      ))}
-
-                      <div className="h-px bg-border/50 mx-4 my-2" />
-
-                      <div className="px-5 py-2 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Settings</div>
-
-                      <button
-                        onClick={() => setShowPreviousBalance(!showPreviousBalance)}
-                        className="w-full flex items-center justify-between px-5 py-3 text-sm font-bold text-foreground hover:bg-surface-container-high rounded-[20px]"
-                      >
-                        <span>Previous Balance</span>
-                        <div className={`w-10 h-6 rounded-full transition-colors relative ${showPreviousBalance ? 'bg-google-blue' : 'bg-border'}`}>
-                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${showPreviousBalance ? 'left-5' : 'left-1'}`} />
-                        </div>
-                      </button>
-
-                      <button
-                        onClick={() => { setShowOptions(false); setIsPosView(!isPosView); }}
-                        className="w-full flex items-center justify-between px-5 py-3 text-sm font-bold text-foreground hover:bg-surface-container-high rounded-[20px]"
-                      >
-                        <span>POS Mode</span>
-                        <div className={`w-10 h-6 rounded-full transition-colors relative ${isPosView ? 'bg-google-blue' : 'bg-border'}`}>
-                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isPosView ? 'left-5' : 'left-1'}`} />
-                        </div>
-                      </button>
-
-                      <div className="h-px bg-border/50 mx-4 my-2" />
-
-                      <button
-                        onClick={() => { setShowOptions(false); setShowDeleteConfirm(true); }}
-                        className="w-full flex items-center gap-4 px-5 py-3.5 text-sm font-bold text-google-red hover:bg-google-red/5 rounded-[20px]"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                        <span>Delete Bill</span>
-                      </button>
-                    </div>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content - Expressive Material View */}
-      <div className={`flex-1 overflow-y-auto overflow-x-hidden bg-surface-container-low p-4 md:p-8 pb-32 print:p-0 print:bg-white ${isPosView ? 'print:hidden' : ''}`}>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-5xl mx-auto bg-surface rounded-[40px] shadow-google-lg print:shadow-none border border-border print:border-none overflow-hidden">
-          <div id="invoice-print" className="p-8 md:p-16 text-foreground print:text-black">
-
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-12">
-              <div className="flex-1">
-                <h1 className="text-4xl md:text-5xl font-black font-heading tracking-tight text-foreground mb-4 uppercase leading-none">{company.name}</h1>
-                <div className="space-y-1 opacity-70 font-medium">
-                  <p className="text-sm max-w-sm whitespace-pre-wrap">{company.address}</p>
-                  <p className="text-sm">Ph: {company.phone}</p>
-                  {invoice.gstEnabled && (company.gstin || company.gst) && (
-                    <div className="flex items-center gap-2 text-google-green font-bold text-sm mt-2">
-                      <span className="px-2 py-0.5 bg-google-green text-white text-[10px] rounded animate-pulse">GST</span>
-                      {company.gstin || company.gst}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="text-right md:pt-4">
-                <div className="inline-block p-6 bg-surface-container-high rounded-[32px] border border-border">
-                  <div className="mb-4">
-                    <span className="block text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-1">Invoice Number</span>
-                    <span className="text-3xl font-black font-heading text-google-blue">#{invoice.invoiceNumber}</span>
-                  </div>
-                  <div>
-                    <span className="block text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-1">Issue Date</span>
-                    <span className="text-lg font-bold text-foreground">{new Date(invoice.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16 px-1">
-              <div>
-                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground mb-4">Billed To</h3>
-                <h2 className="text-2xl font-black font-heading text-foreground mb-3">{invoice.customerName}</h2>
-                <div className="text-sm font-medium opacity-70 leading-relaxed max-w-xs whitespace-pre-wrap">
-                  {invoice.customerAddress}
-                </div>
-                {invoice.customerGstin && (
-                  <p className="text-xs font-bold text-google-blue mt-4 flex items-center gap-2">
-                    <span className="px-1.5 py-0.5 bg-google-blue/10 rounded uppercase text-[9px]">Cust GST</span> {invoice.customerGstin}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className="mb-12 rounded-[32px] border border-border overflow-hidden bg-surface-container-low/30">
-              <table className="w-full text-left">
-                <thead className="bg-surface-container-high text-muted-foreground font-black uppercase text-[10px] tracking-widest border-b border-border">
-                  <tr>
-                    <th className="py-5 px-6">Description</th>
-                    <th className="py-5 px-6 text-center">Qty</th>
-                    <th className="py-5 px-6 text-right">Price</th>
-                    <th className="py-5 px-6 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/50 text-sm">
-                  {invoice.items.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-surface-container transition-colors group">
-                      <td className="py-5 px-6">
-                        <div className="font-bold text-foreground mb-0.5 group-hover:text-google-blue transition-colors">{item.description}</div>
-                        {item.hsn && <div className="text-[10px] font-bold text-muted-foreground uppercase bg-slate-100 dark:bg-slate-800 w-fit px-1.5 rounded">HSN: {item.hsn}</div>}
-                      </td>
-                      <td className="py-5 px-6 text-center font-bold text-muted-foreground">{item.quantity}</td>
-                      <td className="py-5 px-6 text-right font-medium">₹{item.rate.toLocaleString('en-IN')}</td>
-                      <td className="py-5 px-6 text-right font-black text-foreground">₹{((item.totalAmount || item.baseAmount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Totals Section Redesign */}
-            <div className="flex justify-end mb-16">
-              <div className="w-full md:w-1/2 bg-surface-container/50 p-8 rounded-[32px] border border-border space-y-3">
-                {/* Gross & Item Discount */}
-                {(() => {
-                  const itemDiscountTotal = invoice.items.reduce((sum, item) => sum + ((item.quantity * item.rate) - (item.baseAmount || 0)), 0);
-                  const grossTotal = invoice.items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
-
-                  if (itemDiscountTotal <= 0.01) return null;
-
-                  return (
-                    <>
-                      <div className="flex justify-between text-sm font-bold text-muted-foreground uppercase tracking-widest">
-                        <span>Gross Amount</span>
-                        <span>₹{grossTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                      <div className="flex justify-between text-sm font-bold text-google-red uppercase tracking-widest">
-                        <span>Item Discount</span>
-                        <span>- ₹{itemDiscountTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                      <div className="h-px bg-border/50 my-2" />
-                    </>
-                  );
-                })()}
-
-                <div className="flex justify-between text-sm font-bold text-muted-foreground uppercase tracking-widest">
-                  <span>Subtotal</span>
-                  <span className="text-foreground">₹{invoice.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                </div>
-
-                {invoice.discountAmount && invoice.discountAmount > 0 ? (
-                  <div className="flex justify-between text-sm font-bold text-google-red">
-                    <span className="uppercase tracking-widest">Discount</span>
-                    <span>- ₹{invoice.discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                  </div>
-                ) : null}
-
-                {invoice.gstEnabled && ((invoice.totalCgst || 0) + (invoice.totalSgst || 0) + (invoice.totalIgst || 0)) > 0 && (
-                  <div className="space-y-2 pt-2 border-t border-border/50">
-                    {(invoice.totalCgst || 0) > 0 && (
-                      <div className="flex justify-between text-xs font-bold text-google-green">
-                        <span className="uppercase tracking-wider">CGST</span>
-                        <span>₹{(invoice.totalCgst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                    )}
-                    {(invoice.totalSgst || 0) > 0 && (
-                      <div className="flex justify-between text-xs font-bold text-google-green">
-                        <span className="uppercase tracking-wider">SGST</span>
-                        <span>₹{(invoice.totalSgst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                    )}
-                    {(invoice.totalIgst || 0) > 0 && (
-                      <div className="flex justify-between text-xs font-bold text-google-green">
-                        <span className="uppercase tracking-wider">IGST</span>
-                        <span>₹{(invoice.totalIgst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="border-t-2 border-border pt-4 flex justify-between items-end">
-                  <span className="text-lg font-black font-heading text-foreground uppercase tracking-tighter">Grand Total</span>
-                  <span className="text-4xl font-black text-google-blue font-heading tracking-tight">₹{invoice.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                </div>
-
-                <div className="text-[10px] text-right font-black text-muted-foreground uppercase tracking-widest pt-2">
-                  {numberToWords(Math.round(invoice.total))}
-                </div>
-              </div>
-            </div>
-
-            {/* Footer and QR Code */}
-            <div className="mt-12 flex flex-col md:flex-row justify-between items-start gap-8">
-              <div className="flex-1">
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <p className="font-bold uppercase text-xs mb-1 text-slate-400">Terms & Conditions</p>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">1. Goods once sold will not be taken back.</p>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">2. Interest @18% will be charged if not paid within 30 days.</p>
-                  <p className="mt-4 font-bold uppercase text-slate-900 dark:text-slate-100">Thank you for your business!</p>
-                </div>
-              </div>
-
-              {qrCodeUrl && (
-                <div className="flex flex-col items-center p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Scan to Pay</p>
-                  <img src={qrCodeUrl} className="w-24 h-24 mix-blend-multiply dark:mix-blend-normal" alt="Payment QR" />
-                  <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 mt-2">{company.upiId}</p>
-                </div>
-              )}
-
-              <div className="text-right flex flex-col items-end min-w-[150px]">
-                <div className="h-16 w-32 border-b border-slate-200 dark:border-slate-800 mb-2"></div>
-                <p className="font-bold text-sm">For {company.name}</p>
-                <p className="text-[10px] font-medium text-slate-400 uppercase">Authorized Signatory</p>
-              </div>
-            </div>
-
-          </div>
-        </motion.div>
-      </div>
-
-      {/* POS VIEW RENDERER (Absolute Overlay or Conditional) */}
-      {/* POS VIEW RENDERER (Absolute Overlay or Conditional) */}
-      {isPosView && (
-        <div className="fixed inset-0 z-[60] bg-slate-800/90 backdrop-blur-sm flex justify-center overflow-y-auto print:hidden">
-          {/* Close Button for POS View */}
-          <button
-            onClick={() => setIsPosView(false)}
-            className="fixed top-4 right-4 bg-white/10 text-white p-2 rounded-full hover:bg-white/20 z-[70]"
-          >
-            <span className="sr-only">Close</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
-
-          <div
-            className="bg-white text-black w-[80mm] min-h-0 h-fit shadow-2xl my-8 mx-auto p-2 py-4 font-mono text-[10px] leading-tight"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* POS content (Screen Version) */}
-            <div className="text-center mb-4">
-              <h1 className="text-xl font-bold uppercase">{company.name}</h1>
-              <p className="text-[10px]">{company.address}</p>
-              <p className="text-[10px]">Ph: {company.phone}</p>
-              {invoice.gstEnabled && (company.gstin || company.gst) && (
-                <p className="text-[10px] font-bold mt-1">GSTIN: {company.gstin || company.gst}</p>
-              )}
-            </div>
-            <div className="border-b border-dashed border-black my-2"></div>
-            <div className="flex justify-between text-[10px] mb-1">
-              <span>Invoice No:</span>
-              <span className="font-bold">#{invoice.invoiceNumber}</span>
-            </div>
-            <div className="flex justify-between text-[10px] mb-1">
-              <span>Date:</span>
-              <span>{new Date(invoice.date).toLocaleDateString()}</span>
-            </div>
-            <div className="flex justify-between text-[10px] mb-4">
-              <span>Customer:</span>
-              <span className="font-bold">{invoice.customerName}</span>
-            </div>
-
-            <div className="border-b border-dashed border-black my-2"></div>
-            <table className="w-full text-[10px] mb-4">
-              <thead>
-                <tr>
-                  <th className="text-left py-1">Item</th>
-                  <th className="text-center py-1">Qty</th>
-                  <th className="text-right py-1">Rate</th>
-                  <th className="text-right py-1">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoice.items.map((item, idx) => (
-                  <tr key={idx}>
-                    <td className="text-left py-1">{item.description}</td>
-                    <td className="text-center py-1">{item.quantity}</td>
-                    <td className="text-right py-1">₹{item.rate}</td>
-                    <td className="text-right py-1">₹{((item.totalAmount || item.baseAmount) || 0).toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="border-b border-dashed border-black my-2"></div>
-
-            <div className="text-[10px] text-right space-y-1 mb-4">
-              {/* POS Gross/Disc Calculation */}
-              {(() => {
-                const itemDiscountTotal = invoice.items.reduce((sum, item) => sum + ((item.quantity * item.rate) - (item.baseAmount || 0)), 0);
-                const grossTotal = invoice.items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
-
-                if (itemDiscountTotal <= 0.01) return null;
-                return (
-                  <>
-                    <div className="flex justify-between text-slate-500">
-                      <span>Gross:</span>
-                      <span>{grossTotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-red-600">
-                      <span>Item Disc:</span>
-                      <span>- {itemDiscountTotal.toFixed(2)}</span>
-                    </div>
-                    <div className="border-b border-dashed border-black/20 my-1"></div>
-                  </>
-                );
-              })()}
-
-              <div className="flex justify-between">
-                <span>Subtotal:</span>
-                <span>{invoice.subtotal.toFixed(2)}</span>
-              </div>
-              {invoice.discountAmount && invoice.discountAmount > 0 && (
-                <div className="flex justify-between text-red-600">
-                  <span>Discount:</span>
-                  <span>- {invoice.discountAmount.toFixed(2)}</span>
-                </div>
-              )}
-              {invoice.gstEnabled && ((invoice.totalCgst || 0) + (invoice.totalSgst || 0) + (invoice.totalIgst || 0)) > 0 && (
-                <>
-                  {(invoice.totalCgst || 0) > 0 && (
-                    <div className="flex justify-between">
-                      <span>CGST:</span>
-                      <span>{(invoice.totalCgst || 0).toFixed(2)}</span>
-                    </div>
-                  )}
-                  {(invoice.totalSgst || 0) > 0 && (
-                    <div className="flex justify-between">
-                      <span>SGST:</span>
-                      <span>{(invoice.totalSgst || 0).toFixed(2)}</span>
-                    </div>
-                  )}
-                  {(invoice.totalIgst || 0) > 0 && (
-                    <div className="flex justify-between">
-                      <span>IGST:</span>
-                      <span>{(invoice.totalIgst || 0).toFixed(2)}</span>
-                    </div>
-                  )}
-                </>
-              )}
-              <div className="flex justify-between font-bold text-sm mt-2 pt-2 border-t border-dashed border-black">
-                <span>TOTAL:</span>
-                <span>₹{Math.round(invoice.total).toFixed(2)}</span>
-              </div>
-              <div className="text-xs text-center mt-2 italic">
-                ({numberToWords(Math.round(invoice.total))})
-              </div>
-            </div>
-            <div className="border-b border-dashed border-black my-2"></div>
-
-            {qrCodeUrl && (
-              <div className="flex flex-col items-center py-4">
-                <p className="text-[9px] font-black uppercase mb-1">Scan to Pay</p>
-                <img src={qrCodeUrl} className="w-32 h-32" alt="POS Payment QR" />
-                <p className="text-[8px] font-bold mt-1">{company.upiId}</p>
-              </div>
-            )}
-
-            <div className="text-center text-[9px] mt-4">
-              <p className="font-bold uppercase mb-1">Thank you for your business!</p>
-              <p>Terms & Conditions Apply</p>
-            </div>
-
-            {/* Print Button for POS View */}
-            <button
-              onClick={handlePrint}
-              className="w-full mt-4 py-4 bg-blue-600 text-white font-bold rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95 transition-transform print:hidden"
-            >
-              <Printer className="w-5 h-5" />
-              Print Receipt
-            </button>
-
-            {/* Mobile Only: Close Button at bottom for easier access */}
-            <button
-              onClick={() => setIsPosView(false)}
-              className="w-full mt-2 py-3 bg-slate-100 text-slate-900 rounded-lg md:hidden print:hidden border border-slate-200"
-            >
-              Close View
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* PRINT PORTAL (Using User's Robust Method) */}
-      {createPortal(
-        <div id="print-mount" style={{ display: 'none' }}>
-          <style>{`
-                    @media print {
-                        body > * { display: none !important; }
-                        body > #print-mount { display: block !important; }
-                        #print-mount {
-                            position: absolute;
-                            top: 0;
-                            left: 0;
-                            width: 100%;
-                            height: auto;
-                            background: white;
-                            z-index: 9999;
-                            -webkit-print-color-adjust: exact;
-                            print-color-adjust: exact;
-                        }
-                        @page { margin: 0; size: auto; }
-                    }
-                `}</style>
-
-          {isPosView ? (
-            /* POS PRINT LAYOUT (80mm) */
-            <div className="bg-white text-black w-[80mm] font-mono text-[12px] leading-tight p-0 mx-auto">
-              <div className="text-center mb-4">
-                <h1 className="text-xl font-bold uppercase">{company.name}</h1>
-                <p className="text-[10px]">{company.address}</p>
-                <p className="text-[10px]">Ph: {company.phone}</p>
-                {invoice.gstEnabled && (company.gstin || company.gst) && (
-                  <p className="text-[10px] font-bold mt-1">GSTIN: {company.gstin || company.gst}</p>
-                )}
-              </div>
-              <div className="border-b border-dashed border-black my-2"></div>
-              <div className="flex justify-between mb-1">
-                <span>Invoice No:</span>
-                <span className="font-bold">#{invoice.invoiceNumber}</span>
-              </div>
-              <div className="flex justify-between mb-1">
-                <span>Date:</span>
-                <span>{new Date(invoice.date).toLocaleDateString()}</span>
-              </div>
-              <div className="flex justify-between mb-4">
-                <span>Customer:</span>
-                <span className="font-bold">{invoice.customerName}</span>
-              </div>
-
-              <div className="border-b border-dashed border-black my-2"></div>
-              <table className="w-full mb-4 text-left">
-                <thead>
-                  <tr>
-                    <th className="py-1 w-[40%]">Item</th>
-                    <th className="py-1 text-center">Qty</th>
-                    <th className="py-1 text-right">Price</th>
-                    <th className="py-1 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoice.items.map((item, idx) => (
-                    <tr key={idx}>
-                      <td className="py-1">{item.description}</td>
-                      <td className="py-1 text-center">{item.quantity}</td>
-                      <td className="py-1 text-right">{item.rate}</td>
-                      <td className="py-1 text-right">{((item.totalAmount || item.baseAmount) || 0).toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="border-b border-dashed border-black my-2"></div>
-
-              <div className="text-right space-y-1 mb-4">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span>{invoice.subtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between font-bold text-sm mt-2 pt-2 border-t border-dashed border-black">
-                  <span>TOTAL:</span>
-                  <span>₹{Math.round(invoice.total).toFixed(2)}</span>
-                </div>
-                <div className="text-[10px] text-center mt-2 italic">
-                  ({numberToWords(Math.round(invoice.total))})
-                </div>
-              </div>
-              <div className="border-b border-dashed border-black my-2"></div>
-
-              {qrCodeUrl && (
-                <div className="flex flex-col items-center py-4">
-                  <p className="text-[9px] font-black uppercase mb-1">Scan to Pay</p>
-                  <img src={qrCodeUrl} className="w-32 h-32" alt="Print QR" />
-                  <p className="text-[8px] font-bold mt-1">{company.upiId}</p>
-                </div>
-              )}
-
-              <div className="text-center text-[10px] mt-4">
-                <p className="font-bold uppercase mb-1">Thank you!</p>
-              </div>
-            </div>
-          ) : (
-            /* A4 PRINT LAYOUT */
-            <div className="p-10 text-black max-w-[210mm] mx-auto bg-white">
-              <div className="text-center mb-6">
-                <h1 className="text-3xl font-bold mb-1 uppercase">{company.name}</h1>
-                <p className="text-sm text-gray-600">{company.address}</p>
-                <p className="text-sm text-gray-600">Ph: {company.phone}</p>
-                {invoice.gstEnabled && (company.gstin || company.gst) && (
-                  <p className="text-sm font-bold mt-1">GSTIN: {company.gstin || company.gst}</p>
-                )}
-              </div>
-
-              <div className="border-b-2 border-black mb-6"></div>
-
-              <div className="flex justify-between items-start mb-8">
-                <div className="text-left">
-                  <h3 className="font-bold text-xs uppercase text-gray-500 mb-1">Billed To</h3>
-                  <h2 className="text-lg font-bold">{invoice.customerName}</h2>
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap max-w-[250px]">{invoice.customerAddress}</p>
-                </div>
-                <div className="text-right">
-                  <div className="mb-2">
-                    <span className="block text-xs font-bold text-gray-500 uppercase">Invoice No</span>
-                    <span className="text-lg font-bold">#{invoice.invoiceNumber}</span>
-                  </div>
-                  <div>
-                    <span className="block text-xs font-bold text-gray-500 uppercase">Date</span>
-                    <span className="text-base font-medium">{new Date(invoice.date).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              </div>
-
-              <table className="w-full text-sm mb-8 border-collapse">
-                <thead>
-                  <tr className="border-b border-black">
-                    <th className="py-2 text-left">Item</th>
-                    <th className="py-2 text-center">Qty</th>
-                    <th className="py-2 text-right">Price</th>
-                    <th className="py-2 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoice.items.map((item, idx) => (
-                    <tr key={idx} className="border-b border-gray-200">
-                      <td className="py-3">{item.description}</td>
-                      <td className="py-3 text-center">{item.quantity}</td>
-                      <td className="py-3 text-right">₹{item.rate}</td>
-                      <td className="py-3 text-right font-bold">₹{((item.totalAmount || item.baseAmount) || 0).toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              <div className="flex justify-end mb-8">
-                <div className="w-1/2 space-y-2 text-right">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 font-medium">Subtotal</span>
-                    <span className="font-bold">₹{invoice.subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="border-t border-black pt-2 flex justify-between items-end">
-                    <span className="text-base font-bold">Total</span>
-                    <span className="text-2xl font-black">₹{invoice.total.toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-              {/* Amount in Words for Portal A4 */}
-              <div className="text-right text-[10px] italic mb-8 -mt-6">
-                ({numberToWords(Math.round(invoice.total))})
-              </div>
-
-              <div className="flex justify-between items-end mt-12 border-t pt-6">
-                <div className="space-y-4">
-                  {qrCodeUrl && (
-                    <div className="flex flex-col items-center p-2 border border-gray-100 rounded">
-                      <p className="text-[8px] font-bold uppercase mb-1 text-gray-400">Scan to Pay</p>
-                      <img src={qrCodeUrl} className="w-20 h-20" alt="Print QR A4" />
-                      <p className="text-[8px] font-bold mt-1">{company.upiId}</p>
-                    </div>
-                  )}
-                  <div className="text-xs text-gray-500">
-                    <p className="font-bold uppercase text-[10px] mb-1">Terms:</p>
-                    <p>1. Payment due within 30 days.</p>
-                    <p>2. Goods once sold will not be taken back.</p>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <div className="h-16 w-40 border-b border-gray-300 mb-2"></div>
-                  <p className="font-bold text-sm">For {company.name}</p>
-                  <p className="text-xs text-gray-400 uppercase">Authorized Signatory</p>
-                </div>
-              </div>
-
-              <div className="text-center text-gray-400 text-[10px] mt-8">
-                <p className="font-bold uppercase mb-1 tracking-widest">Thank you for your business!</p>
-              </div>
-            </div>
           )}
-        </div>,
-        document.body
-      )}
+        </div>
+      </div>
 
-      {/* Expressive M3 Delete Confirmation Modal */}
+      {/* Main Content */}
+      <div id="printable-area" className="max-w-4xl mx-auto p-4 md:p-10">
+        <div className={`bg-surface ${isPosView ? 'rounded-[12px]' : 'rounded-[40px] shadow-google'} border border-border overflow-hidden`}>
+
+          {/* M3 Bill Header */}
+          <div className="bg-surface-container-high/30 p-8 md:p-12 border-b border-border">
+            <div className="flex flex-col md:flex-row justify-between gap-10">
+              <div className="max-w-md">
+                <h1 className="text-5xl font-black font-heading text-foreground tracking-tight mb-4">{company.name}</h1>
+                <p className="text-sm font-bold text-muted-foreground leading-relaxed whitespace-pre-line">{company.address}</p>
+                <div className="mt-6 flex flex-wrap gap-6">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-google-blue border border-border">
+                      <MessageCircle className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm font-black text-foreground">{company.phone}</span>
+                  </div>
+                  {company.gstin && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-google-green border border-border text-[10px] font-black">GST</div>
+                      <span className="text-sm font-black text-foreground">{company.gstin}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="md:text-right flex flex-col items-start md:items-end justify-between">
+                <div>
+                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] block mb-2">Invoice Amount</span>
+                  <h2 className="text-6xl font-black font-heading text-google-green tracking-tighter">₹{invoice.total.toLocaleString()}</h2>
+                </div>
+                <div className="mt-8 space-y-1">
+                  <p className="text-sm font-black text-foreground">Date: {new Date(invoice.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Due: {invoice.dueDate}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-8 md:p-12">
+            {/* Customer Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
+              <div>
+                <h3 className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                  Billed To <span className="bg-surface-container-highest px-3 py-0.5 rounded-full text-[9px] text-foreground">Customer</span>
+                </h3>
+                <div className="space-y-4">
+                  <p className="text-2xl font-black text-foreground">{invoice.customerName}</p>
+                  <p className="text-sm font-bold text-muted-foreground leading-relaxed italic">{invoice.customerAddress || 'No address provided'}</p>
+                  {invoice.customerGstin && (
+                    <div className="inline-flex items-end gap-2 px-4 py-2 bg-surface-container-high rounded-2xl border border-border">
+                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">GSTIN</span>
+                      <span className="text-xs font-black text-google-blue">{invoice.customerGstin}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col items-start md:items-end md:text-right">
+                <h3 className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em] mb-6">Tax Summary</h3>
+                <div className="space-y-3 w-full max-w-[240px]">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-bold text-muted-foreground">Subtotal</span>
+                    <span className="font-black text-foreground">₹{invoice.subtotal.toLocaleString()}</span>
+                  </div>
+                  {invoice.gstEnabled && (
+                    <>
+                      {(invoice.totalCgst ?? 0) > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="font-bold text-muted-foreground">CGST</span>
+                          <span className="font-black text-foreground">₹{(invoice.totalCgst ?? 0).toLocaleString()}</span>
+                        </div>
+                      )}
+                      {(invoice.totalSgst ?? 0) > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="font-bold text-muted-foreground">SGST</span>
+                          <span className="font-black text-foreground">₹{(invoice.totalSgst ?? 0).toLocaleString()}</span>
+                        </div>
+                      )}
+                      {(invoice.totalIgst ?? 0) > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="font-bold text-muted-foreground">IGST</span>
+                          <span className="font-black text-foreground">₹{(invoice.totalIgst ?? 0).toLocaleString()}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {(invoice.discountAmount ?? 0) > 0 && (
+                    <div className="flex justify-between text-sm text-google-red">
+                      <span className="font-bold">Discount</span>
+                      <span className="font-black">-₹{(invoice.discountAmount ?? 0).toLocaleString()}</span>
+                    </div>
+                  )}
+                  <div className="h-px bg-border my-4" />
+                  <div className="flex justify-between text-xl font-black text-foreground">
+                    <span>TOTAL</span>
+                    <span>₹{invoice.total.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Items Table */}
+            <div className="overflow-x-auto -mx-8 md:mx-0 mb-16 px-8 md:px-0">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b-2 border-border">
+                    <th className="px-4 py-6 text-left text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Item Description</th>
+                    <th className="px-4 py-6 text-center text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Qty</th>
+                    <th className="px-4 py-6 text-right text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Rate</th>
+                    {invoice.gstEnabled && <th className="px-4 py-6 text-right text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">GST</th>}
+                    <th className="px-4 py-6 text-right text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {invoice.items.map((item, idx) => (
+                    <tr key={idx} className="group">
+                      <td className="px-4 py-8">
+                        <div className="flex flex-col">
+                          <span className="text-base font-black text-foreground group-hover:text-google-blue transition-colors">{item.description}</span>
+                          {item.hsn && <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-1">HSN: {item.hsn}</span>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-8 text-center text-sm font-bold text-muted-foreground">{item.quantity}</td>
+                      <td className="px-4 py-8 text-right text-sm font-bold text-foreground">₹{item.rate.toLocaleString()}</td>
+                      {invoice.gstEnabled && <td className="px-4 py-8 text-right text-sm font-bold text-muted-foreground">{item.gstRate}%</td>}
+                      <td className="px-4 py-8 text-right text-base font-black text-foreground">₹{(item.totalAmount ?? 0).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Bottom Info */}
+            <div className="flex flex-col md:flex-row gap-12 items-start justify-between border-t border-border pt-12">
+              <div className="flex-1 max-w-sm">
+                <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4">Terms & Conditions</h3>
+                <p className="text-xs font-bold text-muted-foreground leading-relaxed opacity-60">1. Goods once sold will not be taken back.\n2. Payment is due within 30 days.\n3. This is a computer generated invoice.</p>
+                {invoice.notes && (
+                  <div className="mt-8 p-4 bg-surface-container-high/50 rounded-2xl border border-border italic text-sm text-foreground">
+                    "{invoice.notes}"
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col items-start md:items-end gap-6 text-left md:text-right">
+                {company.upiId && qrCodeUrl && (
+                  <div className="p-4 bg-surface border-2 border-border rounded-3xl flex flex-col items-center gap-3">
+                    <img src={qrCodeUrl} alt="UPI QR" className="w-24 h-24" />
+                    <span className="text-[9px] font-black text-google-blue uppercase tracking-[0.2em]">Scan to Pay via UPI</span>
+                  </div>
+                )}
+                <div className="pt-6">
+                  <div className="w-48 h-px bg-border mb-4" />
+                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Authorized Signatory</p>
+                  <p className="text-lg font-black text-foreground mt-4 font-heading">{company.name}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Fab */}
+      <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-3 no-print z-[110]">
+        <motion.button
+          whileHover={{ y: -4, scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleDownload}
+          className="flex h-16 px-8 items-center gap-3 bg-foreground text-surface rounded-full font-black uppercase tracking-widest text-xs shadow-google-lg"
+        >
+          <Download className="w-5 h-5" /> Download
+        </motion.button>
+
+        <motion.button
+          whileHover={{ y: -4, scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setShowWhatsAppPhoneModal(true)}
+          className="flex h-16 px-8 items-center gap-3 bg-google-green text-white rounded-full font-black uppercase tracking-widest text-xs shadow-xl shadow-google-green/20"
+        >
+          <MessageCircle className="w-5 h-5" /> WhatsApp
+        </motion.button>
+
+        <motion.button
+          whileHover={{ y: -4, scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handlePrint}
+          className="w-16 h-16 bg-surface-container-highest text-foreground rounded-full flex items-center justify-center shadow-google transition-all"
+        >
+          <Printer className="w-6 h-6" />
+        </motion.button>
+      </div>
+
+      {/* Options Menu */}
       <AnimatePresence>
-        {showDeleteConfirm && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        {showOptions && (
+          <div className="fixed inset-0 z-[150] flex items-end md:items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowDeleteConfirm(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowOptions(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative bg-surface rounded-[40px] p-8 shadow-google-lg max-w-sm w-full border border-border text-center overflow-hidden"
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              className="relative w-full max-w-sm bg-surface rounded-[40px] overflow-hidden"
             >
-              <div className="w-20 h-20 rounded-[28px] bg-google-red/10 flex items-center justify-center text-google-red mx-auto mb-6 border border-google-red/10">
-                <Trash2 className="w-10 h-10" />
-              </div>
-              <h3 className="text-3xl font-black font-heading text-foreground mb-3 tracking-tight">Delete Bill?</h3>
-              <p className="text-sm font-bold text-muted-foreground mb-8">This action is permanent and will remove the balance from records.</p>
-              <div className="flex flex-col gap-3">
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleDelete}
-                  className="w-full py-5 bg-google-red text-white rounded-full font-black uppercase tracking-widest text-[11px] shadow-lg shadow-google-red/20 active:shadow-inner"
-                >
-                  Confirm Delete
-                </motion.button>
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="w-full py-4 text-muted-foreground font-black uppercase tracking-widest text-[10px] hover:bg-surface-container rounded-full transition-colors"
-                >
-                  Keep Bill
-                </motion.button>
+              <div className="p-8 space-y-2">
+                <button onClick={() => { onEdit(invoice); setShowOptions(false); }} className="w-full p-6 text-left hover:bg-surface-container-high rounded-[32px] flex items-center gap-4 transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-google-blue/10 text-google-blue flex items-center justify-center">
+                    <Edit className="w-5 h-5" />
+                  </div>
+                  <span className="font-black text-foreground">Edit Invoice</span>
+                </button>
+                <button onClick={() => setIsPosView(!isPosView)} className="w-full p-6 text-left hover:bg-surface-container-high rounded-[32px] flex items-center gap-4 transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-surface-container-highest text-foreground flex items-center justify-center">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <span className="font-black text-foreground">Switch to {isPosView ? 'Modern' : 'Compact'} View</span>
+                </button>
+                <button onClick={() => setShowDeleteConfirm(true)} className="w-full p-6 text-left hover:bg-google-red/10 rounded-[32px] flex items-center gap-4 transition-colors group">
+                  <div className="w-10 h-10 rounded-full bg-google-red/10 text-google-red flex items-center justify-center">
+                    <Trash2 className="w-5 h-5" />
+                  </div>
+                  <span className="font-black text-google-red">Delete Invoice</span>
+                </button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* Post Save Success Actions Modal */}
-      {showPostSaveActions && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 w-full max-w-sm text-center shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
-            <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-green-200 shadow-lg">
-              <Check className="w-10 h-10" />
-            </div>
-
-            <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 mb-2">Invoice Saved!</h2>
-            <p className="text-slate-500 font-medium mb-8">₹{invoice.total} • #{invoice.invoiceNumber}</p>
-
-            <div className="space-y-4">
-              <button
-                onClick={handlePrint}
-                className="w-full py-5 rounded-2xl bg-blue-600 text-white font-black text-lg shadow-xl shadow-blue-500/30 active:scale-95 transition-transform flex items-center justify-center gap-3"
-              >
-                <Printer className="w-6 h-6" />
-                Print Invoice
-              </button>
-
-              <button
-                onClick={handleWhatsAppClick}
-                className="w-full py-5 rounded-2xl bg-green-600 text-white font-black text-lg shadow-xl shadow-green-500/30 active:scale-95 transition-transform flex items-center justify-center gap-3"
-              >
-                <MessageCircle className="w-6 h-6" />
-                Send on WhatsApp
-              </button>
-
-              <button
-                onClick={onClosePostSaveActions}
-                className="w-full py-4 font-bold text-slate-400 mt-2"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Expressive M3 WhatsApp Modal */}
+      {/* Delete Confirmation */}
       <AnimatePresence>
-        {showWhatsAppPhoneModal && (
-          <div className="fixed inset-0 z-[110] flex items-end md:items-center justify-center p-0 md:p-6">
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowWhatsAppPhoneModal(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowDeleteConfirm(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-surface p-12 rounded-[48px] shadow-2xl text-center max-w-sm"
+            >
+              <div className="w-20 h-20 bg-google-red/10 text-google-red rounded-full flex items-center justify-center mx-auto mb-8">
+                <Trash2 className="w-10 h-10" />
+              </div>
+              <h3 className="text-2xl font-black text-foreground mb-4 font-heading tracking-tight">Are you sure?</h3>
+              <p className="text-muted-foreground font-bold mb-10">This action will permanently delete this invoice and cannot be undone.</p>
+              <div className="flex flex-col gap-3">
+                <button onClick={handleDelete} className="w-full py-5 bg-google-red text-white rounded-full font-black uppercase tracking-widest text-xs shadow-lg shadow-google-red/20 transition-all hover:bg-red-600">Yes, Delete Invoice</button>
+                <button onClick={() => setShowDeleteConfirm(false)} className="w-full py-5 bg-surface-container-high text-foreground rounded-full font-black uppercase tracking-widest text-xs transition-colors hover:bg-surface-container-highest">Cancel</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* WhatsApp Modal */}
+      <AnimatePresence>
+        {showWhatsAppPhoneModal && (
+          <div className="fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowWhatsAppPhoneModal(false);
+                if (onClosePostSaveActions) onClosePostSaveActions();
+              }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
             />
             <motion.div
               initial={{ y: "100%", opacity: 0 }}
@@ -1510,6 +562,11 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
                     onChange={(e) => setWaName(e.target.value)}
                     className="w-full p-5 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-lg font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all placeholder:text-muted-foreground/30"
                     placeholder="Enter full name"
+                    onFocus={() => {
+                      if (StorageService.getContactPreference() === 'NOT_SET' && Capacitor.isNativePlatform()) {
+                        setShowContactChoice(true);
+                      }
+                    }}
                   />
                 </div>
 
@@ -1545,10 +602,22 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
                           setShowSuggestions(false);
                         }
                       }}
+                      onFocus={() => {
+                        if (StorageService.getContactPreference() === 'NOT_SET' && Capacitor.isNativePlatform()) {
+                          setShowContactChoice(true);
+                        }
+                      }}
                       onBlur={() => setTimeout(() => setShowSuggestions(false), 300)}
-                      className="w-full p-5 pl-16 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-2xl font-black tracking-[0.1em] text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all placeholder:text-muted-foreground/30"
+                      className="w-full p-5 pl-16 pr-14 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-2xl font-black tracking-[0.1em] text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all placeholder:text-muted-foreground/30"
                       placeholder="00000 00000"
                     />
+                    <button
+                      type="button"
+                      onClick={handlePickContact}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-google-blue/10 flex items-center justify-center text-google-blue hover:bg-google-blue/20 transition-colors"
+                    >
+                      <Users className="w-5 h-5" />
+                    </button>
                   </div>
 
                   {showSuggestions && suggestions.length > 0 && (
@@ -1593,18 +662,13 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
                   Send Digital Link
                 </motion.button>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-3">
                   <motion.button
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => handleSaveToPhoneDirect(waPhone, waName)}
-                    className="py-5 bg-surface-container-high text-foreground rounded-full font-black uppercase tracking-widest text-[10px] border border-border flex items-center justify-center gap-2"
-                  >
-                    <UserPlus className="w-5 h-5 text-google-blue" />
-                    Save Contact
-                  </motion.button>
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowWhatsAppPhoneModal(false)}
+                    onClick={() => {
+                      setShowWhatsAppPhoneModal(false);
+                      if (onClosePostSaveActions) onClosePostSaveActions();
+                    }}
                     className="py-5 text-muted-foreground font-black uppercase tracking-widest text-[10px] hover:bg-surface-container rounded-full transition-colors"
                   >
                     Maybe Later
@@ -1616,6 +680,11 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onVi
         )}
       </AnimatePresence>
 
+      <ContactPermissionModal
+        isOpen={showContactChoice}
+        onClose={() => setShowContactChoice(false)}
+        onChoice={onContactChoice}
+      />
     </div>
 
   );

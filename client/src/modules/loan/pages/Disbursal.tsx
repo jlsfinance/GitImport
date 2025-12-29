@@ -112,7 +112,7 @@ const Disbursal: React.FC = () => {
                         const amountFormatted = `Rs. ${selectedLoan.amount.toLocaleString('en-IN')}`;
                         const dateFormatted = format(dateObj, 'dd MMMM, yyyy');
 
-                        const message = `Namaste ${selectedLoan.customerName},\n\nAapka ${companyName} se ${amountFormatted} ka loan aaj dinank ${dateFormatted} ko disburse kar diya gaya hai.\n\nDhanyavaad.`;
+                        const message = `Namaste ${selectedLoan.customerName},\n\nAapka ${companyName} se ${amountFormatted} ka credit aaj dinank ${dateFormatted} ko disburse kar diya gaya hai.\n\nDhanyavaad.`;
                         const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
 
                         window.open(whatsappUrl, '_blank');
@@ -122,7 +122,7 @@ const Disbursal: React.FC = () => {
                 console.error("WhatsApp redirect failed", e);
             }
 
-            alert("Loan Disbursed Successfully!");
+            alert("Credit Disbursed Successfully!");
             setSelectedLoan(null);
 
         } catch (error) {
@@ -155,7 +155,7 @@ const Disbursal: React.FC = () => {
                 <div className="bg-white dark:bg-[#1e2736] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
                     <div className="p-4 border-b border-slate-100 dark:border-slate-800">
                         <h2 className="font-bold text-lg">Ready for Disbursal</h2>
-                        <p className="text-sm text-slate-500">Loans approved and waiting for payout.</p>
+                        <p className="text-sm text-slate-500">Records approved and waiting for payout.</p>
                     </div>
 
                     <div className="overflow-x-auto">
@@ -199,7 +199,7 @@ const Disbursal: React.FC = () => {
                                     <tr>
                                         <td colSpan={5} className="px-4 py-12 text-center text-slate-400">
                                             <span className="material-symbols-outlined text-4xl mb-2">savings</span>
-                                            <p>No loans pending disbursal.</p>
+                                            <p>No records pending disbursal.</p>
                                         </td>
                                     </tr>
                                 )}
@@ -215,7 +215,7 @@ const Disbursal: React.FC = () => {
                     <div className="bg-white dark:bg-[#1e2736] rounded-2xl w-full max-w-sm shadow-2xl p-6">
                         <h3 className="text-lg font-bold mb-1">Confirm Disbursal</h3>
                         <p className="text-sm text-slate-500 mb-4">
-                            For {selectedLoan.customerName} (Loan #{selectedLoan.id})
+                            For {selectedLoan.customerName} (Record #{selectedLoan.id})
                         </p>
 
                         <div className="space-y-4 mb-6">
@@ -230,7 +230,7 @@ const Disbursal: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1">EMI Due Day (Har Mahine Ki Tarikh)</label>
+                                <label className="block text-xs font-bold text-slate-500 mb-1">Installment Due Day (Har Mahine Ki Tarikh)</label>
                                 <select
                                     value={emiDueDay}
                                     onChange={(e) => setEmiDueDay(Number(e.target.value))}
@@ -243,7 +243,7 @@ const Disbursal: React.FC = () => {
                                     ))}
                                 </select>
                                 <p className="text-xs text-slate-400 mt-2">
-                                    * First EMI: {emiDueDay === 1 ? '1st' : emiDueDay === 2 ? '2nd' : emiDueDay === 3 ? '3rd' : `${emiDueDay}th`} of next month
+                                    * First Installment: {emiDueDay === 1 ? '1st' : emiDueDay === 2 ? '2nd' : emiDueDay === 3 ? '3rd' : `${emiDueDay}th`} of next month
                                 </p>
                             </div>
                             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex justify-between items-center">

@@ -43,7 +43,7 @@ const Approvals: React.FC = () => {
                 const pendingApps = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as LoanApplication[];
                 setApplications(pendingApps);
             } catch (error) {
-                console.error("Failed to load loans:", error);
+                console.error("Failed to load records:", error);
             } finally {
                 setLoading(false);
             }
@@ -89,7 +89,7 @@ const Approvals: React.FC = () => {
 
         } catch (error) {
             console.error(`Failed to update application:`, error);
-            alert("An error occurred while updating the loan.");
+            alert("An error occurred while updating the record.");
         } finally {
             setProcessing(false);
         }
@@ -117,7 +117,7 @@ const Approvals: React.FC = () => {
                 <div className="bg-white dark:bg-[#1e2736] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
                     <div className="p-4 border-b border-slate-100 dark:border-slate-800">
                         <h2 className="font-bold text-lg">Pending Applications</h2>
-                        <p className="text-sm text-slate-500">Review and process new loan requests.</p>
+                        <p className="text-sm text-slate-500">Review and process new credit requests.</p>
                     </div>
 
                     <div className="overflow-x-auto">
@@ -180,11 +180,11 @@ const Approvals: React.FC = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
                     <div className="bg-white dark:bg-[#1e2736] rounded-2xl w-full max-w-sm shadow-2xl p-6">
                         <h3 className="text-lg font-bold mb-1">
-                            {modalType === 'approve' ? 'Approve Loan?' : 'Reject Loan?'}
+                            {modalType === 'approve' ? 'Approve Record?' : 'Reject Record?'}
                         </h3>
                         <p className="text-sm text-slate-500 mb-4">
                             {modalType === 'approve'
-                                ? `You are approving a loan of Rs. ${selectedApp.amount.toLocaleString('en-IN')} for ${selectedApp.customerName}.`
+                                ? `You are approving a credit of Rs. ${selectedApp.amount.toLocaleString('en-IN')} for ${selectedApp.customerName}.`
                                 : `You are rejecting the application for ${selectedApp.customerName}.`}
                         </p>
 

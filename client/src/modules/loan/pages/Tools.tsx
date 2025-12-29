@@ -57,14 +57,14 @@ const Tools: React.FC = () => {
                             <div className="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center">
                                 <span className="material-symbols-outlined">calculate</span>
                             </div>
-                            <span className="font-bold text-sm">Loan Calc</span>
+                            <span className="font-bold text-sm">Installment Calc</span>
                         </Link>
 
                         <Link to="/loan/loans" className="bg-white dark:bg-[#1e2736] p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-start gap-4 hover:shadow-md transition-all active:scale-95">
                             <div className="h-10 w-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center">
                                 <span className="material-symbols-outlined">percent</span>
                             </div>
-                            <span className="font-bold text-sm">EMI Check</span>
+                            <span className="font-bold text-sm">Installment Check</span>
                         </Link>
 
                         <Link to="/loan/tools/legal-notice" className="bg-white dark:bg-[#1e2736] p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-start gap-4 hover:shadow-md transition-all active:scale-95">
@@ -145,8 +145,8 @@ const Tools: React.FC = () => {
                                     <span className="material-symbols-outlined">payments</span>
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-sm">Loan Disbursal</h4>
-                                    <p className="text-[10px] text-slate-500 font-medium">Approved loans ready for payout</p>
+                                    <h4 className="font-bold text-sm">Credit Disbursal</h4>
+                                    <p className="text-[10px] text-slate-500 font-medium">Approved records ready for payout</p>
                                 </div>
                             </div>
                             <span className="material-symbols-outlined text-slate-300">chevron_right</span>
