@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Check, X } from 'lucide-react';
+import { Shield, Check } from 'lucide-react';
 import { StorageService } from '../services/storageService';
 
 interface PrivacyDisclosureModalProps {

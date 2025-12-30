@@ -138,6 +138,7 @@ export interface Invoice {
   discountValue?: number;
   discountAmount?: number;
   paidAmount?: number; // Amount paid/received
+  expiresAt?: any; // For public secure links
   notes?: string;
   terms?: string;
 }

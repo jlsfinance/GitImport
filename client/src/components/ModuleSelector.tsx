@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface ModuleSelectorProps {
-    onSelect: (module: 'accounting' | 'loan') => void;
+    onSelect: (module: 'accounting' | 'records') => void;
 }
 
 const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
@@ -24,7 +24,7 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
             setTimeout(() => onSelect('accounting'), 400);
         } else if (currentY < -120) {
             animate(y, -window.innerHeight, { type: 'spring', stiffness: 200, damping: 25 });
-            setTimeout(() => onSelect('loan'), 400);
+            setTimeout(() => onSelect('records'), 400);
         } else {
             animate(y, 0, { type: 'spring', stiffness: 300, damping: 25 });
         }
@@ -103,7 +103,7 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
 
                 <div className="text-center opacity-80 mb-4">
                     <h1 className="text-3xl font-black text-emerald-900 tracking-tighter">RECORDS</h1>
-                    <h2 className="text-[10px] font-bold text-emerald-400 tracking-widest uppercase mt-1">Ledger Keeping</h2>
+                    <h2 className="text-[10px] font-bold text-emerald-400 tracking-widest uppercase mt-1">Bookkeeping</h2>
                 </div>
 
                 {/* Disclaimer */}
@@ -151,15 +151,15 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ onSelect }) => {
                         <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-1 h-4 bg-amber-800" />
                     </motion.div>
 
-                    {/* Bottom Character (Loan Lion) */}
+                    {/* Bottom Character (Loan Lion -> Ledger Lion) */}
                     <motion.div
                         className="absolute -bottom-24 bg-white p-3 rounded-3xl shadow-xl shadow-emerald-900/10 border-[3px] border-emerald-100 flex flex-col items-center gap-1 w-28"
                         style={{ scale: lionScale }}
-                        onClick={() => onSelect('loan')}
+                        onClick={() => onSelect('records')}
                     >
                         <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-1 h-4 bg-amber-800" />
                         <div className="bg-emerald-100 px-3 py-1 rounded-full w-full text-center mb-1">
-                            <span className="text-[9px] font-black uppercase text-emerald-600 tracking-wider">Credit Ledger</span>
+                            <span className="text-[9px] font-black uppercase text-emerald-600 tracking-wider">Ledger</span>
                         </div>
                         <span className="text-4xl filter drop-shadow-sm transform hover:scale-110 transition-transform">🦁</span>
                     </motion.div>

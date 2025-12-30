@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
 import { StorageService } from '../services/storageService';
-import { Plus, Search, Package, MoreVertical, Trash2, Edit2, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Package, Trash2, Edit2, TrendingUp, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Inventory: React.FC = () => {
@@ -63,13 +63,6 @@ const Inventory: React.FC = () => {
     setOriginalId(null);
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Delete this product?')) {
-      const updated = products.filter(p => p.id !== id);
-      setProducts(updated);
-      // StorageService.deleteProduct(id); // If method exists, else need to implement
-    }
-  };
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -205,8 +198,8 @@ const Inventory: React.FC = () => {
             <button
               onClick={handleSelectAll}
               className={`px-6 py-6 rounded-[32px] border-2 font-black text-sm uppercase tracking-widest transition-all ${selectedIds.size === filteredProducts.length && filteredProducts.length > 0
-                  ? 'bg-google-blue text-white border-google-blue'
-                  : 'bg-surface-container-high border-transparent text-muted-foreground hover:bg-surface-container-highest'
+                ? 'bg-google-blue text-white border-google-blue'
+                : 'bg-surface-container-high border-transparent text-muted-foreground hover:bg-surface-container-highest'
                 }`}
             >
               {selectedIds.size === filteredProducts.length && filteredProducts.length > 0 ? 'Deselect All' : 'Select All'}

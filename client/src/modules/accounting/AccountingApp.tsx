@@ -46,7 +46,6 @@ const AccountingApp: React.FC = () => {
     const [isCloudConnected, setIsCloudConnected] = useState(false);
     const [showImport, setShowImport] = useState(false);
     const [selectedDaybookDate, setSelectedDaybookDate] = useState<string | null>(null);
-    const [selectedPaymentToEdit, setSelectedPaymentToEdit] = useState<any | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const [startSmartCalc, setStartSmartCalc] = useState(false);
@@ -160,10 +159,6 @@ const AccountingApp: React.FC = () => {
         setShowImport(true);
     };
 
-    const handleEditPayment = (payment: any) => {
-        setSelectedPaymentToEdit(payment);
-        setCurrentView(ViewState.PAYMENTS);
-    };
 
     // Auth & Loading States
     if (authLoading || (user && companyLoading) || isInitializing) {
@@ -320,7 +315,7 @@ const AccountingApp: React.FC = () => {
                         {currentView === ViewState.CUSTOMERS && <Customers onEditInvoice={handleEditInvoice} />}
                         {currentView === ViewState.DAYBOOK && <Daybook initialDate={selectedDaybookDate} />}
                         {currentView === ViewState.EXPENSES && <Expenses />}
-                        {currentView === ViewState.PAYMENTS && <Payments onBack={() => setCurrentView(ViewState.DASHBOARD)} createTrigger={triggerPaymentCreate} initialPayment={selectedPaymentToEdit} />}
+                        {currentView === ViewState.PAYMENTS && <Payments onBack={() => setCurrentView(ViewState.DASHBOARD)} createTrigger={triggerPaymentCreate} />}
                         {currentView === ViewState.REPORTS && <Reports onBack={() => setCurrentView(ViewState.DASHBOARD)} onViewLedger={handleViewCustomerLedger} />}
                         {(currentView === ViewState.ALL_INVOICES || currentView === ViewState.INVOICES) && <AllInvoices title="Sales" createLabel="Add Sale" onView={handleViewInvoice} onEdit={handleEditInvoice} />}
                         {currentView === ViewState.PURCHASES && <AllInvoices title="Purchases" createLabel="Add Purchase" invoices={purchases} onView={handleViewInvoice} onEdit={handleEditPurchase} />}

@@ -1,0 +1,91 @@
+import { collection, getDocs, addDoc, doc, getDoc, query, where, deleteDoc } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
+import { Customer, FinancialRecord as Record } from '../types';
+
+export const fetchCustomers = async (companyId?: string): Promise<Customer[]> => {
+  try {
+    let q;
+    if (companyId) {
+      q = query(collection(db, "customers"), where("companyId", "==", companyId));
+    } else {
+      q = collection(db, "customers");
+    }
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+  } catch (error) {
+    console.error("Error fetching customers from Firebase:", error);
+    return [];
+  }
+};
+
+export const fetchCustomerById = async (id: string): Promise<Customer | null> => {
+  try {
+    const docRef = doc(db, "customers", id);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as Customer;
+    } else {
+      console.log("No such customer document!");
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching customer details:", error);
+    return null;
+  }
+};
+
+export const fetchRecordsByCustomerId = async (customerId: string): Promise<Record[]> => {
+  try {
+    const recordsQuery = query(
+      collection(db, "records"),
+      where("customerId", "==", customerId)
+    );
+    const querySnapshot = await getDocs(recordsQuery);
+    const records = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Record));
+    records.sort((a: any, b: any) => {
+      const dateA = a.date?.toDate?.() || new Date(a.date) || new Date(0);
+      const dateB = b.date?.toDate?.() || new Date(b.date) || new Date(0);
+      return dateB.getTime() - dateA.getTime();
+    });
+    return records;
+  } catch (error) {
+    console.error("Error fetching records:", error);
+    return [];
+  }
+};
+
+export const fetchRecords = async (companyId?: string): Promise<Record[]> => {
+  try {
+    let q;
+    if (companyId) {
+      q = query(collection(db, "records"), where("companyId", "==", companyId));
+    } else {
+      q = collection(db, "records");
+    }
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Record));
+  } catch (error) {
+    console.error("Error fetching records from Firebase:", error);
+    return [];
+  }
+};
+
+export const createCustomer = async (customer: Omit<Customer, 'id'> & { companyId: string }) => {
+  try {
+    const docRef = await addDoc(collection(db, "customers"), customer);
+    return docRef.id;
+  } catch (error) {
+    console.error("Error adding customer:", error);
+    throw error;
+  }
+};
+
+export const deleteCustomer = async (customerId: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, "customers", customerId));
+  } catch (error) {
+    console.error("Error deleting customer:", error);
+    throw error;
+  }
+};

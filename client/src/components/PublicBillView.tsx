@@ -3,8 +3,8 @@ import { useParams } from 'react-router-dom';
 import { collection, query, where, getDocs, documentId } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Invoice } from '@/types';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, AlertCircle, RefreshCw, Home, ShieldCheck } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { AlertCircle, RefreshCw, Home, ShieldCheck } from 'lucide-react';
 import InvoiceView from '@/components/InvoiceView';
 
 export const PublicBillView: React.FC<{ billId?: string }> = ({ billId: propBillId }) => {

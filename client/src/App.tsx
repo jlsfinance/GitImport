@@ -1,20 +1,20 @@
-
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { CompanyProvider } from '@/contexts/CompanyContext';
 import { ThemeProvider } from 'next-themes';
 import ModuleSelector from './components/ModuleSelector';
 import AccountingApp from './modules/accounting/AccountingApp';
-import LoanApp from './modules/loan/LoanApp';
+import RecordsApp from './modules/records/RecordsApp'; // Neutralized Import
 import { StorageService } from './services/storageService';
 import { PrivacyDisclosureModal } from './components/PrivacyDisclosureModal';
 
 const RootApp: React.FC = () => {
-  const [selectedModule, setSelectedModule] = useState<'accounting' | 'loan' | null>(() => {
+  const [selectedModule, setSelectedModule] = useState<'accounting' | 'records' | null>(() => {
     // Persist choice or detect from path
     const saved = localStorage.getItem('active_module');
-    if (saved === 'accounting' || saved === 'loan') return saved;
+    if (saved === 'accounting') return 'accounting';
+    if (saved === 'loan' || saved === 'records') return 'records'; // Compatible with legacy
     return null;
   });
 
@@ -64,10 +64,11 @@ const RootApp: React.FC = () => {
       return;
     }
 
-    // Logic for Loan Deep Links (if any, e.g. /loan-details)
-    // Note: The Loan app uses its own internalized router, so we should prefix it or detect it.
-    if (path.startsWith('/loan')) {
-      setSelectedModule('loan');
+    // Logic for Record Deep Links (fka Loan)
+    // Legacy support for /loan prefixes -> redirect to /records?
+    // Ideally we should just set module. The RecordsApp handles the routing.
+    if (path.startsWith('/records') || path.startsWith('/loan')) {
+      setSelectedModule('records');
       return;
     }
 
@@ -75,21 +76,15 @@ const RootApp: React.FC = () => {
     if (path === '/') {
       const saved = localStorage.getItem('active_module');
       if (saved === 'accounting') navigate('/bill', { replace: true });
-      if (saved === 'loan') navigate('/loan', { replace: true });
+      if (saved === 'records' || saved === 'loan') navigate('/records', { replace: true }); // Default to /records
     }
   }, [location, navigate]);
 
-  const handleSelectModule = (module: 'accounting' | 'loan') => {
+  const handleSelectModule = (module: 'accounting' | 'records') => {
     setSelectedModule(module);
     localStorage.setItem('active_module', module);
     if (module === 'accounting') navigate('/bill');
-    if (module === 'loan') navigate('/loan');
-  };
-
-  const handleResetModule = () => {
-    setSelectedModule(null);
-    localStorage.removeItem('active_module');
-    navigate('/');
+    if (module === 'records') navigate('/records');
   };
 
   // If a module is selected, render it
@@ -106,10 +101,10 @@ const RootApp: React.FC = () => {
     );
   }
 
-  if (selectedModule === 'loan') {
+  if (selectedModule === 'records') {
     return (
       <div className="relative h-screen w-full">
-        <LoanApp />
+        <RecordsApp />
       </div>
     );
   }
