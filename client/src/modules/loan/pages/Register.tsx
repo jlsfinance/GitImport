@@ -17,6 +17,7 @@ const Register: React.FC = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -25,6 +26,11 @@ const Register: React.FC = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!agreeToTerms) {
+      setError('Please agree to the Terms of Service and Privacy Policy.');
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match.");
@@ -69,6 +75,12 @@ const Register: React.FC = () => {
 
   const handleGoogleLogin = async () => {
     setError('');
+
+    if (!agreeToTerms) {
+      setError('Please agree to the Terms of Service and Privacy Policy.');
+      return;
+    }
+
     setLoading(true);
     try {
       let user;
@@ -178,10 +190,23 @@ const Register: React.FC = () => {
             />
           </div>
 
+          <div className="flex items-start gap-2 mt-2 px-1">
+            <input
+              type="checkbox"
+              id="terms"
+              checked={agreeToTerms}
+              onChange={(e) => setAgreeToTerms(e.target.checked)}
+              className="mt-1 w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
+            />
+            <label htmlFor="terms" className="text-xs text-slate-500 dark:text-slate-400 leading-tight select-none cursor-pointer">
+              I agree to the <Link to="/loan/terms" className="text-primary font-bold hover:underline">Terms of Service</Link> and <Link to="/loan/privacy" className="text-primary font-bold hover:underline">Privacy Policy</Link>.
+            </label>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
-            className="mt-4 flex h-12 w-full items-center justify-center rounded-xl bg-primary font-bold text-white shadow-lg shadow-primary/30 hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-70"
+            className="mt-4 flex h-12 w-full items-center justify-center rounded-xl bg-primary font-bold text-white shadow-lg shadow-primary/30 hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {loading ? (
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>

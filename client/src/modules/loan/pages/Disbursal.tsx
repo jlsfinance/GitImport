@@ -2,17 +2,17 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { collection, getDocs, query, where, doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
-import { addMonths, startOfMonth, format, parse, isValid } from 'date-fns';
+import { addMonths, format } from 'date-fns';
 import { useCompany } from '../context/CompanyContext';
 import { APP_NAME } from '../constants';
 import { motion } from 'framer-motion';
 
-interface ApprovedLoan {
+interface AcceptedRecord {
     id: string;
     customerName: string;
     customerId: string;
     amount: number;
-    approvalDate?: string;
+    acceptanceDate?: string;
     tenure: number;
     emi: number;
     processingFee: number;
@@ -21,19 +21,19 @@ interface ApprovedLoan {
 const Disbursal: React.FC = () => {
     const navigate = useNavigate();
     const { currentCompany } = useCompany();
-    const [approvedLoans, setApprovedLoans] = useState<ApprovedLoan[]>([]);
+    const [acceptedRecords, setAcceptedRecords] = useState<AcceptedRecord[]>([]);
     const [loading, setLoading] = useState(true);
 
     const companyName = useMemo(() => currentCompany?.name || APP_NAME, [currentCompany]);
 
     // Modal State
-    const [selectedLoan, setSelectedLoan] = useState<ApprovedLoan | null>(null);
-    const [disbursalDate, setDisbursalDate] = useState<string>(new Date().toISOString().split('T')[0]);
-    const [emiDueDay, setEmiDueDay] = useState<number>(1); // Default to 1st of month
+    const [selectedRecord, setSelectedRecord] = useState<AcceptedRecord | null>(null);
+    const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [installmentDueDay, setInstallmentDueDay] = useState<number>(1); // Default to 1st of month
     const [processing, setProcessing] = useState(false);
 
     useEffect(() => {
-        const fetchApprovedLoans = async () => {
+        const fetchAcceptedRecords = async () => {
             if (!currentCompany) {
                 setLoading(false);
                 return;
@@ -43,65 +43,65 @@ const Disbursal: React.FC = () => {
             try {
                 const q = query(
                     collection(db, "loans"),
-                    where("status", "==", "Approved"),
+                    where("status", "in", ["Accepted", "Approved"]),
                     where("companyId", "==", currentCompany.id)
                 );
                 const querySnapshot = await getDocs(q);
-                const approved = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ApprovedLoan[];
-                setApprovedLoans(approved);
+                const accepted = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AcceptedRecord[];
+                setAcceptedRecords(accepted);
             } catch (error) {
-                console.error("Failed to load approved loans:", error);
+                console.error("Failed to load accepted records:", error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchApprovedLoans();
+        fetchAcceptedRecords();
     }, [currentCompany]);
 
-    const handleDisburse = async () => {
-        if (!selectedLoan || !disbursalDate) {
+    const handlePaymentGiven = async () => {
+        if (!selectedRecord || !paymentDate) {
             alert("Please select a valid date.");
             return;
         }
         setProcessing(true);
 
         try {
-            const loanRef = doc(db, "loans", selectedLoan.id);
-            const dateObj = new Date(disbursalDate);
+            const recordRef = doc(db, "loans", selectedRecord.id);
+            const dateObj = new Date(paymentDate);
 
-            // Generate EMI schedule with selected due day
+            // Generate Installment schedule with selected due day
             const repaymentSchedule = [];
             const nextMonth = addMonths(dateObj, 1);
             const year = nextMonth.getFullYear();
             const month = nextMonth.getMonth();
-            const firstEmiDate = new Date(year, month, emiDueDay);
+            const firstInstallmentDate = new Date(year, month, installmentDueDay);
 
-            for (let i = 0; i < selectedLoan.tenure; i++) {
-                const emiDate = addMonths(firstEmiDate, i);
+            for (let i = 0; i < selectedRecord.tenure; i++) {
+                const installmentDate = addMonths(firstInstallmentDate, i);
                 repaymentSchedule.push({
                     emiNumber: i + 1,
-                    dueDate: format(emiDate, 'yyyy-MM-dd'),
-                    amount: selectedLoan.emi,
+                    dueDate: format(installmentDate, 'yyyy-MM-dd'),
+                    amount: selectedRecord.emi,
                     status: 'Pending'
                 });
             }
 
-            const actualDisbursed = selectedLoan.amount - (selectedLoan.processingFee || 0);
+            const actualGiven = selectedRecord.amount - (selectedRecord.processingFee || 0);
 
-            await updateDoc(loanRef, {
+            await updateDoc(recordRef, {
                 status: 'Disbursed',
-                disbursalDate: disbursalDate,
+                disbursalDate: paymentDate,
                 repaymentSchedule: repaymentSchedule,
-                actualDisbursed: actualDisbursed,
-                emiDueDay: emiDueDay,
+                actualGiven: actualGiven,
+                installmentDueDay: installmentDueDay,
             });
 
             // Success Handling
-            setApprovedLoans(prev => prev.filter(app => app.id !== selectedLoan.id));
+            setAcceptedRecords(prev => prev.filter(app => app.id !== selectedRecord.id));
 
             // Notification logic
             try {
-                const customerRef = doc(db, "customers", selectedLoan.customerId);
+                const customerRef = doc(db, "customers", selectedRecord.customerId);
                 const customerSnap = await getDoc(customerRef);
                 if (customerSnap.exists()) {
                     const customerData = customerSnap.data();
@@ -109,10 +109,10 @@ const Disbursal: React.FC = () => {
                         // Clean phone number
                         const cleanPhone = customerData.phone.replace(/\D/g, '').slice(-10);
                         const formattedPhone = `91${cleanPhone}`;
-                        const amountFormatted = `Rs. ${selectedLoan.amount.toLocaleString('en-IN')}`;
+                        const amountFormatted = `Rs. ${selectedRecord.amount.toLocaleString('en-IN')}`;
                         const dateFormatted = format(dateObj, 'dd MMMM, yyyy');
 
-                        const message = `Namaste ${selectedLoan.customerName},\n\nAapka ${companyName} se ${amountFormatted} ka credit aaj dinank ${dateFormatted} ko disburse kar diya gaya hai.\n\nDhanyavaad.`;
+                        const message = `Namaste ${selectedRecord.customerName},\n\nAapka ${companyName} se ${amountFormatted} ka credit aaj dinank ${dateFormatted} ko de diya gaya hai.\n\nDhanyavaad.`;
                         const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
 
                         window.open(whatsappUrl, '_blank');
@@ -122,12 +122,12 @@ const Disbursal: React.FC = () => {
                 console.error("WhatsApp redirect failed", e);
             }
 
-            alert("Credit Disbursed Successfully!");
-            setSelectedLoan(null);
+            alert("Credit Given Successfully!");
+            setSelectedRecord(null);
 
         } catch (error) {
-            console.error(`Failed to disburse loan:`, error);
-            alert("Disbursal failed. Please try again.");
+            console.error(`Failed to give payment:`, error);
+            alert("Payment failed. Please try again.");
         } finally {
             setProcessing(false);
         }
@@ -147,15 +147,15 @@ const Disbursal: React.FC = () => {
                     <button onClick={() => navigate(-1)} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all">
                         <span className="material-symbols-outlined">arrow_back</span>
                     </button>
-                    <h1 className="text-2xl font-bold tracking-tight">Disbursal Queue</h1>
+                    <h1 className="text-2xl font-bold tracking-tight">Payment Out Queue</h1>
                 </div>
             </div>
 
             <div className="max-w-4xl mx-auto p-4 space-y-6">
                 <div className="bg-white dark:bg-[#1e2736] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
                     <div className="p-4 border-b border-slate-100 dark:border-slate-800">
-                        <h2 className="font-bold text-lg">Ready for Disbursal</h2>
-                        <p className="text-sm text-slate-500">Records approved and waiting for payout.</p>
+                        <h2 className="font-bold text-lg">Ready for Payment</h2>
+                        <p className="text-sm text-slate-500">Records accepted and waiting for payout.</p>
                     </div>
 
                     <div className="overflow-x-auto">
@@ -165,7 +165,7 @@ const Disbursal: React.FC = () => {
                                     <th className="px-4 py-3 whitespace-nowrap">App ID</th>
                                     <th className="px-4 py-3 whitespace-nowrap">Applicant</th>
                                     <th className="px-4 py-3 whitespace-nowrap">Amount</th>
-                                    <th className="px-4 py-3 whitespace-nowrap">Approved Date</th>
+                                    <th className="px-4 py-3 whitespace-nowrap">Accepted Date</th>
                                     <th className="px-4 py-3 text-center">Action</th>
                                 </tr>
                             </thead>
@@ -176,21 +176,21 @@ const Disbursal: React.FC = () => {
                                             <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
                                         </td>
                                     </tr>
-                                ) : approvedLoans.length > 0 ? (
-                                    approvedLoans.map((app) => (
+                                ) : acceptedRecords.length > 0 ? (
+                                    acceptedRecords.map((app) => (
                                         <tr key={app.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                             <td className="px-4 py-3 font-medium">{app.id}</td>
                                             <td className="px-4 py-3 font-bold">{app.customerName}</td>
                                             <td className="px-4 py-3">Rs. {app.amount.toLocaleString('en-IN')}</td>
                                             <td className="px-4 py-3 text-slate-500">
-                                                {app.approvalDate ? new Date(app.approvalDate).toLocaleDateString() : 'N/A'}
+                                                {app.acceptanceDate ? new Date(app.acceptanceDate).toLocaleDateString() : 'N/A'}
                                             </td>
                                             <td className="px-4 py-3 text-center">
                                                 <button
-                                                    onClick={() => setSelectedLoan(app)}
+                                                    onClick={() => setSelectedRecord(app)}
                                                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 text-xs font-bold transition-colors shadow-lg shadow-primary/30"
                                                 >
-                                                    <span className="material-symbols-outlined text-[16px]">payments</span> Disburse
+                                                    <span className="material-symbols-outlined text-[16px]">payments</span> Give Payment
                                                 </button>
                                             </td>
                                         </tr>
@@ -199,7 +199,7 @@ const Disbursal: React.FC = () => {
                                     <tr>
                                         <td colSpan={5} className="px-4 py-12 text-center text-slate-400">
                                             <span className="material-symbols-outlined text-4xl mb-2">savings</span>
-                                            <p>No records pending disbursal.</p>
+                                            <p>No records pending payment.</p>
                                         </td>
                                     </tr>
                                 )}
@@ -210,21 +210,21 @@ const Disbursal: React.FC = () => {
             </div>
 
             {/* Modal */}
-            {selectedLoan && (
+            {selectedRecord && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
                     <div className="bg-white dark:bg-[#1e2736] rounded-2xl w-full max-w-sm shadow-2xl p-6">
-                        <h3 className="text-lg font-bold mb-1">Confirm Disbursal</h3>
+                        <h3 className="text-lg font-bold mb-1">Confirm Payment</h3>
                         <p className="text-sm text-slate-500 mb-4">
-                            For {selectedLoan.customerName} (Record #{selectedLoan.id})
+                            For {selectedRecord.customerName} (Record #{selectedRecord.id})
                         </p>
 
                         <div className="space-y-4 mb-6">
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1">Disbursal Date</label>
+                                <label className="block text-xs font-bold text-slate-500 mb-1">Payment Date</label>
                                 <input
                                     type="date"
-                                    value={disbursalDate}
-                                    onChange={(e) => setDisbursalDate(e.target.value)}
+                                    value={paymentDate}
+                                    onChange={(e) => setPaymentDate(e.target.value)}
                                     max={new Date().toISOString().split('T')[0]}
                                     className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1a2230] border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary outline-none"
                                 />
@@ -232,8 +232,8 @@ const Disbursal: React.FC = () => {
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 mb-1">Installment Due Day (Har Mahine Ki Tarikh)</label>
                                 <select
-                                    value={emiDueDay}
-                                    onChange={(e) => setEmiDueDay(Number(e.target.value))}
+                                    value={installmentDueDay}
+                                    onChange={(e) => setInstallmentDueDay(Number(e.target.value))}
                                     className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1a2230] border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary outline-none"
                                 >
                                     {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
@@ -243,26 +243,26 @@ const Disbursal: React.FC = () => {
                                     ))}
                                 </select>
                                 <p className="text-xs text-slate-400 mt-2">
-                                    * First Installment: {emiDueDay === 1 ? '1st' : emiDueDay === 2 ? '2nd' : emiDueDay === 3 ? '3rd' : `${emiDueDay}th`} of next month
+                                    * First Installment: {installmentDueDay === 1 ? '1st' : installmentDueDay === 2 ? '2nd' : installmentDueDay === 3 ? '3rd' : `${installmentDueDay}th`} of next month
                                 </p>
                             </div>
                             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex justify-between items-center">
                                 <span className="text-sm font-bold text-blue-800 dark:text-blue-300">Net Amount</span>
                                 <span className="text-lg font-extrabold text-blue-600 dark:text-blue-400">
-                                    Rs. {(selectedLoan.amount - (selectedLoan.processingFee || 0)).toLocaleString('en-IN')}
+                                    Rs. {(selectedRecord.amount - (selectedRecord.processingFee || 0)).toLocaleString('en-IN')}
                                 </span>
                             </div>
                         </div>
 
                         <div className="flex gap-3 justify-end">
                             <button
-                                onClick={() => setSelectedLoan(null)}
+                                onClick={() => setSelectedRecord(null)}
                                 className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                             >
                                 Cancel
                             </button>
                             <button
-                                onClick={handleDisburse}
+                                onClick={handlePaymentGiven}
                                 disabled={processing}
                                 className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
                             >

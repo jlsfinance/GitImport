@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -10,9 +10,9 @@ const NotificationListener: React.FC = () => {
             try {
                 const perm = await LocalNotifications.checkPermissions();
                 if (perm.display !== 'granted') {
+                    // Only request if not explicitly turned off, or rely on system settings
                     await LocalNotifications.requestPermissions();
                 }
-                // Explicitly create the channel for Android 8+
                 await LocalNotifications.createChannel({
                     id: 'default',
                     name: 'General Alerts',
@@ -23,142 +23,97 @@ const NotificationListener: React.FC = () => {
                     vibration: true,
                 });
             } catch (e) {
-                // Web fallback or error
-                if ("Notification" in window && Notification.permission !== "granted") {
-                    Notification.requestPermission();
-                }
+                // Ignore web errors
             }
         };
         checkPerms();
 
-        // Setup Real Push Notifications (FCM)
-        const setupPush = async () => {
-            try {
-                const { PushNotifications } = await import('@capacitor/push-notifications');
-
-                const perm = await PushNotifications.checkPermissions();
-                if (perm.receive !== 'granted') {
-                    const req = await PushNotifications.requestPermissions();
-                    if (req.receive !== 'granted') return;
-                }
-
-                await PushNotifications.register();
-
-                PushNotifications.addListener('registration', (token) => {
-                    console.log('Push Registration Token:', token.value);
-                    // TODO: Save this token to user's profile in Firestore if needed for backend targeting
-                });
-
-                PushNotifications.addListener('registrationError', (error) => {
-                    console.error('Push Registration Error:', error);
-                });
-
-                PushNotifications.addListener('pushNotificationReceived', (notification) => {
-                    console.log('Push Received:', notification);
-                    // Show as local notification if app is open, or rely on system handling
-                });
-
-                PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-                    console.log('Push Action:', notification);
-                    // Handle navigation if needed
-                });
-
-            } catch (e) {
-                console.warn("Push Notifications not available", e);
-            }
-        };
-        setupPush();
-
         let unsubscribe: any;
+        // Debounce timer and queue to prevent notification spam
+        let notificationQueue: any[] = [];
+        let debounceTimer: any = null;
+
+        const processQueue = async () => {
+            if (notificationQueue.length === 0) return;
+
+            // If only 1, show it
+            if (notificationQueue.length === 1) {
+                const data = notificationQueue[0];
+                try {
+                    await LocalNotifications.schedule({
+                        notifications: [{
+                            title: data.title || 'BillBook Update',
+                            body: data.message || '',
+                            id: Math.floor(Math.random() * 1000000),
+                            schedule: { at: new Date(Date.now() + 100) },
+                            sound: 'beep.wav',
+                            channelId: 'default',
+                            smallIcon: 'ic_launcher'
+                        }]
+                    });
+                } catch (e) {
+                    console.warn("Local notification failed", e);
+                }
+            } else {
+                // If multiple, show a summary
+                try {
+                    await LocalNotifications.schedule({
+                        notifications: [{
+                            title: 'BillBook Updates',
+                            body: `You have ${notificationQueue.length} new updates.`,
+                            id: Math.floor(Math.random() * 1000000),
+                            schedule: { at: new Date(Date.now() + 100) },
+                            sound: 'beep.wav',
+                            channelId: 'default',
+                            smallIcon: 'ic_launcher'
+                        }]
+                    });
+                } catch (e) {
+                    console.warn("Local summary notification failed", e);
+                }
+            }
+
+            // Clear queue
+            notificationQueue = [];
+            debounceTimer = null;
+        };
 
         const setupListener = (userId: string | null) => {
             const customerId = localStorage.getItem('customerPortalId');
-
-            // Define who this device is listening for
             const recipients = ['all'];
             if (customerId) recipients.push(customerId);
             if (userId) recipients.push(userId);
 
-            console.log("🔔 Notification Listener Active for:", recipients);
-
-            // Create query - Unordered to avoid index requirement for small datasets
-            // We filter by 'added' change type for real-time alerts
             const q = query(
                 collection(db, 'notifications'),
                 where('recipientId', 'in', recipients)
             );
 
             unsubscribe = onSnapshot(q, (snapshot) => {
-                snapshot.docChanges().forEach(async (change) => {
-                    // We only care about NEWLY ADDED notifications
+                snapshot.docChanges().forEach((change) => {
                     if (change.type === 'added') {
                         const data = change.doc.data();
 
-                        // TIME FILTER: Only show notifications created in the last 10 minutes
-                        // Check both common field names
+                        // Age check (10 mins)
                         const ts = data.date || data.createdAt;
                         const createdAt = ts?.toMillis ? ts.toMillis() : (ts?.seconds ? ts.seconds * 1000 : Date.now());
-                        const now = Date.now();
-                        const age = now - createdAt;
+                        if (Date.now() - createdAt > 600000) return;
 
-                        // Only notify for fresh alerts (avoiding old ones on mount)
-                        if (age > 600000) return;
-
-                        console.log("🔔 Receiving Notification:", data.title);
-
-                        try {
-                            // Try Capacitor LocalNotifications first (for mobile)
-                            await LocalNotifications.schedule({
-                                notifications: [{
-                                    title: data.title || 'JLS Alert',
-                                    body: data.message || '',
-                                    id: Math.floor(Math.random() * 1000000),
-                                    schedule: { at: new Date(Date.now() + 1000) }, // 1s delay
-                                    sound: 'beep.wav',
-                                    channelId: 'default',
-                                    smallIcon: 'ic_launcher',
-                                    largeIcon: 'ic_launcher'
-                                }]
-                            });
-                            console.log("✅ Capacitor notification scheduled");
-                        } catch (err) {
-                            console.log("⚠️ Capacitor failed, trying web notification:", err);
-                            // Fallback for Web Browser
-                            if ("Notification" in window) {
-                                if (Notification.permission === "granted") {
-                                    const notification = new Notification(data.title || 'JLS Alert', {
-                                        body: data.message,
-                                        icon: '/logo.png',
-                                        badge: '/logo.png',
-                                        tag: 'jls-notification',
-                                        requireInteraction: false
-                                    });
-                                    console.log("✅ Web notification shown");
-
-                                    // Auto close after 5 seconds
-                                    setTimeout(() => notification.close(), 5000);
-                                } else if (Notification.permission !== "denied") {
-                                    const permission = await Notification.requestPermission();
-                                    if (permission === "granted") {
-                                        const notification = new Notification(data.title || 'JLS Alert', {
-                                            body: data.message,
-                                            icon: '/logo.png'
-                                        });
-                                        setTimeout(() => notification.close(), 5000);
-                                    }
-                                }
-                            } else {
-                                console.error("❌ No notification support available");
-                            }
-                        }
+                        // Add to queue
+                        notificationQueue.push(data);
                     }
                 });
+
+                // Reset timer on every new batch
+                if (debounceTimer) clearTimeout(debounceTimer);
+                // Wait 2 seconds for more notifications to clump together
+                debounceTimer = setTimeout(processQueue, 2000);
+
             }, (error) => {
                 console.error("Firestore Listener Error:", error);
             });
         };
 
-        // Wait for Auth to settle so we have the User ID (if admin)
         const authUnsub = onAuthStateChanged(auth, (user) => {
             if (unsubscribe) unsubscribe();
             setupListener(user ? user.uid : null);
@@ -166,8 +121,8 @@ const NotificationListener: React.FC = () => {
 
         return () => {
             if (unsubscribe) unsubscribe();
-            authUnsub();
-            // Cleanup push listeners if needed, usually RemoveAllListeners but imported dynamically
+            if (authUnsub) authUnsub();
+            if (debounceTimer) clearTimeout(debounceTimer);
         };
     }, []);
 

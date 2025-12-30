@@ -215,16 +215,16 @@ const LegalNotice: React.FC = () => {
         return `To:
 Mr./Ms. ${form.customerName}
 ${form.customerAddress}
-Loan Account: ${form.loanAccountNumber}
+Record ID: ${form.loanAccountNumber}
 
-Subject: IMMEDIATE PAYMENT DEMAND for Overdue Equated Monthly Installment (EMI)
+Subject: REMINDER for Overdue Installment
 
-This notice serves as a FINAL WARNING regarding your outstanding loan from ${companyDetails.name}.
+This notice serves as a formal reminder regarding your outstanding balance with ${companyDetails.name}.
 
-Your EMI (Installment No. ${form.emiNumber}), which was due on ${calculatedDueDate ? format(parseISO(calculatedDueDate), 'dd MMMM, yyyy') : '---'}, remains unpaid. This payment is now overdue by ${daysOverdue} days.
+Your Installment (No. ${form.emiNumber}), which was due on ${calculatedDueDate ? format(parseISO(calculatedDueDate), 'dd MMMM, yyyy') : '---'}, remains unpaid. This payment is now overdue by ${daysOverdue} days.
 
 OUTSTANDING DETAILS:
-- EMI Amount: ${formatCurrency(form.emiAmount)}
+- Installment Amount: ${formatCurrency(form.emiAmount)}
 - Late Fees (${daysOverdue} days): ${formatCurrency(daysOverdue * form.lateFeePerDay)}
 - TOTAL DUE: ${formatCurrency(totalAmountDue)}
 
@@ -233,7 +233,7 @@ You are instructed to pay the total amount of ${formatCurrency(totalAmountDue)} 
 PAYMENT DETAILS:
 ${form.paymentDetails}
 
-Failure to comply will result in reporting to credit bureaus and initiation of legal recovery proceedings.
+Failure to comply may result in additional late fees. Please ignore if already paid.
 
 Sincerely,
 ${form.signatoryName}
@@ -268,7 +268,7 @@ For ${companyDetails.name}`;
         // Title
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(16);
-        doc.text("LEGAL NOTICE", pageWidth / 2, y, { align: 'center' });
+        doc.text("PAYMENT REMINDER", pageWidth / 2, y, { align: 'center' });
         y += 15;
 
         // Date
@@ -287,7 +287,7 @@ For ${companyDetails.name}`;
         doc.setTextColor(150);
         doc.text("This is a computer-generated document.", pageWidth / 2, pageHeight - 15, { align: 'center' });
 
-        doc.save(`Notice_${form.customerName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyyMMdd')}.pdf`);
+        doc.save(`Reminder_${form.customerName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyyMMdd')}.pdf`);
     };
 
     // Templates
@@ -323,7 +323,7 @@ For ${companyDetails.name}`;
                         <button onClick={() => navigate(-1)} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all">
                             <span className="material-symbols-outlined">arrow_back</span>
                         </button>
-                        <h1 className="text-2xl font-bold tracking-tight">Legal Notice Generator</h1>
+                        <h1 className="text-2xl font-bold tracking-tight">Formal Payment Reminder</h1>
                     </div>
                 </div>
 
@@ -394,7 +394,7 @@ For ${companyDetails.name}`;
                         <span className="material-symbols-outlined">arrow_back</span>
                     </button>
                     <div className="flex-1 min-w-0">
-                        <h1 className="text-xl font-bold tracking-tight truncate">Notice for {selectedCustomer.name}</h1>
+                        <h1 className="text-xl font-bold tracking-tight truncate">Reminder for {selectedCustomer.name}</h1>
                     </div>
                     <button onClick={generatePdf} className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-lg shadow-primary/30 active:scale-95 transition-all">
                         <span className="material-symbols-outlined text-[18px]">download</span> PDF
@@ -407,22 +407,22 @@ For ${companyDetails.name}`;
                 {/* Form Column */}
                 <div className="space-y-6">
                     <div className="bg-white dark:bg-[#1e2736] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 space-y-4">
-                        <h2 className="font-bold text-lg border-b border-slate-100 dark:border-slate-800 pb-2">Notice Details</h2>
+                        <h2 className="font-bold text-lg border-b border-slate-100 dark:border-slate-800 pb-2">Reminder Details</h2>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="text-xs font-bold text-slate-500">Loan Account No.</label>
+                                <label className="text-xs font-bold text-slate-500">Record ID</label>
                                 <input type="text" value={form.loanAccountNumber} onChange={e => setForm({ ...form, loanAccountNumber: e.target.value })} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm" />
                             </div>
                             <div>
-                                <label className="text-xs font-bold text-slate-500">Notice Date</label>
+                                <label className="text-xs font-bold text-slate-500">Date</label>
                                 <input type="date" value={form.issueDate} onChange={e => setForm({ ...form, issueDate: e.target.value })} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm" />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="text-xs font-bold text-slate-500">EMI Amount</label>
+                                <label className="text-xs font-bold text-slate-500">Installment Amount</label>
                                 <input type="number" value={form.emiAmount} onChange={e => setForm({ ...form, emiAmount: Number(e.target.value) })} className="w-full mt-1 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm" />
                             </div>
                             <div>
@@ -503,15 +503,15 @@ For ${companyDetails.name}`;
                             <WhatsAppIcon className="w-4 h-4" /> WhatsApp Message
                         </h3>
                         <div className="bg-white dark:bg-[#151b26] p-3 rounded-lg text-xs border border-green-100 dark:border-green-900/20 text-slate-600 dark:text-slate-300">
-                            🚨 *FINAL REMINDER* 🚨<br /><br />
+                            🔔 *PAYMENT REMINDER* 🔔<br /><br />
                             Dear {form.customerName},<br />
-                            Your EMI of *{formatCurrency(totalAmountDue)}* due on {calculatedDueDate} is overdue.<br />
-                            Please pay within {form.paymentDeadlineHours} hours to avoid legal action.<br /><br />
+                            Your Installment of *{formatCurrency(totalAmountDue)}* due on {calculatedDueDate} is overdue.<br />
+                            Please pay within {form.paymentDeadlineHours} hours to avoid late fees.<br /><br />
                             UPI: {form.paymentDetails.split('\n')[0].split(':')[1] || 'As per notice'}
                         </div>
                         <button
                             onClick={() => {
-                                const msg = `🚨 *FINAL REMINDER* 🚨\n\nDear ${form.customerName},\nYour EMI of *${formatCurrency(totalAmountDue)}* due on ${calculatedDueDate} is overdue.\nPlease pay within ${form.paymentDeadlineHours} hours to avoid legal action.\n\nUPI: ${form.paymentDetails.split('\n')[0].split(':')[1] || 'As per notice'}`;
+                                const msg = `🔔 *PAYMENT REMINDER* 🔔\n\nDear ${form.customerName},\nYour Installment of *${formatCurrency(totalAmountDue)}* due on ${calculatedDueDate} is overdue.\nPlease pay within ${form.paymentDeadlineHours} hours to avoid late fees.\n\nUPI: ${form.paymentDetails.split('\n')[0].split(':')[1] || 'As per notice'}`;
                                 const phone = selectedCustomer.phone?.replace(/\D/g, '').slice(-10);
                                 if (phone) window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`, '_blank');
                                 else alert("Customer phone number not available.");

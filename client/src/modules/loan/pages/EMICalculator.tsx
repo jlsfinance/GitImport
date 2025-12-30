@@ -51,6 +51,10 @@ const EMICalculator: React.FC = () => {
               <span className="text-sm font-bold">₹{amount.toFixed(2)}</span>
             </div>
           </div>
+          <p className="text-[10px] text-slate-400 mt-4 text-center px-4 leading-relaxed">
+            *These figures are <strong>estimates only</strong> for planning purposes.
+            This is not a loan offer. Final terms depend on your agreement with the counterparty.
+          </p>
         </div>
 
         {/* Inputs */}

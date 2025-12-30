@@ -5,7 +5,7 @@ import { db } from "../firebaseConfig";
 import { useCompany } from '../context/CompanyContext';
 import { motion } from 'framer-motion';
 
-interface LoanApplication {
+interface CreditApplication {
     id: string;
     customerName: string;
     amount: number;
@@ -16,12 +16,12 @@ interface LoanApplication {
 const Approvals: React.FC = () => {
     const navigate = useNavigate();
     const { currentCompany } = useCompany();
-    const [applications, setApplications] = useState<LoanApplication[]>([]);
+    const [applications, setApplications] = useState<CreditApplication[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Modal State
-    const [modalType, setModalType] = useState<'approve' | 'reject' | null>(null);
-    const [selectedApp, setSelectedApp] = useState<LoanApplication | null>(null);
+    const [modalType, setModalType] = useState<'accept' | 'reject' | null>(null);
+    const [selectedApp, setSelectedApp] = useState<CreditApplication | null>(null);
     const [comment, setComment] = useState('');
     const [processing, setProcessing] = useState(false);
 
@@ -40,7 +40,7 @@ const Approvals: React.FC = () => {
                     where("companyId", "==", currentCompany.id)
                 );
                 const querySnapshot = await getDocs(q);
-                const pendingApps = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as LoanApplication[];
+                const pendingApps = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as CreditApplication[];
                 setApplications(pendingApps);
             } catch (error) {
                 console.error("Failed to load records:", error);
@@ -51,7 +51,7 @@ const Approvals: React.FC = () => {
         fetchPendingApplications();
     }, [currentCompany]);
 
-    const openModal = (type: 'approve' | 'reject', app: LoanApplication) => {
+    const openModal = (type: 'accept' | 'reject', app: CreditApplication) => {
         setModalType(type);
         setSelectedApp(app);
         setComment('');
@@ -67,7 +67,7 @@ const Approvals: React.FC = () => {
         if (!selectedApp || !modalType) return;
         setProcessing(true);
 
-        const newStatus = modalType === 'approve' ? 'Approved' : 'Rejected';
+        const newStatus = modalType === 'accept' ? 'Accepted' : 'Rejected';
 
         try {
             const loanRef = doc(db, "loans", selectedApp.id);
@@ -77,8 +77,8 @@ const Approvals: React.FC = () => {
                 adminComment: comment,
             };
 
-            if (newStatus === 'Approved') {
-                updateData.approvalDate = new Date().toISOString();
+            if (newStatus === 'Accepted') {
+                updateData.acceptanceDate = new Date().toISOString();
             }
 
             await updateDoc(loanRef, updateData);
@@ -109,7 +109,7 @@ const Approvals: React.FC = () => {
                     <button onClick={() => navigate(-1)} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all">
                         <span className="material-symbols-outlined">arrow_back</span>
                     </button>
-                    <h1 className="text-2xl font-bold tracking-tight">Approvals Queue</h1>
+                    <h1 className="text-2xl font-bold tracking-tight">Acceptance Queue</h1>
                 </div>
             </div>
 
@@ -147,10 +147,10 @@ const Approvals: React.FC = () => {
                                             <td className="px-4 py-3 text-slate-500">{new Date(app.date).toLocaleDateString()}</td>
                                             <td className="px-4 py-3 flex justify-center gap-2">
                                                 <button
-                                                    onClick={() => openModal('approve', app)}
+                                                    onClick={() => openModal('accept', app)}
                                                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 text-white hover:bg-green-700 shadow-sm border border-green-700 active:scale-95 transition-all text-xs font-black uppercase tracking-wider"
                                                 >
-                                                    <span className="material-symbols-outlined text-[16px] material-symbols-fill">check_circle</span> Approve
+                                                    <span className="material-symbols-outlined text-[16px] material-symbols-fill">check_circle</span> Accept
                                                 </button>
                                                 <button
                                                     onClick={() => openModal('reject', app)}
@@ -180,23 +180,23 @@ const Approvals: React.FC = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
                     <div className="bg-white dark:bg-[#1e2736] rounded-2xl w-full max-w-sm shadow-2xl p-6">
                         <h3 className="text-lg font-bold mb-1">
-                            {modalType === 'approve' ? 'Approve Record?' : 'Reject Record?'}
+                            {modalType === 'accept' ? 'Accept Record?' : 'Reject Record?'}
                         </h3>
                         <p className="text-sm text-slate-500 mb-4">
-                            {modalType === 'approve'
-                                ? `You are approving a credit of Rs. ${selectedApp.amount.toLocaleString('en-IN')} for ${selectedApp.customerName}.`
+                            {modalType === 'accept'
+                                ? `You are accepting a credit of Rs. ${selectedApp.amount.toLocaleString('en-IN')} for ${selectedApp.customerName}.`
                                 : `You are rejecting the application for ${selectedApp.customerName}.`}
                         </p>
 
                         <div className="space-y-4 mb-6">
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 mb-1">
-                                    {modalType === 'approve' ? 'Comments (Optional)' : 'Reason for Rejection'}
+                                    {modalType === 'accept' ? 'Comments (Optional)' : 'Reason for Rejection'}
                                 </label>
                                 <textarea
                                     value={comment}
                                     onChange={(e) => setComment(e.target.value)}
-                                    placeholder={modalType === 'approve' ? "E.g. Verified documents..." : "E.g. Low credit score..."}
+                                    placeholder={modalType === 'accept' ? "E.g. Verified documents..." : "E.g. Incomplete documents..."}
                                     className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1a2230] border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary outline-none resize-none h-24"
                                 />
                             </div>
@@ -212,11 +212,11 @@ const Approvals: React.FC = () => {
                             <button
                                 onClick={handleStatusUpdate}
                                 disabled={processing}
-                                className={`px-4 py-2 text-white rounded-lg text-sm font-bold disabled:opacity-50 flex items-center gap-2 ${modalType === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+                                className={`px-4 py-2 text-white rounded-lg text-sm font-bold disabled:opacity-50 flex items-center gap-2 ${modalType === 'accept' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
                                     }`}
                             >
                                 {processing && <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>}
-                                Confirm {modalType === 'approve' ? 'Approval' : 'Rejection'}
+                                Confirm {modalType === 'accept' ? 'Acceptance' : 'Rejection'}
                             </button>
                         </div>
                     </div>

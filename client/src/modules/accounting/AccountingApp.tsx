@@ -20,7 +20,6 @@ import { PublicBillView } from '../../components/PublicBillView';
 import { ViewState, Invoice } from '@/types';
 import { StorageService } from '../../services/storageService';
 import { FirebaseService } from '../../services/firebaseService';
-import { Contacts } from '@capacitor-community/contacts';
 import { WhatsAppService } from '../../services/whatsappService';
 import { Menu as SidebarIcon, Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -88,22 +87,6 @@ const AccountingApp: React.FC = () => {
         initApp();
     }, [user]);
 
-    // Request Permissions on Startup
-    useEffect(() => {
-        const requestInitialPermissions = async () => {
-            try {
-                const perm = await Contacts.checkPermissions();
-                if (perm.contacts !== 'granted') {
-                    await Contacts.requestPermissions();
-                }
-            } catch (err) {
-                console.warn("Permission request error on startup:", err);
-            }
-        };
-        if (!isInitializing) {
-            requestInitialPermissions();
-        }
-    }, [isInitializing]);
 
     useEffect(() => {
         if (!isInitializing) {

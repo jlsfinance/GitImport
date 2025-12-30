@@ -34,7 +34,7 @@ export interface Loan {
   emi: number;
   interestRate: number;
   tenure: number; // in months
-  status: 'Pending' | 'Approved' | 'Disbursed' | 'Rejected' | 'Completed' | 'Active' | 'Overdue';
+  status: 'Pending' | 'Accepted' | 'Given' | 'Rejected' | 'Completed' | 'Active' | 'Overdue';
   date: string; // ISO date string
   type?: string;
   progress?: number;
@@ -79,8 +79,8 @@ export interface AppUser {
   role: 'admin' | 'agent' | 'customer';
   companyId?: string;
   permissions?: {
-    canViewLoans?: boolean;
-    canCollectEMI?: boolean;
+    canViewCredits?: boolean;
+    canCollectInstallment?: boolean;
     canViewCustomers?: boolean;
   };
   createdAt?: string;

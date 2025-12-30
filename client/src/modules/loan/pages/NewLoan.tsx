@@ -12,6 +12,7 @@ interface LoanFormState {
   interestRate: number;
   processingFeePercentage: number;
   notes: string;
+  consent: boolean;
 }
 
 const NewLoan: React.FC = () => {
@@ -30,7 +31,8 @@ const NewLoan: React.FC = () => {
     tenure: 12,
     interestRate: 12,
     processingFeePercentage: 2,
-    notes: ''
+    notes: '',
+    consent: false
   });
 
   // Load Initial Data
@@ -59,7 +61,7 @@ const NewLoan: React.FC = () => {
         // Fetch active loans to prevent duplicates (also filter by company)
         const activeLoansQuery = query(
           collection(db, "loans"),
-          where("status", "==", "Disbursed"),
+          where("status", "in", ["Given", "Disbursed", "Active"]),
           where("companyId", "==", currentCompany.id)
         );
         const activeLoansSnap = await getDocs(activeLoansQuery);
@@ -93,9 +95,16 @@ const NewLoan: React.FC = () => {
     const { name, value } = e.target;
     setForm(prev => ({
       ...prev,
-      [name]: name === 'notes' ? value : Number(value)
+      [name]: name === 'notes' ? value : (name === 'consent' ? (e.target as HTMLInputElement).checked : Number(value))
     }));
   };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => ({
+      ...prev,
+      consent: e.target.checked
+    }));
+  }
 
   const handleCustomerSelect = (customerId: string) => {
     if (customersWithActiveLoans.has(customerId)) {
@@ -126,6 +135,7 @@ const NewLoan: React.FC = () => {
     // Validation
     if (form.amount < 1000) return alert("Minimum amount is 1000");
     if (form.tenure < 1) return alert("Minimum tenure is 1 month");
+    if (!form.consent) return alert("You must confirm customer consent before creating a record.");
 
     setIsSubmitting(true);
 
@@ -173,7 +183,7 @@ const NewLoan: React.FC = () => {
       });
 
       alert(`New Entry Submitted Successfully! Record ID: ${newLoanId}`);
-      navigate('/loans');
+      navigate('/loan/records');
 
     } catch (error) {
       console.error("Submission failed:", error);
@@ -386,6 +396,20 @@ const NewLoan: React.FC = () => {
                   <p className="text-xs text-slate-500 uppercase font-bold">Processing Fee</p>
                   <p className="text-xl font-extrabold text-primary">₹{processingFee.toLocaleString('en-IN')}</p>
                 </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg border border-yellow-100 dark:border-yellow-900/30">
+                <input
+                  type="checkbox"
+                  id="consent"
+                  name="consent"
+                  checked={form.consent}
+                  onChange={handleCheckboxChange}
+                  className="mt-1 w-5 h-5 accent-primary cursor-pointer"
+                />
+                <label htmlFor="consent" className="text-xs text-slate-600 dark:text-slate-400 cursor-pointer select-none">
+                  I confirm that I have obtained <b>explicit consent</b> from this customer to create this credit record and store their financial details. This record is for bookkeeping purposes only.
+                </label>
               </div>
 
               <button

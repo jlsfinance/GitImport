@@ -6,7 +6,6 @@ import { Printer, ArrowLeft, Download, Edit, Trash2, MoreVertical, MessageCircle
 import { useCompany } from '@/contexts/CompanyContext';
 import { InvoicePdfService } from '../services/invoicePdfService';
 import QRCode from 'qrcode';
-import { Contacts } from '@capacitor-community/contacts';
 import { Capacitor } from '@capacitor/core';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -116,7 +115,8 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, show
     StorageService.setContactPreference(choice);
     setShowContactChoice(false);
     if (choice === 'ALL') {
-      await Contacts.requestPermissions();
+      // Use ContactService for permission handling
+      await ContactService.requestPermissions();
     } else {
       handlePickContact();
     }

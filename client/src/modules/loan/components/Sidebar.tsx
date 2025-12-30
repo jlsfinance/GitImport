@@ -63,8 +63,8 @@ const Sidebar: React.FC = () => {
             title: 'Credit Ledger',
             icon: 'account_balance',
             submenu: [
-                { title: 'All Records', path: '/loan/loans', icon: 'list_alt' },
-                { title: 'New Record', path: '/loan/loans/new', icon: 'add_circle' },
+                { title: 'All Records', path: '/loan/records', icon: 'list_alt' },
+                { title: 'New Record', path: '/loan/records/new', icon: 'add_circle' },
                 { title: 'Installment Calc', path: '/loan/tools/emi', icon: 'calculate' },
             ]
         },
@@ -75,8 +75,8 @@ const Sidebar: React.FC = () => {
                 { title: 'Overview', path: '/loan/finance', icon: 'finance' },
                 { title: 'Receipts', path: '/loan/receipts', icon: 'receipt_long' },
                 { title: 'Approvals', path: '/loan/approvals', icon: 'verified' },
-                { title: 'Disbursal', path: '/loan/disbursal', icon: 'monetization_on' },
-                { title: 'Due List', path: '/loan/due-list', icon: 'pending_actions' },
+                { title: 'Payment Out', path: '/loan/disbursal', icon: 'monetization_on' },
+                { title: 'Collection List', path: '/loan/due-list', icon: 'pending_actions' },
             ]
         },
         { title: 'Customers', path: '/loan/customers', icon: 'group' },

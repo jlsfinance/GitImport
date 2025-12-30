@@ -5,7 +5,7 @@ import { APP_NAME } from '../constants';
 
 const LoadingSplash: React.FC = () => {
     return (
-        <div className="relative flex h-screen w-full items-center justify-center overflow-hidden bg-gradient-to-br from-pink-50 via-white to-emerald-50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900">
+        <div className="pointer-events-none relative flex h-screen w-full items-center justify-center overflow-hidden bg-gradient-to-br from-pink-50 via-white to-emerald-50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900">
 
             {/* Background Blobs for Soft Glow Effect */}
             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-pink-200/30 rounded-full blur-[100px] animate-pulse" />

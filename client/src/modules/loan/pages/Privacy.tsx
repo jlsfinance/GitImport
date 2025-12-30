@@ -73,15 +73,7 @@ const Privacy: React.FC = () => {
                             </p>
                         </div>
 
-                        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                            <div className="flex items-center gap-2 mb-2">
-                                <span className="material-symbols-outlined text-emerald-500 text-lg">contacts</span>
-                                <h4 className="font-bold text-slate-800 dark:text-white text-sm">Contacts Access (Optional)</h4>
-                            </div>
-                            <p className="text-slate-500 dark:text-slate-400 text-xs">
-                                Used ONLY when you choose to select a phone number from contacts. We do NOT upload, store, or share your contact list.
-                            </p>
-                        </div>
+
 
                         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
                             <div className="flex items-center gap-2 mb-2">

@@ -23,10 +23,12 @@ android {
         }
     }
     signingConfigs {
+        release {
             storeFile file('../jls-release-key.keystore')
             storePassword localProperties['KEY_STORE_PASSWORD']
             keyAlias 'jls-key-alias'
             keyPassword localProperties['KEY_ALIAS_PASSWORD']
+        }
     }
     buildTypes {
         release {

@@ -60,18 +60,18 @@ const Tools: React.FC = () => {
                             <span className="font-bold text-sm">Installment Calc</span>
                         </Link>
 
-                        <Link to="/loan/loans" className="bg-white dark:bg-[#1e2736] p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-start gap-4 hover:shadow-md transition-all active:scale-95">
+                        <Link to="/loan/records" className="bg-white dark:bg-[#1e2736] p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-start gap-4 hover:shadow-md transition-all active:scale-95">
                             <div className="h-10 w-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center">
                                 <span className="material-symbols-outlined">percent</span>
                             </div>
-                            <span className="font-bold text-sm">Installment Check</span>
+                            <span className="font-bold text-sm">Record Check</span>
                         </Link>
 
-                        <Link to="/loan/tools/legal-notice" className="bg-white dark:bg-[#1e2736] p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-start gap-4 hover:shadow-md transition-all active:scale-95">
+                        <Link to="/loan/tools/payment-reminder" className="bg-white dark:bg-[#1e2736] p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-start gap-4 hover:shadow-md transition-all active:scale-95">
                             <div className="h-10 w-10 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 flex items-center justify-center">
-                                <span className="material-symbols-outlined">gavel</span>
+                                <span className="material-symbols-outlined">notifications_active</span>
                             </div>
-                            <span className="font-bold text-sm">Legal Notice</span>
+                            <span className="font-bold text-sm">Payment Reminder</span>
                         </Link>
 
                         <Link to="/loan/customers" className="bg-white dark:bg-[#1e2736] p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-start gap-4 hover:shadow-md transition-all active:scale-95">
@@ -132,7 +132,7 @@ const Tools: React.FC = () => {
                                     <span className="material-symbols-outlined">fact_check</span>
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-sm">Pending Approvals</h4>
+                                    <h4 className="font-bold text-sm">Pending Acceptance</h4>
                                     <p className="text-[10px] text-slate-500 font-medium">Queue status</p>
                                 </div>
                             </div>
@@ -145,8 +145,8 @@ const Tools: React.FC = () => {
                                     <span className="material-symbols-outlined">payments</span>
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-sm">Credit Disbursal</h4>
-                                    <p className="text-[10px] text-slate-500 font-medium">Approved records ready for payout</p>
+                                    <h4 className="font-bold text-sm">Payment Out</h4>
+                                    <p className="text-[10px] text-slate-500 font-medium">Accepted records ready for payout</p>
                                 </div>
                             </div>
                             <span className="material-symbols-outlined text-slate-300">chevron_right</span>

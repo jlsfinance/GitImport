@@ -114,10 +114,13 @@ const LoanAppContent = () => {
         const path = location.pathname;
         if (path === '/loan') return 'Dashboard';
         if (path.includes('/customers')) return 'Customers';
-        if (path.includes('/loans')) return 'Ledger Management'; // Rebranded from Loan Management
+        if (path.includes('/records')) return 'Ledger Management'; // Rebranded from Loan Management
         if (path.includes('/finance')) return 'Accounts';
         if (path.includes('/tools')) return 'Tools';
         if (path.includes('/settings')) return 'Settings';
+        if (path.includes('/approvals')) return 'Approvals';
+        if (path.includes('/disbursal')) return 'Payment Out';
+        if (path.includes('/due-list')) return 'Collected';
         return 'Overview';
     };
 
@@ -214,7 +217,7 @@ const LoanAppContent = () => {
                             </ProtectedRoute>
                         } />
 
-                        <Route path="/loan/loans" element={
+                        <Route path="/loan/records" element={
                             <ProtectedRoute>
                                 <CompanyRequiredRoute>
                                     <Loans />
@@ -223,7 +226,7 @@ const LoanAppContent = () => {
                             </ProtectedRoute>
                         } />
 
-                        <Route path="/loan/loans/new" element={
+                        <Route path="/loan/records/new" element={
                             <ProtectedRoute>
                                 <CompanyRequiredRoute>
                                     <NewLoan />
@@ -231,7 +234,7 @@ const LoanAppContent = () => {
                             </ProtectedRoute>
                         } />
 
-                        <Route path="/loan/loans/:id" element={
+                        <Route path="/loan/records/:id" element={
                             <ProtectedRoute>
                                 <CompanyRequiredRoute>
                                     <LoanDetails />
@@ -239,7 +242,7 @@ const LoanAppContent = () => {
                             </ProtectedRoute>
                         } />
 
-                        <Route path="/loan/loans/edit/:id" element={
+                        <Route path="/loan/records/edit/:id" element={
                             <ProtectedRoute>
                                 <CompanyRequiredRoute>
                                     <EditLoan />
@@ -273,7 +276,7 @@ const LoanAppContent = () => {
                             </ProtectedRoute>
                         } />
 
-                        <Route path="/loan/tools/legal-notice" element={
+                        <Route path="/loan/tools/payment-reminder" element={
                             <ProtectedRoute>
                                 <CompanyRequiredRoute>
                                     <LegalNotice />

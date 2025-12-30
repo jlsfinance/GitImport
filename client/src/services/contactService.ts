@@ -9,6 +9,12 @@ export const ContactService = {
         return null; // Feature removed
     },
 
+    // No-op: Native contact permissions removed for compliance
+    requestPermissions: async (): Promise<void> => {
+        // Feature removed for Google Play compliance
+        return;
+    },
+
     getContactNameFromPhone: async (inputNumber: string): Promise<string> => {
         const cleaned = ContactService.normalizePhone(inputNumber);
 

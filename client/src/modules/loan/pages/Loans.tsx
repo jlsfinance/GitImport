@@ -236,7 +236,7 @@ const Loans: React.FC = () => {
     const generateLoanAgreement = async (loan: Loan) => {
         setShowPdfModal(true);
         setPdfStatus('generating');
-        setCurrentPdfName(`Loan_Agreement_${loan.id}.pdf`);
+        setCurrentPdfName(`Service_Agreement_${loan.id}.pdf`);
 
         try {
             const customerRef = doc(db, "customers", loan.customerId);
@@ -256,7 +256,7 @@ const Loans: React.FC = () => {
             pdfDoc.setFontSize(18);
             pdfDoc.text(companyDetails.name, pdfDoc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
             pdfDoc.setFontSize(14);
-            pdfDoc.text("DEBT AGREEMENT", pdfDoc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
+            pdfDoc.text("SERVICE AGREEMENT", pdfDoc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
 
             const agreementDate = loan.disbursalDate ? format(new Date(loan.disbursalDate), 'do MMMM yyyy') : format(new Date(), 'do MMMM yyyy');
             pdfDoc.setFontSize(10);
@@ -265,7 +265,7 @@ const Loans: React.FC = () => {
             pdfDoc.text(`Record ID: ${loan.id} `, pdfDoc.internal.pageSize.getWidth() - 15, 26, { align: 'right' });
 
             let startY = 40;
-            const partiesBody = [[`This agreement is made between: \n\nTHE LENDER: \n${companyDetails.name} \n${companyDetails.address || '[Company Address]'} \n\nAND\n\nTHE BORROWER: \n${customer.name} \n${customer.address || 'Address not provided'} \nMobile: ${customer.phone} `]];
+            const partiesBody = [[`This agreement is made between: \n\nTHE COMPANY: \n${companyDetails.name} \n${companyDetails.address || '[Company Address]'} \n\nAND\n\nTHE CUSTOMER: \n${customer.name} \n${customer.address || 'Address not provided'} \nMobile: ${customer.phone} `]];
 
             // Using autoTable for parties layout
             autoTable(pdfDoc, {
@@ -350,12 +350,12 @@ const Loans: React.FC = () => {
             pdfDoc.setFont("helvetica", "normal");
 
             const clauses = [
-                "The Borrower agrees to repay the credit amount along with interest in the form of Installments as specified in the ledger summary.",
+                "The Customer agrees to settle the record amount along with service charges in the form of Installments as specified in the ledger summary.",
                 "All payments shall be made on or before the due date of each month.",
                 "In case of a delay in payment of Installment, a penal interest/late fee as per the company's prevailing policy will be charged.",
-                "Default in repayment of three or more consecutive Installments shall entitle the Lender to recall the entire credit amount and initiate legal proceedings for recovery.",
-                "The Borrower confirms that all information provided in the credit application is true and correct.",
-                "This credit is unsecured. No collateral has been provided by the Borrower.",
+                "Default in payment of three or more consecutive Installments shall entitle the Company to recall the entire record amount.",
+                "The Customer confirms that all information provided in the record application is true and correct.",
+                "This record is unsecured. No collateral has been provided by the Customer.",
                 "Any disputes arising out of this agreement shall be subject to the jurisdiction of the courts.",
             ];
 
@@ -387,7 +387,7 @@ const Loans: React.FC = () => {
             pdfDoc.setFontSize(10);
             pdfDoc.setFont("helvetica", "bold");
             pdfDoc.text(`For ${companyDetails.name} `, 50, startY, { align: 'center' });
-            pdfDoc.text("Borrower's Signature", 160, startY, { align: 'center' });
+            pdfDoc.text("Customer's Signature", 160, startY, { align: 'center' });
 
             const pdfBlob = pdfDoc.output('blob');
             setCurrentPdfBlob(pdfBlob);
@@ -402,7 +402,7 @@ const Loans: React.FC = () => {
     const generateLoanCard = async (loan: Loan) => {
         setShowPdfModal(true);
         setPdfStatus('generating');
-        setCurrentPdfName(`Loan_Card_${loan.id}.pdf`);
+        setCurrentPdfName(`Record_Card_${loan.id}.pdf`);
 
         try {
             if (!loan.amount || !loan.interestRate || !loan.tenure) {
@@ -575,7 +575,9 @@ const Loans: React.FC = () => {
         else if (status === 'Rejected') classes += "bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-900/30 dark:text-red-400";
         else classes += "bg-gray-50 text-gray-600 ring-gray-500/10 dark:bg-gray-800 dark:text-gray-400";
 
-        return <span className={classes}>{status}</span>;
+        const label = status === 'Disbursed' ? 'Active' : (status === 'Approved' ? 'Accepted' : status);
+
+        return <span className={classes}>{label}</span>;
     };
 
     return (
@@ -598,7 +600,7 @@ const Loans: React.FC = () => {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <Link to="/loan/loans/new" className="h-11 px-5 rounded-xl bg-primary text-white shadow-md shadow-primary/30 font-bold uppercase tracking-wider flex items-center gap-2 hover:brightness-110 active:scale-95 transition-all">
+                    <Link to="/loan/records/new" className="h-11 px-5 rounded-xl bg-primary text-white shadow-md shadow-primary/30 font-bold uppercase tracking-wider flex items-center gap-2 hover:brightness-110 active:scale-95 transition-all">
                         <span className="material-symbols-outlined text-[20px] material-symbols-fill">add_circle</span>
                         <span className="hidden sm:inline">New Entry</span>
                     </Link>
@@ -615,7 +617,7 @@ const Loans: React.FC = () => {
                     filteredLoans.map((loan) => (
                         <div key={loan.id}>
                             <div
-                                onClick={() => navigate(`/loan/loans/${loan.id}`)}
+                                onClick={() => navigate(`/loan/records/${loan.id}`)}
                                 className="glass-card relative rounded-2xl p-5 hover:bg-white/90 dark:hover:bg-slate-800/90 hover:shadow-xl hover:shadow-indigo-500/10 cursor-pointer transition-all duration-300 group border border-white/40 dark:border-slate-700/40"
                             >
                                 <div className="absolute left-0 top-6 bottom-6 w-1 bg-gradient-to-b from-indigo-500 to-blue-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -709,7 +711,7 @@ const Loans: React.FC = () => {
 
                                         <div className="space-y-2">
                                             <Link
-                                                to={`/loan/loans/${selectedLoan.id}`}
+                                                to={`/loan/records/${selectedLoan.id}`}
                                                 className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                                             >
                                                 <div className="h-10 w-10 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center shrink-0">

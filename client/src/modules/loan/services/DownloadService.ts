@@ -1,114 +1,73 @@
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
-import { LocalNotifications } from '@capacitor/local-notifications';
 import { Share } from '@capacitor/share';
 
 export class DownloadService {
+  /**
+   * Downloads a PDF (Base64) by saving it to Cache and triggering the Native Share Sheet.
+   * This ensures immediate access "Sidhi Share" without broad Storage Permissions.
+   */
   static async downloadPDF(filename: string, base64Data: string): Promise<void> {
     try {
       const platform = Capacitor.getPlatform();
 
       if (platform === 'web') {
         const link = document.createElement('a');
+        const fileNameWithExt = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
         link.href = `data:application/pdf;base64,${base64Data}`;
-        link.download = filename;
+        link.download = fileNameWithExt;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         return;
       }
 
-      // Native Logic
+      // Native Logic: "Download and Share Directly"
       try {
-        // Strategy A: App Specific External Storage
-        // Path: /Android/data/com.jls.financesuite/files/JLS_Downloads/<filename>
+        const fileNameWithExt = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+
+        // 1. Save to Cache (No Permissions Required, Safe & Fast)
+        // This avoids "Spyware Heuristic" flags related to broad External Storage access.
+        const result = await Filesystem.writeFile({
+          path: fileNameWithExt,
+          data: base64Data,
+          directory: Directory.Cache
+        });
+
+        console.log('PDF Saved to Cache:', result.uri);
+
+        // 2. Immediate Share (Sidhi Share)
+        // This opens the System Share Sheet. User can "Save to Files", "WhatsApp", "Drive", etc.
         try {
-          try {
-            await Filesystem.mkdir({
-              path: 'JLS_Downloads',
-              directory: Directory.External,
-              recursive: true
-            });
-          } catch (e) {
-            // Ignore 'already exists' errors
-            // console.log('Directory might already exist', e);
-          }
-
-          const result = await Filesystem.writeFile({
-            path: `JLS_Downloads/${filename}`,
-            data: base64Data,
-            directory: Directory.External,
+          await Share.share({
+            title: 'BillBook Invoice',
+            text: `Here is the invoice: ${fileNameWithExt}`,
+            url: result.uri,
+            dialogTitle: 'Share Invoice'
           });
+        } catch (shareError) {
+          // Share dismissed or failed
+          console.log('Share dismissed/failed:', shareError);
+        }
 
-          console.log('File saved to External:', result.uri);
-
-          // Notification
-          try {
-            await LocalNotifications.schedule({
-              notifications: [{
-                title: 'Download Complete',
-                body: `${filename} saved successfully.`,
-                id: new Date().getTime(),
-                schedule: { at: new Date(Date.now() + 100) },
-                smallIcon: 'ic_launcher',
-                extra: null
-              }]
-            });
-          } catch (nErr) { console.warn('Notification failed:', nErr); }
-
-          // Save to cache for share functionality
-          const cacheResult = await Filesystem.writeFile({
-            path: filename,
+        // 3. Optional: Attempt to save a copy to "Documents" for persistence (Best Effort)
+        // This helps if the user wants to find it later without Sharing, but we don't block on it.
+        try {
+          await Filesystem.writeFile({
+            path: `BillBook/${fileNameWithExt}`,
             data: base64Data,
-            directory: Directory.Cache
+            directory: Directory.Documents,
+            recursive: true
           });
-
-          // Short delay for file system to sync
-          await new Promise(r => setTimeout(r, 200));
-
-          // Ask user what to do - be honest about functionality
-          const wantsToShare = confirm(`✅ ${filename} saved!\n\nTap OK to SHARE/OPEN with another app\nTap Cancel to just SAVE to device.`);
-
-          if (wantsToShare) {
-            // Share sheet allows user to pick an app to open with (PDF viewer, WhatsApp, etc.)
-            try {
-              await Share.share({
-                title: filename,
-                url: cacheResult.uri,
-                dialogTitle: 'Share or Open with...'
-              });
-            } catch (shareErr) {
-              console.warn('Share cancelled or failed:', shareErr);
-            }
-          }
-          // File is already saved to JLS_Downloads, user can access via file manager
-
-        } catch (externalError: any) {
-          console.error('App Storage failed:', externalError);
-          // Fallback
-          try {
-            const cacheResult = await Filesystem.writeFile({
-              path: filename,
-              data: base64Data,
-              directory: Directory.Cache
-            });
-
-            const action = confirm(`⚠️ Saved to temporary storage.\n\nTap OK to OPEN or Cancel to close.`);
-            if (action) {
-              await Share.share({
-                title: 'Open File',
-                url: cacheResult.uri,
-                dialogTitle: 'Open PDF'
-              });
-            }
-          } catch (shareErr) {
-            alert(`⚠️ Download Error: ${externalError.message}`);
-          }
+          console.log('Saved backup to Documents/BillBook');
+        } catch (docErr) {
+          // Ignore persistence error, usage flow is "Share"
+          console.log('Could not save persistent copy to Documents (Non-critical)');
         }
 
       } catch (error: any) {
-        console.error('Error downloading PDF:', error);
-        alert('❌ Download Failed: ' + (error.message || error));
+        console.error('Error handling PDF:', error);
+        alert('Unable to prepare PDF for sharing. Please try again.');
       }
     } catch (appError) {
       console.error('Unexpected error in download service:', appError);

@@ -5,7 +5,7 @@ import { doc, getDoc, updateDoc, collection, addDoc, deleteField } from "firebas
 import { db } from "../firebaseConfig";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format, parseISO, isValid, addMonths, startOfMonth } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { useCompany } from '../context/CompanyContext';
 import { Capacitor } from '@capacitor/core';
 import LazyImage from '../components/LazyImage';
@@ -237,23 +237,15 @@ async function toBase64(url: string, maxWidth: number = 200, quality: number = 0
 
 const TOPUP_TERMS = [
     "1. This agreement revises only the Installment schedule of the original record.",
-    "2. All Installments already paid by the borrower shall remain valid and unchanged.",
-    "3. The outstanding principal as on the top-up date is acknowledged by the borrower.",
-    "4. An additional amount has been disbursed as top-up and merged with outstanding.",
-    "5. The borrower agrees to pay revised Installment as per the new repayment schedule.",
+    "2. All Installments already paid by the customer shall remain valid and unchanged.",
+    "3. The outstanding principal as on the top-up date is acknowledged by the customer.",
+    "4. An additional amount has been paid out as top-up and merged with outstanding.",
+    "5. The customer agrees to pay revised Installment as per the new repayment schedule.",
     "6. Processing fees and other charges are applicable as per company policy.",
-    "7. All other terms and conditions of the original record agreement remain unchanged.",
-    "7. All other terms and conditions of the original record agreement remain unchanged.",
+    "7. All other terms and conditions of the original service agreement remain unchanged."
 ];
 
-const LOAN_TERMS = [
-    "1. The borrower agrees to pay the Installment on or before the due date.",
-    "2. Default in payment will attract penalty charges as per company policy.",
-    "3. The loan is secured against the collateral provided (if any).",
-    "4. The company reserves the right to recall the credit in case of default.",
-    "5. Pre-closure charges may apply as per the agreement.",
-    "6. This agreement is subject to the jurisdiction of the local courts.",
-];
+
 
 
 
@@ -349,7 +341,7 @@ const LoanDetails: React.FC = () => {
 
     // Derived State
     const paidEmisCount = loan?.repaymentSchedule?.filter(e => e.status === 'Paid').length || 0;
-    const dueEmisCount = (loan?.tenure || 0) - paidEmisCount;
+
 
     const outstandingPrincipal = useMemo(() => {
         if (!loan || loan.status !== 'Disbursed') return 0;
@@ -473,7 +465,7 @@ const LoanDetails: React.FC = () => {
 
         pdfDoc.setFontSize(14);
         pdfDoc.setFont("helvetica", "bold");
-        pdfDoc.text("CREDIT FORECLOSURE CERTIFICATE", pdfDoc.internal.pageSize.getWidth() / 2, y, { align: 'center' });
+        pdfDoc.text("RECORD SETTLEMENT CERTIFICATE", pdfDoc.internal.pageSize.getWidth() / 2, y, { align: 'center' });
         y += 10;
 
         pdfDoc.line(14, y, 196, y);
@@ -481,9 +473,9 @@ const LoanDetails: React.FC = () => {
 
         pdfDoc.setFontSize(11);
         pdfDoc.setFont("helvetica", "normal");
-        pdfDoc.text(`Foreclosure Date: ${safeFormatDate(foreclosureData.date, 'dd MMMM yyyy')}`, 14, y);
+        pdfDoc.text(`Settlement Date: ${safeFormatDate(foreclosureData.date, 'dd MMMM yyyy')}`, 14, y);
         y += 7;
-        pdfDoc.text(`Certificate No: FC-${loanData.id}`, 14, y);
+        pdfDoc.text(`Certificate No: SC-${loanData.id}`, 14, y);
         y += 10;
 
         pdfDoc.setFont("helvetica", "bold");
@@ -509,7 +501,7 @@ const LoanDetails: React.FC = () => {
         y += 6;
         pdfDoc.text(`Monthly Installment: ${formatCurrency(loanData.emi)}`, 14, y);
         y += 6;
-        pdfDoc.text(`Disbursement Date: ${safeFormatDate(loanData.disbursalDate)}`, 14, y);
+        pdfDoc.text(`Record Start Date: ${safeFormatDate(loanData.disbursalDate)}`, 14, y);
         y += 10;
 
         pdfDoc.setFont("helvetica", "bold");
@@ -526,19 +518,19 @@ const LoanDetails: React.FC = () => {
         y += 10;
 
         pdfDoc.setFont("helvetica", "bold");
-        pdfDoc.text("FORECLOSURE CALCULATION", 14, y);
+        pdfDoc.text("SETTLEMENT CALCULATION", 14, y);
         y += 7;
 
         pdfDoc.setFont("helvetica", "normal");
         pdfDoc.text(`Outstanding Principal: ${formatCurrency(foreclosureData.outstandingPrincipal)}`, 14, y);
         y += 6;
-        pdfDoc.text(`Foreclosure Charges (${foreclosureData.chargesPercentage}%): ${formatCurrency(foreclosureData.outstandingPrincipal * (foreclosureData.chargesPercentage / 100))}`, 14, y);
+        pdfDoc.text(`Settlement Charges (${foreclosureData.chargesPercentage}%): ${formatCurrency(foreclosureData.outstandingPrincipal * (foreclosureData.chargesPercentage / 100))}`, 14, y);
         y += 8;
 
         pdfDoc.setFont("helvetica", "bold");
         pdfDoc.setFillColor(240, 240, 240);
         pdfDoc.rect(14, y - 5, 182, 12, 'F');
-        pdfDoc.text(`TOTAL FORECLOSURE AMOUNT PAID: ${formatCurrency(foreclosureData.totalPaid)}`, 14, y + 2);
+        pdfDoc.text(`TOTAL SETTLEMENT AMOUNT PAID: ${formatCurrency(foreclosureData.totalPaid)}`, 14, y + 2);
         y += 15;
 
         pdfDoc.line(14, y, 196, y);
@@ -546,7 +538,7 @@ const LoanDetails: React.FC = () => {
 
         pdfDoc.setFont("helvetica", "italic");
         pdfDoc.setFontSize(10);
-        pdfDoc.text("This certificate confirms that the above credit has been foreclosed and all dues have been cleared.", 14, y);
+        pdfDoc.text("This certificate confirms that the above record has been settled and all dues have been cleared.", 14, y);
         y += 6;
         pdfDoc.text("The customer has no further liability towards this record.", 14, y);
         y += 15;
@@ -589,7 +581,7 @@ const LoanDetails: React.FC = () => {
                 if (win) {
                     win.document.write('<iframe src="' + base64 + '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>');
                 } else {
-                    savePdf(pdfDoc, `Foreclosure_Preview_${loan.id}.pdf`);
+                    savePdf(pdfDoc, `Settlement_Preview_${loan.id}.pdf`);
                 }
             } else {
                 window.open(pdfDoc.output('bloburl'), '_blank');
@@ -859,16 +851,16 @@ const LoanDetails: React.FC = () => {
             pdfDoc.setFontSize(18);
             pdfDoc.text(companyDetails.name, pdfDoc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
             pdfDoc.setFontSize(14);
-            pdfDoc.text("LOAN AGREEMENT", pdfDoc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
+            pdfDoc.text("SERVICE AGREEMENT", pdfDoc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
 
             const agreementDate = loan.disbursalDate ? safeFormatDate(loan.disbursalDate, 'do MMMM yyyy') : format(new Date(), 'do MMMM yyyy');
             pdfDoc.setFontSize(10);
             pdfDoc.setFont("helvetica", "normal");
             pdfDoc.text(`Date: ${agreementDate}`, pdfDoc.internal.pageSize.getWidth() - 15, 20, { align: 'right' });
-            pdfDoc.text(`Loan ID: ${loan.id}`, pdfDoc.internal.pageSize.getWidth() - 15, 26, { align: 'right' });
+            pdfDoc.text(`Record ID: ${loan.id}`, pdfDoc.internal.pageSize.getWidth() - 15, 26, { align: 'right' });
 
             let startY = 40;
-            const partiesBody = [[`This agreement is made between:\n\nTHE LENDER:\n${companyDetails.name}\n${companyDetails.address || '[Company Address]'}\n\nAND\n\nTHE BORROWER:\n${loan.customerName}\n${(customer as any).address || 'Address not provided'}\nMobile: ${(customer as any).phone || 'N/A'}`]];
+            const partiesBody = [[`This agreement is made between:\n\nTHE COMPANY:\n${companyDetails.name}\n${companyDetails.address || '[Company Address]'}\n\nAND\n\nTHE CUSTOMER:\n${loan.customerName}\n${(customer as any).address || 'Address not provided'}\nMobile: ${(customer as any).phone || 'N/A'}`]];
 
             // Using autoTable for parties layout
             autoTable(pdfDoc, {
@@ -889,7 +881,7 @@ const LoanDetails: React.FC = () => {
 
             pdfDoc.setFontSize(12);
             pdfDoc.setFont("helvetica", "bold");
-            const agreementTitle = loan.topUpHistory && loan.topUpHistory.length > 0 ? "LOAN SUMMARY (TOP-UP UPDATED)" : "LOAN SUMMARY";
+            const agreementTitle = loan.topUpHistory && loan.topUpHistory.length > 0 ? "RECORD SUMMARY (TOP-UP UPDATED)" : "RECORD SUMMARY";
             pdfDoc.text(agreementTitle, 14, startY);
             startY += 4;
 
@@ -897,13 +889,13 @@ const LoanDetails: React.FC = () => {
             const totalInterest = totalRepayment - loan.amount;
 
             const summaryBody = [
-                [{ content: 'Loan Amount (Principal)', styles: { fontStyle: 'bold' } }, `${formatCurrency(loan.amount)} (${toWords(loan.amount)} Only)`],
-                [{ content: 'Loan Tenure', styles: { fontStyle: 'bold' } }, `${loan.tenure} Months`],
+                [{ content: 'Record Amount (Principal)', styles: { fontStyle: 'bold' } }, `${formatCurrency(loan.amount)} (${toWords(loan.amount)} Only)`],
+                [{ content: 'Record Tenure', styles: { fontStyle: 'bold' } }, `${loan.tenure} Months`],
                 [{ content: 'EMI', styles: { fontStyle: 'bold' } }, formatCurrency(loan.emi)],
                 [{ content: 'Processing Fee', styles: { fontStyle: 'bold' } }, formatCurrency(loan.processingFee || 0)],
-                [{ content: 'Total Interest Payable', styles: { fontStyle: 'bold' } }, formatCurrency(totalInterest)],
-                [{ content: 'Total Amount Repayable', styles: { fontStyle: 'bold' } }, formatCurrency(totalRepayment)],
-                [{ content: 'Disbursal Date', styles: { fontStyle: 'bold' } }, safeFormatDate(loan.disbursalDate, 'do MMMM yyyy')],
+                [{ content: 'Total Service Charge', styles: { fontStyle: 'bold' } }, formatCurrency(totalInterest)],
+                [{ content: 'Total Amount Payable', styles: { fontStyle: 'bold' } }, formatCurrency(totalRepayment)],
+                [{ content: 'Start Date', styles: { fontStyle: 'bold' } }, safeFormatDate(loan.disbursalDate, 'do MMMM yyyy')],
             ];
 
             if (loan.topUpHistory && loan.topUpHistory.length > 0) {
@@ -953,12 +945,12 @@ const LoanDetails: React.FC = () => {
             pdfDoc.setFont("helvetica", "normal");
 
             const clauses = [
-                "The Borrower agrees to repay the loan amount along with interest in the form of EMIs as specified in the loan summary.",
+                "The Customer agrees to settle the record amount along with service charges in the form of Installments as specified in the summary.",
                 "All payments shall be made on or before the due date of each month.",
-                "In case of a delay in payment of EMI, a penal interest/late fee as per the company's prevailing policy will be charged.",
-                "Default in repayment of three or more consecutive EMIs shall entitle the Lender to recall the entire loan amount and initiate legal proceedings for recovery.",
-                "The Borrower confirms that all information provided in the loan application is true and correct.",
-                "This loan is unsecured. No collateral has been provided by the Borrower.",
+                "In case of a delay in payment of Installment, a penal charge as per the company's prevailing policy will be levied.",
+                "Default in payment of three or more consecutive Installments shall entitle the Company to recall the entire record amount.",
+                "The Customer confirms that all information provided in the record application is true and correct.",
+                "This record is unsecured. No collateral has been provided by the Customer.",
                 "Any disputes arising out of this agreement shall be subject to the jurisdiction of the courts.",
             ];
 
@@ -990,12 +982,12 @@ const LoanDetails: React.FC = () => {
             pdfDoc.setFontSize(10);
             pdfDoc.setFont("helvetica", "bold");
             pdfDoc.text(`For ${companyDetails.name}`, 50, startY, { align: 'center' });
-            pdfDoc.text("Borrower's Signature", 160, startY, { align: 'center' });
+            pdfDoc.text("Customer's Signature", 160, startY, { align: 'center' });
 
             if (mode === 'preview' && !Capacitor.isNativePlatform()) {
                 window.open(pdfDoc.output('bloburl'), '_blank');
             } else {
-                await savePdf(pdfDoc, `Loan_Agreement_${loan.id}.pdf`);
+                await savePdf(pdfDoc, `Service_Agreement_${loan.id}.pdf`);
             }
         } catch (error) {
             console.error("Failed to generate agreement PDF:", error);
@@ -1016,7 +1008,8 @@ const LoanDetails: React.FC = () => {
             pdfDoc.text(companyDetails.name, pdfDoc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
 
             pdfDoc.setFontSize(14);
-            pdfDoc.text("LOAN TOP-UP AGREEMENT", pdfDoc.internal.pageSize.getWidth() / 2, 25, { align: 'center' });
+            pdfDoc.setFontSize(14);
+            pdfDoc.text("RECORD TOP-UP AGREEMENT", pdfDoc.internal.pageSize.getWidth() / 2, 25, { align: 'center' });
 
             pdfDoc.setFontSize(10);
             pdfDoc.setFont("helvetica", "normal");
@@ -1024,15 +1017,15 @@ const LoanDetails: React.FC = () => {
 
             pdfDoc.text(`Agreement Date: ${safeFormatDate(topUpDate, 'PPP')}`, 14, y);
             y += 8;
-            pdfDoc.text(`Loan ID: ${loan.id}`, 14, y);
+            pdfDoc.text(`Record ID: ${loan.id}`, 14, y);
             y += 8;
             pdfDoc.text(`Customer Name: ${loan.customerName}`, 14, y);
             y += 15;
 
-            // --- 1. PREVIOUS LOAN DETAILS (Crossed Out) ---
+            // --- 1. PREVIOUS RECORD DETAILS (Crossed Out) ---
             pdfDoc.setFont("helvetica", "bold");
             pdfDoc.setTextColor(150, 0, 0); // Dark Red
-            pdfDoc.text("PREVIOUS LOAN DETAILS (CANCELLED)", 14, y);
+            pdfDoc.text("PREVIOUS RECORD DETAILS (CANCELLED)", 14, y);
             pdfDoc.setTextColor(0, 0, 0); // Reset
             y += 6;
 
@@ -1066,7 +1059,9 @@ const LoanDetails: React.FC = () => {
             // --- 2. NEW LOAN DETAILS ---
             pdfDoc.setFont("helvetica", "bold");
             pdfDoc.setTextColor(0, 100, 0); // Dark Green
-            pdfDoc.text("NEW TOP-UP LOAN DETAILS (EFFECTIVE)", 14, y);
+            pdfDoc.setFont("helvetica", "bold");
+            pdfDoc.setTextColor(0, 100, 0); // Dark Green
+            pdfDoc.text("NEW TOP-UP RECORD DETAILS (EFFECTIVE)", 14, y);
             pdfDoc.setTextColor(0, 0, 0);
             y += 6;
 
@@ -1074,11 +1069,11 @@ const LoanDetails: React.FC = () => {
                 ["Item", "Details"],
                 ["Top-up Amount Added", formatCurrency(topUpAmountVal)],
                 ["New Principal Amount", formatCurrency(newPrincipal)],
-                ["New EMI Amount", formatCurrency(newEmi)],
+                ["New Installment Amount", formatCurrency(newEmi)],
                 ["New Total Tenure", `${newTenure + paidEmisCount} Months (Total)`],
                 ["Incremental Tenure", `${newTenure} Months`],
                 ["Processing Fee", formatCurrency(processingFee)],
-                ["First New EMI Date", safeFormatDate(firstEmiDateStr)]
+                ["First New Installment Date", safeFormatDate(firstEmiDateStr)]
             ];
 
             autoTable(pdfDoc, {
@@ -1107,7 +1102,7 @@ const LoanDetails: React.FC = () => {
             pdfDoc.text("_______________________", 14, y);
             pdfDoc.text("_______________________", 120, y);
             y += 5;
-            pdfDoc.text("Borrower Signature", 14, y);
+            pdfDoc.text("Customer Signature", 14, y);
             pdfDoc.text("Authorized Signatory", 120, y);
 
             pdfDoc.setFontSize(8);
@@ -1145,7 +1140,8 @@ const LoanDetails: React.FC = () => {
             pdfDoc.text(companyDetails.name, pageWidth / 2, y, { align: 'center' });
             y += 8;
             pdfDoc.setFontSize(12);
-            pdfDoc.text('Loan Summary Card', pageWidth / 2, y, { align: 'center' });
+            pdfDoc.setFontSize(12);
+            pdfDoc.text('Ledger Summary Card', pageWidth / 2, y, { align: 'center' });
 
             // Show Top-Up Status (Same as LoanDetails)
             if (loan.topUpHistory && loan.topUpHistory.length > 0) {
@@ -1166,9 +1162,9 @@ const LoanDetails: React.FC = () => {
             pdfDoc.setFontSize(10);
 
             const details = [
-                [{ label: "Customer Name", value: loan.customerName }, { label: "Loan ID", value: loan.id }],
-                [{ label: "Loan Amount", value: formatCurrency(loan.amount) }, { label: "Tenure", value: `${loan.tenure} Months` }],
-                [{ label: "Monthly EMI", value: formatCurrency(loan.emi) }, { label: "Disbursal Date", value: safeFormatDate(loan.disbursalDate) }],
+                [{ label: "Customer Name", value: loan.customerName }, { label: "Record ID", value: loan.id }],
+                [{ label: "Record Amount", value: formatCurrency(loan.amount) }, { label: "Tenure", value: `${loan.tenure} Months` }],
+                [{ label: "Monthly Installment", value: formatCurrency(loan.emi) }, { label: "Start Date", value: safeFormatDate(loan.disbursalDate) }],
             ];
 
             details.forEach(row => {
@@ -1216,7 +1212,7 @@ const LoanDetails: React.FC = () => {
             if (mode === 'preview' && !Capacitor.isNativePlatform()) {
                 window.open(pdfDoc.output('bloburl'), '_blank');
             } else {
-                await savePdf(pdfDoc, `LoanCard_${loan.id}.pdf`);
+                await savePdf(pdfDoc, `LedgerCard_${loan.id}.pdf`);
             }
         } catch (error) {
             console.error("Failed to generate loan card:", error);
@@ -1236,7 +1232,8 @@ const LoanDetails: React.FC = () => {
             pdfDoc.setFont("helvetica", "bold");
             pdfDoc.text(companyDetails.name, 42.8, 8, { align: 'center' });
             pdfDoc.setFontSize(6);
-            pdfDoc.text("LOAN CARD (TOP-UP)", 42.8, 14, { align: 'center' });
+            pdfDoc.setFontSize(6);
+            pdfDoc.text("LEDGER CARD (TOP-UP)", 42.8, 14, { align: 'center' });
 
             pdfDoc.setTextColor(0, 0, 0);
             pdfDoc.setFontSize(8);
@@ -1245,9 +1242,9 @@ const LoanDetails: React.FC = () => {
 
             pdfDoc.setFontSize(6);
             pdfDoc.setFont("helvetica", "normal");
-            pdfDoc.text(`Loan ID: ${loan.id}`, 5, 34);
+            pdfDoc.text(`Record ID: ${loan.id}`, 5, 34);
             pdfDoc.text(`Amount: ${formatCurrency(newAmount)}`, 5, 39);
-            pdfDoc.text(`EMI: ${formatCurrency(newEmi)}`, 5, 44);
+            pdfDoc.text(`Inst: ${formatCurrency(newEmi)}`, 5, 44);
             pdfDoc.text(`Tenure: ${newTenure} months`, 45, 39);
             pdfDoc.text(`Rate: ${loan.interestRate}% p.a.`, 45, 44);
 
@@ -1258,7 +1255,7 @@ const LoanDetails: React.FC = () => {
             if (mode === 'preview' && !Capacitor.isNativePlatform()) {
                 window.open(pdfDoc.output('bloburl'), '_blank');
             } else {
-                await savePdf(pdfDoc, `LoanCard_TopUp_${loan.id}_${format(new Date(), 'yyyyMMdd')}.pdf`);
+                await savePdf(pdfDoc, `LedgerCard_TopUp_${loan.id}_${format(new Date(), 'yyyyMMdd')}.pdf`);
             }
         } catch (error) {
             console.error("Failed to generate updated loan card:", error);
@@ -1275,16 +1272,17 @@ const LoanDetails: React.FC = () => {
             pdfDoc.setFont("helvetica", "bold");
             pdfDoc.text(companyDetails.name, pdfDoc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
             pdfDoc.setFontSize(14);
-            pdfDoc.text('Loan Repayment Schedule', pdfDoc.internal.pageSize.getWidth() / 2, 25, { align: 'center' });
+            pdfDoc.setFontSize(14);
+            pdfDoc.text('Payment Schedule', pdfDoc.internal.pageSize.getWidth() / 2, 25, { align: 'center' });
 
             pdfDoc.setFontSize(10);
             let contentStartY = 40;
             pdfDoc.text(`Customer: ${loan.customerName}`, 15, contentStartY);
             contentStartY += 7;
-            pdfDoc.text(`Loan ID: ${loan.id}`, 15, contentStartY);
+            pdfDoc.text(`Record ID: ${loan.id}`, 15, contentStartY);
             contentStartY += 8;
 
-            const tableColumn = ["EMI No.", "Due Date", "Principal", "Interest", "Total EMI", "Balance", "Paid Date", "Status", "Type"];
+            const tableColumn = ["EMI No.", "Due Date", "Principal", "Interest", "Total Inst", "Balance", "Paid Date", "Status", "Type"];
             const tableRows: (string | number)[][] = [];
 
             detailedRepaymentSchedule.forEach(emi => {
@@ -1307,7 +1305,7 @@ const LoanDetails: React.FC = () => {
                 pdfDoc.setFontSize(10);
                 pdfDoc.setTextColor(192, 57, 43); // Red color
                 const lastTopUp = loan.topUpHistory[loan.topUpHistory.length - 1];
-                pdfDoc.text(`*** LOAN TOP-UP ACTIVE ***`, 150, 30);
+                pdfDoc.text(`*** RECORD TOP-UP ACTIVE ***`, 150, 30);
                 pdfDoc.setFontSize(8);
                 pdfDoc.setTextColor(0);
                 // Fix: use .topUpAmount instead of .amount
@@ -1395,7 +1393,7 @@ const LoanDetails: React.FC = () => {
             if (customerData?.phone) { y += 7; pdfDoc.text(`Mobile: ${customerData.phone}`, 14, y); }
             if (customerData?.address) { y += 7; pdfDoc.text(`Address: ${customerData.address}`, 14, y); }
             y += 7;
-            pdfDoc.text(`Loan ID: ${loan.id}`, 14, y);
+            pdfDoc.text(`Record ID: ${loan.id}`, 14, y);
             y += 8;
             pdfDoc.line(14, y, 196, y);
             y += 7;
@@ -1483,7 +1481,9 @@ const LoanDetails: React.FC = () => {
         else if (status === 'Rejected' || status === 'Overdue') classes += "bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-900/30 dark:text-red-400";
         else classes += "bg-gray-50 text-gray-600 ring-gray-500/10 dark:bg-gray-800 dark:text-gray-400";
 
-        return <span className={classes}>{status}</span>;
+        const label = status === 'Disbursed' ? 'Active' : (status === 'Approved' ? 'Accepted' : status);
+
+        return <span className={classes}>{label}</span>;
     };
 
     const downloadAmortizationPDF = async () => {
@@ -1500,7 +1500,7 @@ const LoanDetails: React.FC = () => {
         pdf.text(companyDetails.name, 105, 15, { align: "center" });
 
         pdf.setFontSize(12);
-        pdf.text("Loan Amortization Schedule", 105, 25, { align: "center" });
+        pdf.text("Record Schedule", 105, 25, { align: "center" });
 
         pdf.setFontSize(10);
         pdf.setFont("helvetica", "normal");
@@ -1508,7 +1508,7 @@ const LoanDetails: React.FC = () => {
         let y = 40;
         pdf.text(`Customer: ${loan.customerName}`, 14, y);
         y += 6;
-        pdf.text(`Loan ID: ${loan.id}`, 14, y);
+        pdf.text(`Record ID: ${loan.id}`, 14, y);
         y += 6;
         pdf.text(`Interest Rate: ${loan.interestRate}%`, 14, y);
         y += 6;
@@ -1700,8 +1700,8 @@ const LoanDetails: React.FC = () => {
     if (!loan) {
         return (
             <div className="flex flex-col items-center justify-center h-screen p-4">
-                <h2 className="text-xl font-bold mb-2">Loan Not Found</h2>
-                <button onClick={() => navigate('/loan/loans')} className="px-4 py-2 bg-primary text-white rounded-lg">Back to Loans</button>
+                <h2 className="text-xl font-bold mb-2">Record Not Found</h2>
+                <button onClick={() => navigate('/loan/records')} className="px-4 py-2 bg-primary text-white rounded-lg">Back to Records</button>
             </div>
         );
     }
@@ -1722,15 +1722,15 @@ const LoanDetails: React.FC = () => {
                     <span className="material-symbols-outlined transition-transform group-hover:-translate-x-1">arrow_back</span>
                     <span className="font-bold text-sm hidden sm:inline">Back</span>
                 </button>
-                <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300">Loan Details</h1>
+                <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300">Record Details</h1>
                 <div className="flex gap-2">
-                    <button onClick={() => navigate(`/loan/loans/edit/${loanId}`)} className="p-2.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-slate-800 transition-all hover:shadow-lg hover:shadow-indigo-500/10 active:scale-95" title="Edit Loan">
+                    <button onClick={() => navigate(`/loan/records/edit/${loanId}`)} className="p-2.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-slate-800 transition-all hover:shadow-lg hover:shadow-indigo-500/10 active:scale-95" title="Edit Record">
                         <span className="material-symbols-outlined">edit</span>
                     </button>
                     <button onClick={handleDownloadSchedule} disabled={isDownloadingSchedule} className="p-2.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-slate-800 transition-all hover:shadow-lg hover:shadow-indigo-500/10 active:scale-95" title="Download Schedule">
                         {isDownloadingSchedule ? <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent"></div> : <span className="material-symbols-outlined">calendar_month</span>}
                     </button>
-                    <button onClick={() => generateLoanCardPDF('save')} className="p-2.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-slate-800 transition-all hover:shadow-lg hover:shadow-indigo-500/10 active:scale-95" title="Download Loan Card">
+                    <button onClick={() => generateLoanCardPDF('save')} className="p-2.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-slate-800 transition-all hover:shadow-lg hover:shadow-indigo-500/10 active:scale-95" title="Download Ledger Card">
                         <span className="material-symbols-outlined">id_card</span>
                     </button>
                     <button onClick={() => generateLoanAgreementPDF('save')} disabled={isGeneratingAgreement} className="p-2.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-slate-800 transition-all hover:shadow-lg hover:shadow-indigo-500/10 active:scale-95" title="Download Agreement">
@@ -1751,13 +1751,13 @@ const LoanDetails: React.FC = () => {
                             onClick={() => setIsPrecloseModalOpen(true)}
                             className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 font-bold text-sm hover:bg-red-200 dark:hover:bg-red-900/40 transition-colors"
                         >
-                            <span className="material-symbols-outlined text-[18px]">cancel</span> Pre-close Loan
+                            <span className="material-symbols-outlined text-[18px]">cancel</span> Pre-close Record
                         </button>
                         <button
                             onClick={() => setIsTopUpModalOpen(true)}
                             className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-100 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 font-bold text-sm hover:bg-indigo-200 dark:hover:bg-indigo-900/40 transition-colors"
                         >
-                            <span className="material-symbols-outlined text-[18px]">trending_up</span> Top-up Loan
+                            <span className="material-symbols-outlined text-[18px]">trending_up</span> Top-up Record
                         </button>
 
                     </div>
@@ -1819,7 +1819,7 @@ const LoanDetails: React.FC = () => {
                     </div>
                     <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-y-8 gap-x-6">
                         <div className="space-y-1">
-                            <span className="text-xs uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500">Loan Amount</span>
+                            <span className="text-xs uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-500">Record Amount</span>
                             <div className="text-xl font-bold text-slate-900 dark:text-white flex items-baseline gap-1">
                                 {formatCurrency(loan.amount)}
                             </div>
@@ -2008,8 +2008,8 @@ const LoanDetails: React.FC = () => {
                 isPrecloseModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
                         <div className="bg-white dark:bg-[#1e2736] rounded-2xl w-full max-w-sm shadow-2xl p-6">
-                            <h3 className="text-lg font-bold mb-1">Pre-close Loan</h3>
-                            <p className="text-sm text-slate-500 mb-4">Calculate foreclosure amount and close loan.</p>
+                            <h3 className="text-lg font-bold mb-1">Pre-close Record</h3>
+                            <p className="text-sm text-slate-500 mb-4">Calculate settlement amount and close record.</p>
 
                             <div className="space-y-4 mb-6">
                                 <div>
@@ -2019,7 +2019,7 @@ const LoanDetails: React.FC = () => {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1">Foreclosure Charges (%)</label>
+                                    <label className="block text-xs font-bold text-slate-500 mb-1">Settlement Charges (%)</label>
                                     <input
                                         type="number"
                                         value={foreclosureCharges}
@@ -2075,7 +2075,7 @@ const LoanDetails: React.FC = () => {
                 isTopUpModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
                         <div className="bg-white dark:bg-[#1e2736] rounded-2xl w-full max-w-md shadow-2xl p-6">
-                            <h3 className="text-lg font-bold mb-1">Top-up Loan</h3>
+                            <h3 className="text-lg font-bold mb-1">Top-up Record</h3>
                             <p className="text-sm text-slate-500 mb-4">Add amount and set new duration. New agreement will be generated.</p>
 
                             <div className="space-y-4 mb-6">
@@ -2106,7 +2106,7 @@ const LoanDetails: React.FC = () => {
                                         placeholder="Enter new tenure"
                                         className="w-full px-3 py-2 bg-white dark:bg-[#1a2230] border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary outline-none"
                                     />
-                                    <p className="text-xs text-slate-400 mt-1">This will be the new loan duration from today</p>
+                                    <p className="text-xs text-slate-400 mt-1">This will be the new record duration from today</p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -2149,7 +2149,7 @@ const LoanDetails: React.FC = () => {
                                 </div>
                                 <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                                     <p className="text-xs text-green-700 dark:text-green-400">
-                                        <span className="font-bold">Note:</span> New Loan Agreement and Loan Card will be automatically generated after top-up.
+                                        <span className="font-bold">Note:</span> New Service Agreement and Record Card will be automatically generated after top-up.
                                     </p>
                                 </div>
                             </div>

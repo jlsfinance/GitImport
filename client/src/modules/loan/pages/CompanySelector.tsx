@@ -482,14 +482,17 @@ const CompanySelector: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="text-sm text-on-surface-variant-light block mb-1">Company UPI ID (for QR Payments)</label>
+                <label className="text-sm text-on-surface-variant-light block mb-1">Company UPI ID (Displayed on Invoices)</label>
                 <input
                   type="text"
                   value={newCompanyUpi}
                   onChange={(e) => setNewCompanyUpi(e.target.value)}
                   className="w-full rounded-xl border border-outline-light dark:border-outline-dark bg-transparent px-4 py-3 text-on-surface-light dark:text-on-surface-dark focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                  placeholder="e.g. 91xxxxxxxx@upi"
+                  placeholder="e.g. 91xxxxxxxx@upi (For Record Keeping Only)"
                 />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  *This text is only for display on invoices. It is NOT for activation fees.
+                </p>
               </div>
               <div className="flex gap-3 pt-4">
                 <button
@@ -559,14 +562,17 @@ const CompanySelector: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="text-sm text-on-surface-variant-light block mb-1">Company UPI ID (for QR Payments)</label>
+                <label className="text-sm text-on-surface-variant-light block mb-1">Company UPI ID (Displayed on Invoices)</label>
                 <input
                   type="text"
                   value={editCompanyUpi}
                   onChange={(e) => setEditCompanyUpi(e.target.value)}
                   className="w-full rounded-xl border border-outline-light dark:border-outline-dark bg-transparent px-4 py-3 text-on-surface-light dark:text-on-surface-dark focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                  placeholder="e.g. 91xxxxxxxx@upi"
+                  placeholder="e.g. 91xxxxxxxx@upi (For Record Keeping Only)"
                 />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  *This text is only for display on invoices. It is NOT for activation fees.
+                </p>
               </div>
               <div className="flex gap-3 pt-4">
                 <button
