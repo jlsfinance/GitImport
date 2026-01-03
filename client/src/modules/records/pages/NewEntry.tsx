@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { collection, getDocs, query, where, doc, updateDoc, getDoc } from "firebase/firestore";
-import { db } from "../firebaseConfig";
+import { db } from "../../../lib/firebase";
 import { addMonths, format } from 'date-fns';
 import { useCompany } from '../context/CompanyContext';
 import { APP_NAME } from '../constants';
@@ -52,7 +52,6 @@ const NewEntry: React.FC = () => {
                     return {
                         id: doc.id,
                         ...data,
-                        installmentAmount: data.emi,
                         serviceCharge: data.processingFee
                     };
                 }) as PendingEntry[];
@@ -65,6 +64,11 @@ const NewEntry: React.FC = () => {
         };
         fetchPendingEntries();
     }, [currentCompany]);
+
+    // WhatsApp Preview State
+    const [whatsappPreview, setWhatsappPreview] = useState<{ open: boolean; phone: string; message: string; name: string }>({
+        open: false, phone: '', message: '', name: ''
+    });
 
     const handleAddEntry = async () => {
         if (!selectedEntry || !entryDate) {
@@ -79,10 +83,15 @@ const NewEntry: React.FC = () => {
 
             // Generate Installment schedule with selected due day
             const repaymentSchedule = [];
-            const nextMonth = addMonths(dateObj, 1);
-            const year = nextMonth.getFullYear();
-            const month = nextMonth.getMonth();
-            const firstInstallmentDate = new Date(year, month, installmentDueDay);
+            // Calculate first installment date (Next month from entry date)
+            const [y, m] = entryDate.split('-').map(Number);
+            // using m as month index creates date in next month (since m is 1-based from string)
+            let firstInstallmentDate = new Date(y, m, installmentDueDay);
+
+            // Handle month overflow (e.g. Feb 30 -> Mar 2) by clamping to end of target month
+            if (firstInstallmentDate.getMonth() !== (m % 12)) {
+                firstInstallmentDate = new Date(y, m + 1, 0);
+            }
 
             for (let i = 0; i < selectedEntry.tenure; i++) {
                 const installmentDate = addMonths(firstInstallmentDate, i);
@@ -107,7 +116,7 @@ const NewEntry: React.FC = () => {
             // Success Handling
             setPendingEntries(prev => prev.filter(app => app.id !== selectedEntry.id));
 
-            // Notification logic
+            // Notification logic - Prepare preview instead of auto-open
             try {
                 const customerRef = doc(db, "customers", selectedEntry.customerId);
                 const customerSnap = await getDoc(customerRef);
@@ -121,9 +130,14 @@ const NewEntry: React.FC = () => {
                         const dateFormatted = format(dateObj, 'dd MMMM, yyyy');
 
                         const message = `Namaste ${selectedEntry.customerName},\n\nAapka ${companyName} se ${amountFormatted} ka record aaj dinank ${dateFormatted} ko shuru ho gaya hai.\n\nDhanyavaad.`;
-                        const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
 
-                        window.open(whatsappUrl, '_blank');
+                        // Show preview modal instead of auto-opening
+                        setWhatsappPreview({
+                            open: true,
+                            phone: formattedPhone,
+                            message: message,
+                            name: selectedEntry.customerName
+                        });
                     }
                 }
             } catch (e) {
@@ -139,6 +153,12 @@ const NewEntry: React.FC = () => {
         } finally {
             setProcessing(false);
         }
+    };
+
+    const handleConfirmWhatsApp = () => {
+        const whatsappUrl = `https://wa.me/${whatsappPreview.phone}?text=${encodeURIComponent(whatsappPreview.message)}`;
+        window.open(whatsappUrl, '_blank');
+        setWhatsappPreview({ open: false, phone: '', message: '', name: '' });
     };
 
     return (
@@ -159,62 +179,76 @@ const NewEntry: React.FC = () => {
                 </div>
             </div>
 
-            <div className="max-w-4xl mx-auto p-4 space-y-6">
-                <div className="bg-white dark:bg-[#1e2736] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                    <div className="p-4 border-b border-slate-100 dark:border-slate-800">
-                        <h2 className="font-bold text-lg">Ready to Start</h2>
-                        <p className="text-sm text-slate-500">Records agreed upon and waiting for confirmation.</p>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700">
-                                <tr>
-                                    <th className="px-4 py-3 whitespace-nowrap">ID</th>
-                                    <th className="px-4 py-3 whitespace-nowrap">Customer</th>
-                                    <th className="px-4 py-3 whitespace-nowrap">Amount</th>
-                                    <th className="px-4 py-3 whitespace-nowrap">Date</th>
-                                    <th className="px-4 py-3 text-center">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {loading ? (
-                                    <tr>
-                                        <td colSpan={5} className="px-4 py-12 text-center">
-                                            <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                                        </td>
-                                    </tr>
-                                ) : pendingEntries.length > 0 ? (
-                                    pendingEntries.map((entry) => (
-                                        <tr key={entry.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                            <td className="px-4 py-3 font-medium">{entry.id}</td>
-                                            <td className="px-4 py-3 font-bold">{entry.customerName}</td>
-                                            <td className="px-4 py-3">Rs. {entry.amount.toLocaleString('en-IN')}</td>
-                                            <td className="px-4 py-3 text-slate-500">
-                                                {entry.acceptanceDate ? new Date(entry.acceptanceDate).toLocaleDateString() : 'N/A'}
-                                            </td>
-                                            <td className="px-4 py-3 text-center">
-                                                <button
-                                                    onClick={() => setSelectedEntry(entry)}
-                                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 text-xs font-bold transition-colors shadow-lg shadow-primary/30"
-                                                >
-                                                    <span className="material-symbols-outlined text-[16px]">check_circle</span> Activate Record
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={5} className="px-4 py-12 text-center text-slate-400">
-                                            <span className="material-symbols-outlined text-4xl mb-2">folder_open</span>
-                                            <p>No pending records.</p>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+            <div className="max-w-4xl mx-auto p-4 space-y-4">
+                <div className="flex justify-between items-center px-2">
+                    <h2 className="text-sm font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Ready to Activate</h2>
+                    <span className="text-[10px] font-black bg-primary/10 text-primary px-2 py-0.5 rounded-full">{pendingEntries.length} Records</span>
                 </div>
+
+                {loading ? (
+                    <div className="flex justify-center py-20">
+                        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                    </div>
+                ) : pendingEntries.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-4">
+                        {pendingEntries.map((entry, i) => (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.05 }}
+                                key={entry.id}
+                                className="bg-white dark:bg-[#1e2736] rounded-[2rem] p-6 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col gap-4 relative overflow-hidden group"
+                            >
+                                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                                    <span className="material-symbols-outlined text-6xl">inventory_2</span>
+                                </div>
+
+                                <div className="flex justify-between items-start">
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-black text-lg">
+                                            {entry.customerName?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-black text-slate-900 dark:text-white text-lg">{entry.customerName}</h3>
+                                            <p className="text-xs font-bold text-slate-400">ID: #{entry.id}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Amount</p>
+                                        <p className="text-xl font-black text-slate-900 dark:text-white">₹{entry.amount.toLocaleString('en-IN')}</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 py-2 border-t border-slate-50 dark:border-slate-800 pt-4">
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Installment</p>
+                                        <p className="text-sm font-bold">₹{entry.installmentAmount.toLocaleString('en-IN')}/mo</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tenure</p>
+                                        <p className="text-sm font-bold">{entry.tenure} Months</p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={() => setSelectedEntry(entry)}
+                                    className="w-full py-4 rounded-2xl bg-primary text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-primary/20 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">bolt</span>
+                                    Activate Record
+                                </button>
+                            </motion.div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-20 text-slate-400 text-center">
+                        <div className="h-20 w-20 rounded-full bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center mb-4">
+                            <span className="material-symbols-outlined text-4xl">folder_open</span>
+                        </div>
+                        <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">No Pending Records</h3>
+                        <p className="text-sm max-w-[200px]">All entries have been cleared or none have been drafted yet.</p>
+                    </div>
+                )}
             </div>
 
             {/* Modal */}
@@ -276,6 +310,49 @@ const NewEntry: React.FC = () => {
                             >
                                 {processing && <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>}
                                 Start Record
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* WhatsApp Message Preview Modal */}
+            {whatsappPreview.open && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+                    <div className="bg-white dark:bg-[#1e2736] rounded-2xl w-full max-w-sm shadow-2xl p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="h-10 w-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+                                <span className="material-symbols-outlined">chat</span>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold">Send Notification?</h3>
+                                <p className="text-xs text-slate-500">To: {whatsappPreview.name}</p>
+                            </div>
+                        </div>
+                        <div className="mb-4">
+                            <label className="block text-xs font-bold text-slate-500 mb-2">Message (You can edit)</label>
+                            <textarea
+                                value={whatsappPreview.message}
+                                onChange={(e) => setWhatsappPreview(prev => ({ ...prev, message: e.target.value }))}
+                                rows={5}
+                                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#1a2230] border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm resize-none"
+                            />
+                        </div>
+                        <p className="text-[10px] text-slate-400 mb-4">
+                            ⚠️ This will open WhatsApp. Message will NOT be auto-sent - you must tap send in WhatsApp.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setWhatsappPreview({ open: false, phone: '', message: '', name: '' })}
+                                className="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-sm"
+                            >
+                                Skip
+                            </button>
+                            <button
+                                onClick={handleConfirmWhatsApp}
+                                className="flex-1 py-3 rounded-xl bg-green-600 text-white font-bold flex items-center justify-center gap-2 text-sm"
+                            >
+                                <span className="material-symbols-outlined text-lg">send</span> Open WhatsApp
                             </button>
                         </div>
                     </div>

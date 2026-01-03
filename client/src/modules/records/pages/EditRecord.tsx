@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import { recordsDb as db } from '../../../lib/firebase';
 import { motion } from 'framer-motion';
 
 interface Customer {
@@ -20,8 +20,8 @@ interface RecordData {
   serviceChargePercentage: number;
   serviceCharge: number;
   installmentAmount: number;
-  // Legacy Fields mapping
-  interestRate?: number;
+  // Legacy Fields mapping (kept for backward compat with old data)
+  interestRate?: number; // LEGACY: renamed to 'rate' or 'markupRate'
   processingFeePercentage?: number;
   processingFee?: number;
   emi?: number;
@@ -37,7 +37,7 @@ interface RecordData {
 
 interface FormState {
   amount: number;
-  rate: number;
+  installmentAmount: number; // Direct Installment input
   tenure: number;
   serviceChargePercentage: number;
   date: string;
@@ -56,7 +56,7 @@ const EditRecord: React.FC = () => {
 
   const [form, setForm] = useState<FormState>({
     amount: 0,
-    rate: 0,
+    installmentAmount: 0, // Direct Installment
     tenure: 0,
     serviceChargePercentage: 0,
     date: '',
@@ -89,7 +89,7 @@ const EditRecord: React.FC = () => {
 
       setForm({
         amount: recordData.amount,
-        rate: recordData.rate,
+        installmentAmount: recordData.installmentAmount, // Load existing installment
         tenure: recordData.tenure,
         serviceChargePercentage: recordData.serviceChargePercentage,
         date: recordData.date || '',
@@ -127,20 +127,77 @@ const EditRecord: React.FC = () => {
     }));
   };
 
+  // Direct Installment Model - user enters installment, service fee auto-calculates
   const calculateRecordDetails = () => {
-    const serviceCharge = Math.round((form.amount * form.serviceChargePercentage) / 100);
+    const principal = form.amount || 0;
+    const tenure = form.tenure || 1;
+    const emi = form.installmentAmount || 0;
 
-    // Flat Rate Calculation
-    const annualInterest = form.amount * (form.rate / 100);
-    const totalInterest = Math.round(annualInterest * (form.tenure / 12));
-    const totalAmount = form.amount + totalInterest;
+    const totalPayable = emi * tenure;
+    const markupAmount = Math.max(0, totalPayable - principal); // Service fee
+    const serviceCharge = Number(form.serviceChargePercentage) || 0; // One-time processing fee
 
-    const installmentAmount = Math.round(totalAmount / form.tenure);
-
-    return { serviceCharge, installmentAmount };
+    return { serviceCharge, installmentAmount: emi, markupAmount, totalPayable };
   };
 
-  const { serviceCharge, installmentAmount } = calculateRecordDetails();
+  const { serviceCharge, installmentAmount, markupAmount, totalPayable } = calculateRecordDetails();
+
+  // --- Helper for Schedule Generation (Mirrors RecordDetails/AddRecord logic) ---
+  const generateSchedule = (
+    principal: number,
+    installment: number,
+    rate: number,
+    tenure: number,
+    firstDateStr: string
+  ) => {
+    let balance = principal;
+    const schedule = [];
+    const monthlyRateAmt = Math.round((principal * (rate / 100)) / 12);
+
+    // Parse Date
+    const d = new Date(firstDateStr);
+    // If invalid date, default into today?
+    const startDate = isNaN(d.getTime()) ? new Date() : d;
+
+    for (let i = 1; i <= tenure; i++) {
+      const principalPaid = Math.round(installment - monthlyRateAmt);
+      const closing = Math.max(balance - principalPaid, 0);
+
+      // Due Date: +1 Month from Start Date for 1st Inst? 
+      // Or Start Date is 1st inst date?
+      // AddRecord logic usually sets 'repaymentSchedule' empty and it's generated dynamically or on activation.
+      // If we are Editing an Active Record, we must have a concrete schedule.
+      // Let's assume 'firstDateStr' is the Activation/Disbursal Date. First EMI is +1 month.
+      // Robust calculation avoiding timezone issues
+      // Parse YYYY-MM-DD manually if possible, or use startDate components
+      let y, m, d_day;
+      if (typeof firstDateStr === 'string' && firstDateStr.includes('-')) {
+        [y, m, d_day] = firstDateStr.split('-').map(Number);
+        m = m - 1; // 0-based index
+      } else {
+        y = startDate.getFullYear();
+        m = startDate.getMonth();
+        d_day = startDate.getDate();
+      }
+
+      const dueDate = new Date(y, m + i, d_day);
+
+      schedule.push({
+        installmentNumber: i,
+        emiNumber: i, // Legacy support
+        dueDate: dueDate.toISOString().split("T")[0],
+        paymentDate: null,
+        status: 'Pending',
+        amount: installment,
+        principalPart: principalPaid,
+        feePart: monthlyRateAmt, // Markup fee portion
+        balance: closing,
+        remark: ''
+      });
+      balance = closing;
+    }
+    return schedule;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,31 +212,44 @@ const EditRecord: React.FC = () => {
       return;
     }
 
+    if (window.confirm("Are you sure you want to update this record? This will REGENERATE the repayment schedule based on new values. Previous payment history may be lost if you fully reset.") === false) {
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      // Regenerate Schedule - use markupAmount for rate field
+      const startDate = form.activationDate || form.date;
+      const newSchedule = generateSchedule(form.amount, installmentAmount, markupAmount, form.tenure, startDate);
+
       const recordRef = doc(db, "records", recordId);
       await updateDoc(recordRef, {
         amount: form.amount,
 
-        // Standard fields
-        rate: form.rate,
+        // Standard fields (Direct EMI Model)
+        rate: markupAmount, // Store markup as 'rate' for backward compatibility
         tenure: form.tenure,
         serviceChargePercentage: form.serviceChargePercentage,
         serviceCharge: serviceCharge,
         installmentAmount: installmentAmount,
 
-        // Legacy Fields
-        interestRate: form.rate,
+        // LEGACY Fields (kept for backward compat with old readers)
+        interestRate: markupAmount, // LEGACY: same as 'rate'
         processingFeePercentage: form.serviceChargePercentage,
         processingFee: serviceCharge,
-        emi: installmentAmount,
+        emi: installmentAmount, // LEGACY: same as installmentAmount
 
         date: form.date,
         activationDate: form.activationDate || null,
         notes: form.notes || null,
+
+        // overwrite schedule
+        repaymentSchedule: newSchedule,
+        // Legacy schedule field
+        schedule: newSchedule
       });
 
-      alert("Record updated successfully!");
+      alert("Record updated successfully! Schedule regenerated.");
       navigate(`/records/view/${recordId}`);
     } catch (err) {
       console.error("Update failed:", err);
@@ -303,31 +373,31 @@ const EditRecord: React.FC = () => {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Service Rate (% p.a.) *</label>
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Monthly Installment (₹) *</label>
                 <input
                   type="number"
-                  name="rate"
+                  name="installmentAmount"
                   required
-                  min="0"
-                  max="50"
-                  step="0.1"
-                  value={form.rate}
+                  min="1"
+                  value={form.installmentAmount || ''}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#1a2230] focus:ring-2 focus:ring-primary outline-none"
+                  placeholder="e.g. 10000"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#1a2230] focus:ring-2 focus:ring-primary outline-none font-bold text-lg"
                 />
+                <p className="text-[10px] text-slate-400">Enter fixed monthly payment amount.</p>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Service Charge (%)</label>
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-300">One-time Processing Fee (₹)</label>
                 <input
                   type="number"
                   name="serviceChargePercentage"
                   min="0"
-                  max="10"
-                  step="0.1"
-                  value={form.serviceChargePercentage}
+                  value={form.serviceChargePercentage || ''}
                   onChange={handleInputChange}
+                  placeholder="0"
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#1a2230] focus:ring-2 focus:ring-primary outline-none"
                 />
+                <p className="text-[10px] text-slate-400">Optional upfront charge.</p>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Creation Date</label>
@@ -367,10 +437,10 @@ const EditRecord: React.FC = () => {
               <span className="material-symbols-outlined text-primary">calculate</span>
               Updated Calculations
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-white dark:bg-[#1e2736] rounded-xl p-4 text-center shadow-sm">
-                <p className="text-xs text-slate-500 uppercase tracking-wider">Service Charge</p>
-                <p className="text-xl font-bold text-slate-800 dark:text-white mt-1">₹{serviceCharge.toLocaleString('en-IN')}</p>
+                <p className="text-xs text-slate-500 uppercase tracking-wider">Principal</p>
+                <p className="text-lg font-bold text-slate-800 dark:text-white mt-1">₹{form.amount.toLocaleString('en-IN')}</p>
               </div>
               <div className="bg-white dark:bg-[#1e2736] rounded-xl p-4 text-center shadow-sm">
                 <p className="text-xs text-slate-500 uppercase tracking-wider">Monthly Installment</p>
@@ -378,7 +448,12 @@ const EditRecord: React.FC = () => {
               </div>
               <div className="bg-white dark:bg-[#1e2736] rounded-xl p-4 text-center shadow-sm">
                 <p className="text-xs text-slate-500 uppercase tracking-wider">Total Payable</p>
-                <p className="text-xl font-bold text-slate-800 dark:text-white mt-1">₹{(installmentAmount * form.tenure).toLocaleString('en-IN')}</p>
+                <p className="text-lg font-bold text-slate-800 dark:text-white mt-1">₹{totalPayable.toLocaleString('en-IN')}</p>
+              </div>
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 text-center shadow-sm">
+                <p className="text-xs text-green-600 dark:text-green-400 uppercase tracking-wider">Service Fee</p>
+                <p className="text-lg font-bold text-green-600 dark:text-green-400 mt-1">₹{markupAmount.toLocaleString('en-IN')}</p>
+                <p className="text-[9px] text-green-500">(Auto)</p>
               </div>
             </div>
           </div>

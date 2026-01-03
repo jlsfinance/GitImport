@@ -8,15 +8,19 @@ import AccountingApp from './modules/accounting/AccountingApp';
 import RecordsApp from './modules/records/RecordsApp'; // Neutralized Import
 import { StorageService } from './services/storageService';
 import { PrivacyDisclosureModal } from './components/PrivacyDisclosureModal';
+import TermsPolicy from './modules/records/pages/TermsPolicy';
 
 const RootApp: React.FC = () => {
-  const [selectedModule, setSelectedModule] = useState<'accounting' | 'records' | null>(() => {
-    // Persist choice or detect from path
-    const saved = localStorage.getItem('active_module');
-    if (saved === 'accounting') return 'accounting';
-    if (saved === 'loan' || saved === 'records') return 'records'; // Compatible with legacy
-    return null;
-  });
+  const [selectedModule, setSelectedModule] = useState<'accounting' | 'records' | null>('accounting');
+
+  // STANDALONE MODE: Start directly in Billing (JLS Bill)
+  // const [selectedModule, setSelectedModule] = useState<'accounting' | 'records' | null>(() => {
+  //   // Persist choice or detect from path
+  //   const saved = localStorage.getItem('active_module');
+  //   if (saved === 'accounting') return 'accounting';
+  //   if (saved === 'loan' || saved === 'records') return 'records'; // Backward compatible with legacy storage key
+  //   return 'records';
+  // });
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -64,9 +68,9 @@ const RootApp: React.FC = () => {
       return;
     }
 
-    // Logic for Record Deep Links (fka Loan)
-    // Legacy support for /loan prefixes -> redirect to /records?
-    // Ideally we should just set module. The RecordsApp handles the routing.
+    // Logic for Record Deep Links
+    // Backward compatibility for legacy /loan paths -> redirects to /records
+    // RecordsApp handles internal routing.
     if (path.startsWith('/records') || path.startsWith('/loan')) {
       setSelectedModule('records');
       return;
@@ -74,9 +78,10 @@ const RootApp: React.FC = () => {
 
     // If at root and has stored module, redirect to appropriate path
     if (path === '/') {
-      const saved = localStorage.getItem('active_module');
-      if (saved === 'accounting') navigate('/bill', { replace: true });
-      if (saved === 'records' || saved === 'loan') navigate('/records', { replace: true }); // Default to /records
+      navigate('/bill', { replace: true });
+      // const saved = localStorage.getItem('active_module');
+      // if (saved === 'accounting') navigate('/bill', { replace: true });
+      // if (saved === 'records' || saved === 'loan') navigate('/records', { replace: true }); // Ledger module
     }
   }, [location, navigate]);
 
@@ -84,7 +89,7 @@ const RootApp: React.FC = () => {
     setSelectedModule(module);
     localStorage.setItem('active_module', module);
     if (module === 'accounting') navigate('/bill');
-    if (module === 'records') navigate('/records');
+    if (module === 'records') navigate('/records/customer-login'); // Go to customer login first
   };
 
   // If a module is selected, render it
@@ -107,6 +112,11 @@ const RootApp: React.FC = () => {
         <RecordsApp />
       </div>
     );
+  }
+
+  // Global Pages (Terms / Privacy)
+  if (location.pathname === '/terms' || location.pathname === '/privacy-policy') {
+    return <TermsPolicy />;
   }
 
   return (

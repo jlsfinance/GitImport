@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.jls.suite',
-  appName: 'JLS Suite',
+  appId: 'com.jls.billbook',
+  appName: 'JLS Bill',
   webDir: 'dist',
   plugins: {
     StatusBar: {
