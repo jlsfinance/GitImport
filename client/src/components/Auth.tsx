@@ -28,22 +28,43 @@ const GoogleLogo = () => (
 );
 
 export const Auth = () => {
-  const { signIn, signUp, signInWithGoogle } = useAuth();
+  const { signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   // Modal State
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
 
+  const handleResetPassword = async () => {
+    if (!email) {
+      setError("Please enter your email address first.");
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await resetPassword(email);
+      setResetSent(true);
+      setError('');
+    } catch (err: any) {
+      console.error("Reset Error:", err);
+      setError(err.message || "Failed to send reset email.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    setResetSent(false);
 
     try {
       if (isLogin) {
@@ -136,7 +157,31 @@ export const Auth = () => {
             </button>
           </div>
 
+          {isLogin && (
+            <div className="flex justify-end px-1">
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                disabled={loading}
+                className="text-xs font-bold text-google-blue hover:text-blue-600 transition-colors"
+              >
+                Forgot Password?
+              </button>
+            </div>
+          )}
+
           <AnimatePresence>
+            {resetSent && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="bg-google-green/10 text-google-green p-3 rounded-xl text-xs font-bold flex items-center gap-2"
+              >
+                <div className="w-4 h-4 rounded-full bg-google-green flex items-center justify-center text-white text-[10px]">✓</div>
+                Password reset email sent! Check your inbox.
+              </motion.div>
+            )}
             {error && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
