@@ -638,8 +638,16 @@ Payments Received (EXACT DATA): ${businessContext.payments && businessContext.pa
             });
 
             if (!response.ok) {
-                console.warn("AI Translation Request Failed", response.status);
-                return invoice;
+                const errorData = await response.json().catch(() => ({}));
+                console.error("AI Translation Request Failed", response.status, errorData);
+                
+                // If API key is invalid, clear it so user can re-enter
+                if (response.status === 400 && errorData.error?.message?.includes('API key')) {
+                    AIService.removeApiKey();
+                    throw new Error("Invalid Gemini API Key. Please re-enter it in Settings.");
+                }
+                
+                throw new Error(errorData.error?.message || `Network Error (${response.status}). Please check your internet.`);
             }
             const data = await response.json();
             const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';

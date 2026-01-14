@@ -25,6 +25,12 @@ export const AIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         setIsModalOpen(false);
     };
 
+    // Keep isConfigured in sync with AIService
+    const currentConfigured = AIService.isConfigured();
+    if (currentConfigured !== isConfigured) {
+        setIsConfigured(currentConfigured);
+    }
+
     return (
         <AIContext.Provider value={{
             isConfigured,

@@ -247,9 +247,13 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onDe
         return;
       }
       await InvoicePdfService.generatePDF(invoice, company, customer, qrCodeUrl, showPrevBalance);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Download failed:", error);
-      alert("Failed to download PDF. Please check your internet connection and try again.");
+      if (error.message?.includes('API key')) {
+        showKeySetup("Gemini API (Invalid Key)");
+      } else {
+        alert(error.message || "Failed to download PDF. Please check your internet connection and try again.");
+      }
     }
   };
 
