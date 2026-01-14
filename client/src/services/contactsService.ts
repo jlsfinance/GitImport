@@ -114,6 +114,103 @@ class ContactsServiceClass {
     }
 
     /**
+     * Filter contacts by phone number
+     */
+    private filterContactsByPhone(contacts: ContactSuggestion[], query: string): ContactSuggestion[] {
+        const cleanedQuery = query.replace(/\D/g, '');
+        if (cleanedQuery.length < 3) return [];
+        return contacts
+            .filter(c => {
+                const cleanedPhone = c.phone.replace(/\D/g, '');
+                return cleanedPhone.includes(cleanedQuery);
+            })
+            .slice(0, 10); // Limit to 10 suggestions
+    }
+
+    /**
+     * Search contacts by phone number (local only, no server upload)
+     * @param phoneQuery - Phone number to search for
+     * @returns Array of contact suggestions
+     */
+    async searchByPhone(phoneQuery: string): Promise<ContactSuggestion[]> {
+        const cleaned = phoneQuery.replace(/\D/g, '');
+        if (cleaned.length < 3) return [];
+
+        // Check permission first
+        const hasPermission = await this.checkPermission();
+        if (!hasPermission) {
+            return [];
+        }
+
+        try {
+            // Use cache if available and fresh (5 minutes)
+            const now = Date.now();
+            if (this.contactCache.length > 0 && now < this.cacheExpiry) {
+                return this.filterContactsByPhone(this.contactCache, phoneQuery);
+            }
+
+            // Fetch contacts
+            const result = await Contacts.getContacts({
+                projection: {
+                    name: true,
+                    phones: true
+                }
+            });
+
+            // Transform to our format
+            const contacts: ContactSuggestion[] = [];
+            for (const contact of result.contacts) {
+                const name = contact.name?.display || contact.name?.given || '';
+                const phone = contact.phones?.[0]?.number || '';
+
+                if (name && phone) {
+                    contacts.push({ name, phone });
+                }
+            }
+
+            // Cache for 5 minutes
+            this.contactCache = contacts;
+            this.cacheExpiry = now + (5 * 60 * 1000);
+
+            return this.filterContactsByPhone(contacts, phoneQuery);
+        } catch (error) {
+            console.error('Error fetching contacts:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Pick a single contact from native contact picker
+     * This uses the proper Android Contact Picker intent for single contact selection
+     * Compliant with Google Play 2026 policies - no bulk access required
+     */
+    async pickContact(): Promise<ContactSuggestion | null> {
+        try {
+            const result = await Contacts.pickContact({
+                projection: {
+                    name: true,
+                    phones: true
+                }
+            });
+
+            if (result.contact) {
+                const name = result.contact.name?.display || result.contact.name?.given || '';
+                const phone = result.contact.phones?.[0]?.number || '';
+                if (name || phone) {
+                    return {
+                        name: name || 'Unknown',
+                        phone: phone.replace(/\D/g, '').slice(-10)
+                    };
+                }
+            }
+            return null;
+        } catch (error) {
+            console.warn('Contact pick cancelled or failed:', error);
+            return null;
+        }
+    }
+
+    /**
      * Clear cache (useful when user revokes permission)
      */
     clearCache(): void {

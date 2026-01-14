@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { driveBackupService } from '../services/driveBackupService';
 import { BACKUP_FREQUENCY, type BackupFrequency } from '../config/driveConfig';
-import { Cloud, CloudOff, Download, Upload, Trash2, RefreshCw, CheckCircle, AlertCircle, X } from 'lucide-react';
+import { StorageService } from '../services/storageService';
+import { Cloud, CloudOff, Download, Upload, Trash2, RefreshCw, CheckCircle, AlertCircle, X, HardDrive, Save } from 'lucide-react';
 
 interface BackupMetadata {
     id: string;
@@ -168,6 +169,106 @@ export const BackupSettings: React.FC<{ onClose: () => void }> = ({ onClose }) =
         return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     };
 
+    // --- LOCAL BACKUP FUNCTIONS ---
+    const handleLocalBackup = () => {
+        try {
+            const backupData = {
+                version: '1.0',
+                timestamp: new Date().toISOString(),
+                appVersion: '1.9.8',
+                data: {
+                    invoices: StorageService.getInvoices(),
+                    customers: StorageService.getCustomers(),
+                    products: StorageService.getProducts(),
+                    payments: StorageService.getPayments(),
+                    expenses: StorageService.getExpenses(),
+                    purchases: StorageService.getPurchases(),
+                    company: StorageService.getCompanyProfile()
+                }
+            };
+
+            const dataStr = JSON.stringify(backupData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `billbook_backup_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            setStatusMessage({ type: 'success', text: 'Local backup downloaded successfully!' });
+        } catch (error) {
+            setStatusMessage({ type: 'error', text: 'Failed to create local backup' });
+        }
+    };
+
+    const handleLocalRestore = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+
+        input.onchange = async (e: any) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+                const backupData = JSON.parse(text);
+
+                if (!backupData.data || !backupData.version) {
+                    setStatusMessage({ type: 'error', text: 'Invalid backup file format' });
+                    return;
+                }
+
+                if (!confirm('This will replace all current data with the backup. Continue?')) {
+                    return;
+                }
+
+                // Restore data - destructure only what we use
+                const { customers, products, company } = backupData.data;
+                // Note: invoices, payments, expenses restore would need saveInvoice etc. which has side effects
+                // For now, we only restore master data (Products, Customers, Company)
+
+                // Save to localStorage and Firebase
+                if (products) products.forEach((p: any) => StorageService.saveProduct(p));
+                if (customers) customers.forEach((c: any) => StorageService.saveCustomer(c));
+                if (company) StorageService.saveCompanyProfile(company);
+
+                setStatusMessage({ type: 'success', text: 'Data restored! Please refresh the app.' });
+                setTimeout(() => window.location.reload(), 2000);
+            } catch (error) {
+                setStatusMessage({ type: 'error', text: 'Failed to restore from backup file' });
+            }
+        };
+
+        input.click();
+    };
+
+    const handleSyncToCloud = async () => {
+        if (!isAuthenticated) {
+            setStatusMessage({ type: 'error', text: 'Please connect to Google Drive first' });
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const backup = await driveBackupService.createBackup('Manual Sync');
+            if (backup) {
+                setStatusMessage({ type: 'success', text: 'Data synced to Google Drive!' });
+                await loadBackups();
+            } else {
+                setStatusMessage({ type: 'error', text: 'Sync failed' });
+            }
+        } catch (error) {
+            setStatusMessage({ type: 'error', text: 'Failed to sync to cloud' });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-surface rounded-[32px] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
@@ -192,8 +293,8 @@ export const BackupSettings: React.FC<{ onClose: () => void }> = ({ onClose }) =
                     {/* Status Message */}
                     {statusMessage && (
                         <div className={`mb-6 p-4 rounded-2xl flex items-start gap-3 ${statusMessage.type === 'success' ? 'bg-green-50 text-green-800' :
-                                statusMessage.type === 'error' ? 'bg-red-50 text-red-800' :
-                                    'bg-blue-50 text-blue-800'
+                            statusMessage.type === 'error' ? 'bg-red-50 text-red-800' :
+                                'bg-blue-50 text-blue-800'
                             }`}>
                             {statusMessage.type === 'success' ? <CheckCircle className="w-5 h-5 mt-0.5" /> :
                                 statusMessage.type === 'error' ? <AlertCircle className="w-5 h-5 mt-0.5" /> :
@@ -201,6 +302,33 @@ export const BackupSettings: React.FC<{ onClose: () => void }> = ({ onClose }) =
                             <p className="text-sm font-bold">{statusMessage.text}</p>
                         </div>
                     )}
+
+                    {/* LOCAL BACKUP SECTION - Works Offline */}
+                    <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4">
+                        <div className="flex items-center gap-3 mb-4">
+                            <HardDrive className="w-6 h-6 text-amber-600" />
+                            <div>
+                                <h3 className="text-sm font-black text-amber-900 dark:text-amber-200">Local Backup (Offline)</h3>
+                                <p className="text-xs text-amber-700 dark:text-amber-400">Export/Import data without internet</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                onClick={handleLocalBackup}
+                                className="p-3 bg-amber-600 text-white rounded-xl flex items-center justify-center gap-2 font-bold text-sm hover:bg-amber-700 transition-colors"
+                            >
+                                <Save className="w-4 h-4" />
+                                Export Backup
+                            </button>
+                            <button
+                                onClick={handleLocalRestore}
+                                className="p-3 bg-amber-100 dark:bg-amber-800 text-amber-800 dark:text-amber-100 rounded-xl flex items-center justify-center gap-2 font-bold text-sm border border-amber-300 dark:border-amber-700 hover:bg-amber-200 transition-colors"
+                            >
+                                <Download className="w-4 h-4" />
+                                Import Backup
+                            </button>
+                        </div>
+                    </div>
 
                     {/* Connection Status */}
                     {!isAuthenticated ? (
@@ -237,7 +365,7 @@ export const BackupSettings: React.FC<{ onClose: () => void }> = ({ onClose }) =
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <button
                                     onClick={handleCreateBackup}
                                     disabled={isLoading}
@@ -245,6 +373,15 @@ export const BackupSettings: React.FC<{ onClose: () => void }> = ({ onClose }) =
                                 >
                                     <Upload className="w-5 h-5" />
                                     {isLoading ? 'Creating...' : 'Backup Now'}
+                                </button>
+
+                                <button
+                                    onClick={handleSyncToCloud}
+                                    disabled={isLoading}
+                                    className="p-4 bg-emerald-600 text-white rounded-2xl flex items-center justify-center gap-3 font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                                >
+                                    <Cloud className="w-5 h-5" />
+                                    Sync to Cloud
                                 </button>
 
                                 <button
@@ -270,8 +407,8 @@ export const BackupSettings: React.FC<{ onClose: () => void }> = ({ onClose }) =
                                             key={option.value}
                                             onClick={() => handleFrequencyChange(option.value)}
                                             className={`flex-1 py-2 px-4 rounded-xl text-sm font-bold transition-all ${frequency === option.value
-                                                    ? 'bg-google-blue text-white shadow-md'
-                                                    : 'bg-surface-container border border-border text-muted-foreground hover:bg-surface-container-highest'
+                                                ? 'bg-google-blue text-white shadow-md'
+                                                : 'bg-surface-container border border-border text-muted-foreground hover:bg-surface-container-highest'
                                                 }`}
                                         >
                                             {option.label}

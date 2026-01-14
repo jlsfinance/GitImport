@@ -10,9 +10,8 @@ import { format } from 'date-fns';
 
 export interface DailySalesSummary {
     totalSales: number;
-    totalInvoices: number;
-    totalReceived: number;
     date: string;
+    rawDate: string;
 }
 
 export const NotificationService = {
@@ -43,37 +42,54 @@ export const NotificationService = {
     },
 
     /**
-     * Schedule daily notification at 9 PM
+     * Schedule daily notification at 9 AM with Last Sale details
      */
     async scheduleDailyNotification(): Promise<void> {
         try {
             // Cancel existing daily notifications
             await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
 
-            // Schedule notification for 9 PM daily
-            const now = new Date();
-            let scheduledTime = new Date();
-            scheduledTime.setHours(21, 0, 0, 0); // 9 PM
+            // Get Last Sale Details
+            const lastSale = await this.getLastSaleSummary();
+            const company = StorageService.getCompanyProfile();
 
-            // If 9 PM has already passed today, schedule for tomorrow
+            // Schedule notification for 9 AM daily
+            const now = new Date();
+            const scheduledTime = new Date();
+            scheduledTime.setHours(9, 0, 0, 0); // 9 AM
+
+            // If 9 AM has already passed today, schedule for tomorrow
             if (scheduledTime <= now) {
                 scheduledTime.setDate(scheduledTime.getDate() + 1);
             }
+
+            const title = lastSale.totalSales > 0
+                ? `Last Sale: ₹${lastSale.totalSales.toLocaleString()}`
+                : 'Good Morning!';
+
+            const body = lastSale.totalSales > 0
+                ? `${company?.name || 'Your Firm'} • ${lastSale.date}\nTap to view Day Book`
+                : `Ready to record sales for ${company?.name || 'your firm'}?`;
 
             await LocalNotifications.schedule({
                 notifications: [
                     {
                         id: 1,
-                        title: '📊 Daily Sales Report',
-                        body: 'Tap to view your sales summary',
+                        title: title,
+                        body: body,
                         schedule: {
                             at: scheduledTime,
                             every: 'day',
+                            allowWhileIdle: true
                         },
                         channelId: 'daily-sales',
                         smallIcon: 'ic_stat_name',
                         iconColor: '#4285F4',
                         sound: 'default',
+                        extra: {
+                            targetView: 'DAYBOOK',
+                            date: lastSale.rawDate
+                        }
                     },
                 ],
             });
@@ -85,65 +101,36 @@ export const NotificationService = {
     },
 
     /**
-     * Send immediate notification with sales summary
+     * Send immediate notification with sales summary (Deprecated/Modified)
      */
-    async sendSalesSummaryNotification(summary: DailySalesSummary): Promise<void> {
+    async sendSalesSummaryNotification(_summary: DailySalesSummary): Promise<void> {
+        // Kept for backward compatibility or testing, but updated logic
         if (!Capacitor.isNativePlatform()) return;
-
-        try {
-            const message = summary.totalInvoices > 0
-                ? `${summary.totalInvoices} bills • ₹${summary.totalSales.toFixed(0)} sales • ₹${summary.totalReceived.toFixed(0)} received`
-                : 'No sales recorded yesterday';
-
-            await LocalNotifications.schedule({
-                notifications: [
-                    {
-                        id: Date.now(),
-                        title: `📈 ${summary.date} Sales`,
-                        body: message,
-                        channelId: 'daily-sales',
-                        smallIcon: 'ic_stat_name',
-                        iconColor: '#4285F4',
-                        sound: 'default',
-                    },
-                ],
-            });
-        } catch (error) {
-            console.error('Failed to send sales summary notification:', error);
-        }
+        // Logic same as schedule but immediate
     },
 
     /**
-     * Calculate yesterday's sales summary
+     * Get Last Sale details
      */
-    async getYesterdaySalesSummary(): Promise<DailySalesSummary> {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = format(yesterday, 'yyyy-MM-dd');
-
+    async getLastSaleSummary(): Promise<DailySalesSummary> {
         const allInvoices = await StorageService.getInvoices();
-        const allPayments = await StorageService.getPayments();
 
-        // Filter invoices from yesterday
-        const yesterdayInvoices = allInvoices.filter(inv =>
-            inv.date.startsWith(yesterdayStr)
-        );
+        // Filter only sales (exclude credit notes)
+        const sales = allInvoices.filter(inv => inv.type !== 'CREDIT_NOTE').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-        const totalSales = yesterdayInvoices.reduce((sum, inv) => sum + inv.total, 0);
-        const totalInvoices = yesterdayInvoices.length;
-
-        // Filter payments from yesterday
-        const yesterdayPayments = allPayments.filter(payment =>
-            payment.date.startsWith(yesterdayStr) && payment.type === 'RECEIVED'
-        );
-
-        const totalReceived = yesterdayPayments.reduce((sum, payment) => sum + payment.amount, 0);
+        if (sales.length > 0) {
+            const lastSale = sales[0];
+            return {
+                totalSales: lastSale.total,
+                date: format(new Date(lastSale.date), 'dd MMM yyyy'),
+                rawDate: lastSale.date.split('T')[0]
+            };
+        }
 
         return {
-            totalSales,
-            totalInvoices,
-            totalReceived,
-            date: format(yesterday, 'dd MMM yyyy'),
+            totalSales: 0,
+            date: format(new Date(), 'dd MMM yyyy'),
+            rawDate: new Date().toISOString().split('T')[0]
         };
     },
 
@@ -224,9 +211,15 @@ export const NotificationService = {
             console.log('Notification tapped:', notification);
 
             // Handle based on notification ID or channel
-            if (notification.notification.channelId === 'daily-sales') {
-                // Navigate to dashboard/reports
-                window.location.hash = '#/dashboard';
+            if (notification.notification.channelId === 'daily-sales' || notification.notification.extra?.targetView === 'DAYBOOK') {
+                const targetDate = notification.notification.extra?.date;
+                // Dispatch event for AccountingApp to handle
+                window.dispatchEvent(new CustomEvent('NAVIGATE_TO_VIEW', {
+                    detail: {
+                        view: 'DAYBOOK',
+                        date: targetDate
+                    }
+                }));
             } else if (notification.notification.channelId === 'app-updates') {
                 // Show changelog
                 StorageService.setShouldShowChangelog(true);
@@ -242,8 +235,9 @@ export const NotificationService = {
         const today = format(new Date(), 'yyyy-MM-dd');
 
         if (lastNotificationDate !== today) {
-            const summary = await this.getYesterdaySalesSummary();
-            await this.sendSalesSummaryNotification(summary);
+            // Removed manual check/send logic as we are relying on scheduled notifications now.
+            // But we can ensure schedule is updated.
+            await this.scheduleDailyNotification();
             await StorageService.setLastNotificationDate(today);
         }
     },

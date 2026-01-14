@@ -19,6 +19,7 @@ export const AIService = {
     // Save API key
     setApiKey: (key: string): void => {
         localStorage.setItem(GEMINI_API_KEY_STORAGE, key);
+        console.log("AI: Gemini API Key Saved Successfully");
     },
 
     // Remove API key
@@ -550,5 +551,129 @@ Payments Received (EXACT DATA): ${businessContext.payments && businessContext.pa
         }
 
         return `I can help with:\n\n📊 **Sales** - "Show today's sales"\n📦 **Stock** - "Kitna stock hai?"\n💰 **Pending** - "Baaki kitna hai?"\n👥 **Customers** - "Customer list"\n📋 **Report** - "Business summary"\n\nAsk me anything about your business!`;
+        // existing extractFromExcel ...
+    },
+
+    translateContent: async (text: string, targetLang: 'Hindi' | 'Hinglish' | 'English' = 'Hinglish'): Promise<string> => {
+        const apiKey = AIService.getApiKey();
+        if (!apiKey || targetLang === 'English') return text;
+
+        const prompt = `Translate the following business message to natural ${targetLang}. 
+        Keep all numbers, currency symbols, star/bold formatting (*text*) and newlines exactly as is. 
+        Do not change any values. Only translate the conversational parts. 
+        Return ONLY the translated text.
+
+        Message:
+        ${text}`;
+
+        try {
+            const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        temperature: 0.2, // Low temp for accuracy
+                        maxOutputTokens: 800,
+                    }
+                })
+            });
+
+            if (!response.ok) return text;
+            const data = await response.json();
+            return data.candidates?.[0]?.content?.parts?.[0]?.text || text;
+        } catch (error) {
+            console.error("Translation Failed:", error);
+            return text;
+        }
+    },
+
+    translateInvoiceData: async (invoice: any, targetLang: 'Hindi' | 'Hinglish' | 'English'): Promise<any> => {
+        const apiKey = AIService.getApiKey();
+        if (!apiKey || (targetLang as string) === 'English') return invoice;
+
+        console.log(`AI: Translating invoice to ${targetLang}...`);
+
+        const systemPrompt = `Translate the following invoice data into ${targetLang}. 
+        Translate item descriptions, categories, and customer names.
+        Translate invoice labels (e.g. "Bill To:" -> "सेवा में:").
+        Translate "amountInWords" value into ${targetLang} words (e.g. "Twenty" -> "बीस रुपये मात्र").
+        Keep numbers, dates, currency symbols, and IDs exactly as is.
+        Return ONLY valid JSON matching the input structure.`;
+
+        const dataToTranslate = {
+            items: invoice.items.map((i: any) => ({ description: i.description })),
+            customerName: invoice.customerName,
+            labels: {
+                billedTo: "Bill To:",
+                invoice: invoice.gstEnabled ? "TAX INVOICE" : "INVOICE",
+                invoiceDetails: "INVOICE DETAILS",
+                date: "Date:",
+                invoiceNo: "Invoice #:",
+                mode: "Mode:",
+                desc: "DESCRIPTION",
+                qty: "QTY",
+                rate: "RATE",
+                amount: "AMOUNT",
+                subtotal: "Subtotal:",
+                total: "Total:",
+                amtWords: "Amount in Words:",
+                scanToPay: "Scan to Pay:",
+                thankYou: "Thank you for your business!"
+            },
+            amountInWords: invoice.totalInWords || ""
+        };
+
+        try {
+            const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: `${systemPrompt}\n\nData: ${JSON.stringify(dataToTranslate)}` }] }],
+                    generationConfig: {
+                        temperature: 0.1,
+                        responseMimeType: "application/json"
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                console.warn("AI Translation Request Failed", response.status);
+                return invoice;
+            }
+            const data = await response.json();
+            const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+            const translated = JSON.parse(textContent);
+
+            console.log("AI: Translation received", translated);
+
+            // Map back to invoice structure
+            const newInvoice = JSON.parse(JSON.stringify(invoice));
+
+            // Translate items
+            if (translated.items && Array.isArray(translated.items)) {
+                translated.items.forEach((ti: any, idx: number) => {
+                    if (newInvoice.items[idx] && ti.description) {
+                        newInvoice.items[idx].description = ti.description;
+                    }
+                });
+            }
+
+            if (translated.customerName) {
+                newInvoice.customerName = translated.customerName;
+            }
+            if (translated.customerAddress) {
+                newInvoice.customerAddress = translated.customerAddress;
+            }
+
+            return {
+                ...newInvoice,
+                totalInWords: translated.amountInWords || newInvoice.totalInWords,
+                translatedLabels: translated.labels
+            };
+        } catch (error) {
+            console.error("Invoice Translation Failed:", error);
+            return invoice;
+        }
     }
 };

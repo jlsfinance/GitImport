@@ -1,96 +1,50 @@
 # Changelog
 
-All notable changes to BillBook App will be documented in this file.
+## Version 1.9.9 (2026-01-15)
 
-## [1.8.0] - 2026-01-05
+### New Feature: Smart WhatsApp Share & AI Translation
+We have upgraded the Invoice Sharing experience with powerful new capabilities.
 
-### 🐛 Bug Fixes - Ledger Report
+#### Features Added
 
-#### Fixed Company Name Display Issue
-- **Issue**: Ledger report was showing "ABC" or incorrect company name
-- **Fix**: Now correctly displays customer name with fallback to company name
-- **Impact**: Prevents blank or incorrect names in ledger reports
+**1. Direct WhatsApp Share Button**
+- Added a dedicated WhatsApp Icon in the Invoice Header (next to Download).
+- Opens the Share Modal instantly.
 
-#### Fixed Closing Balance Calculation
-- **Issue**: Closing balance was using stale `customer.balance` instead of calculating from filtered transactions
-- **Fix**: Now calculates closing balance accurately from debit and credit totals within the selected date range
-- **Formula**: `Closing Balance = Total Debit - Total Credit`
-- **Impact**: Accurate financial reporting matching the transaction period
+**2. PDF Attachment**
+- **New Toggle:** Attach PDF
+- When enabled, the app shares the Invoice PDF File along with the message.
+- Uses System Share Sheet (Android Native), allowing you to select WhatsApp (or any other app) and pick the contact manually.
+- *Note:* Direct number sharing is not possible when attaching files due to WhatsApp limitations.
 
-#### Fixed QR Code Payment Amount
-- **Issue**: QR code was generating with incorrect amount (using stale customer balance)
-- **Fix**: QR code now uses the calculated closing balance from the ledger report
-- **Impact**: Customers can scan and pay the exact outstanding amount shown in the report
+**3. AI Translation (Hinglish)**
+- **New Toggle:** Hinglish AI (Visible only if Gemini API Key is set).
+- Uses Google Gemini to translate the invoice details into natural Hinglish (Hindi + English mix).
+- Perfect for communicating with local customers.
+- Keeps numbers and formatting intact.
 
-### ✨ Enhancements - Ledger Report
+**4. Save Paper Invoice Template**
+- New eco-friendly, compact invoice template.
+- QR Code in header (top-left), Invoice # moved to right.
+- Reduced vertical spacing for paper savings.
 
-#### PAID Bills Visual Indicator
-- **Feature**: PAID invoices now appear with visual distinction
-- **Indicators**: 
-  - Green color text
-  - Checkmark symbol (✓) prefix
-  - "(PAID)" suffix label
-- **Calculation**: PAID bills are excluded from outstanding balance calculation
-- **Impact**: Clear differentiation between pending and paid invoices, preventing confusion
+#### How to Use
+1. Open an Invoice.
+2. Click the Green WhatsApp Button in the header.
+3. In the modal:
+   - Toggle **Attach PDF** if you want to send the file.
+   - Toggle **Hinglish AI** to translate the message.
+4. Click **Share/Send**.
+   - If PDF is ON: Select WhatsApp → Select Contact.
+   - If PDF is OFF: WhatsApp opens directly to the customer's chat.
 
-#### Customer Name Fallback Logic
-- **Feature**: Ledger header now always shows customer identification
-- **Priority Order**:
-  1. Customer name (if available)
-  2. Company name (if name is blank)
-  3. "Customer" (if both are blank)
-- **Impact**: No more blank ledger headers
-
-### 📊 Technical Details
-
-#### Ledger Balance Logic
-```
-Debit Side:
-- Invoices (PENDING only counted in total)
-- PAID invoices shown but excluded from balance
-
-Credit Side:
-- Payments received
-- Credit notes/returns
-
-Closing Balance = Debit Total (PENDING) - Credit Total
-```
-
-#### QR Code Integration
-- QR codes only generated when closing balance > 0 (customer owes money)
-- Contains accurate UPI payment URL with correct amount
-- Format: `upi://pay?pa={UPI_ID}&pn={NAME}&am={CLOSING_BALANCE}&cu=INR`
-
-### 🔧 Build Improvements
-
-#### Gradle Optimization
-- Reduced memory allocation from 2GB to 1.5GB
-- Disabled Gradle daemon for stability
-- Fixed build crashes on memory-constrained systems
+#### Technical Details
+- Modified `InvoicePdfService` to support file path return.
+- Integrated `AIService` with Gemini 3 Flash for translation.
+- Updated `InvoiceView` UI with reactive share logic.
+- Added `SAVE_PAPER` template to `InvoiceFormat` enum.
 
 ---
 
-## [1.7.0] - Previous Release
-
-### Features
-- Initial ledger report implementation
-- Customer transaction history
-- T-format ledger view
-- UPI QR code generation
-- Payment tracking
-- Invoice management
-
----
-
-## How to Read Version Numbers
-
-Version format: `MAJOR.MINOR.PATCH`
-
-- **MAJOR**: Breaking changes or major feature additions
-- **MINOR**: New features, backward compatible
-- **PATCH**: Bug fixes and minor improvements
-
-**Example**: Version 1.8.0
-- Major version: 1 (stable release)
-- Minor version: 8 (new features added)
-- Patch version: 0 (initial release of this minor version)
+## Previous Versions
+*(Older changelog entries would go here)*

@@ -9,7 +9,7 @@ export const HapticService = {
             console.warn('Haptics not available');
         }
     },
-    notification: async (type: any = 'success') => {
+    notification: async (_type: 'success' | 'error' = 'success') => {
         try {
             // Mapping or direct call
             await Haptics.vibrate();
@@ -22,4 +22,11 @@ export const HapticService = {
     heavy: () => HapticService.impact(ImpactStyle.Heavy),
     success: () => HapticService.notification('success'),
     error: () => HapticService.notification('error'),
+    selection: async () => {
+        try {
+            await Haptics.selectionChanged();
+        } catch (e) {
+            console.warn('Haptics not available');
+        }
+    },
 };

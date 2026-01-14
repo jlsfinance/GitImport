@@ -1,8 +1,8 @@
-
 import { Invoice, Payment, CompanyProfile, Customer } from '../types';
+import { AIService } from './aiService';
 
 export const WhatsAppService = {
-  shareInvoice: (invoice: Invoice, customer: Customer | undefined, company: CompanyProfile, manualPhoneNumber?: string) => {
+  shareInvoice: async (invoice: Invoice, customer: Customer | undefined, company: CompanyProfile, manualPhoneNumber?: string) => {
     let phone = (manualPhoneNumber || customer?.phone || '').replace(/\D/g, '');
 
     if (!phone) {
@@ -19,27 +19,38 @@ export const WhatsAppService = {
     const invoiceLink = `https://git-import.vercel.app/view/${invoice.id}`;
     const ledgerLink = customer ? `https://git-import.vercel.app/customer/${customer.id}/ledger` : '';
 
-    const message = `*TAX INVOICE* %0A` +
-      `*${company.name}* %0A%0A` +
-      `Hello ${customer?.company || customer?.name || 'Customer'}, %0A` +
-      `Here are your invoice details: %0A%0A` +
-      `*Inv No:* ${invoice.invoiceNumber} %0A` +
-      `*Date:* ${invoice.date} %0A` +
-      `*Bill Amount:* Rs. ${invoice.total.toFixed(2)} %0A` +
-      (invoice.previousBalance && invoice.previousBalance > 0 ? `*Prev. Balance:* Rs. ${invoice.previousBalance.toFixed(2)} %0A` : '') +
-      (invoice.previousBalance && invoice.previousBalance > 0 ? `*Net Total Due:* Rs. ${(invoice.total + invoice.previousBalance).toFixed(2)} %0A` : '') +
-      `*Status:* ${invoice.status === 'PAID' ? 'PAID ✅' : 'PENDING ⏳'} %0A%0A` +
-      `*Items:* %0A${itemsSummary} %0A%0A` +
-      `📄 *View Invoice:* ${invoiceLink} %0A` +
-      `📒 *View Ledger:* ${customer ? ledgerLink : 'N/A'} %0A%0A` +
+    const message = `*TAX INVOICE*\n` +
+      `*${company.name}*\n\n` +
+      `Hello ${customer?.company || customer?.name || 'Customer'},\n` +
+      `Here are your invoice details:\n\n` +
+      `*Inv No:* ${invoice.invoiceNumber}\n` +
+      `*Date:* ${invoice.date}\n` +
+      `*Bill Amount:* Rs. ${invoice.total.toFixed(2)}\n` +
+      (invoice.previousBalance && invoice.previousBalance > 0 ? `*Prev. Balance:* Rs. ${invoice.previousBalance.toFixed(2)}\n` : '') +
+      (invoice.previousBalance && invoice.previousBalance > 0 ? `*Net Total Due:* Rs. ${(invoice.total + invoice.previousBalance).toFixed(2)}\n` : '') +
+      `*Status:* ${invoice.status === 'PAID' ? 'PAID ✅' : 'PENDING ⏳'}\n\n` +
+      `*Items:*\n${itemsSummary.replace(/%0A/g, '\n')}\n\n` +
+      `📄 *View Invoice:* ${invoiceLink}\n` +
+      `📒 *View Ledger:* ${customer ? ledgerLink : 'N/A'}\n\n` +
       `Thank you for your business!`;
 
+    // AI Translation if configured
+    let finalMessage = message;
+    const lang = company.invoiceSettings?.language || 'English';
+    if (lang !== 'English' && AIService.isConfigured()) {
+      try {
+        finalMessage = await AIService.translateContent(message, lang as any);
+      } catch (e) {
+        console.error("WhatsApp AI translation failed", e);
+      }
+    }
+
     if (confirm(`Share invoice via WhatsApp to +91 ${phone}?`)) {
-      window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(finalMessage)}`, '_blank');
     }
   },
 
-  sharePayment: (payment: Payment, customer: Customer | undefined, company: CompanyProfile, manualPhoneNumber?: string) => {
+  sharePayment: async (payment: Payment, customer: Customer | undefined, company: CompanyProfile, manualPhoneNumber?: string) => {
     if (!customer) return alert("Customer data not found.");
 
     const phone = (manualPhoneNumber || customer.phone || '').replace(/\D/g, '');
@@ -47,20 +58,31 @@ export const WhatsAppService = {
 
     const ledgerLink = `https://git-import.vercel.app/customer/${customer.id}/ledger`;
 
-    const message = `*PAYMENT RECEIPT* %0A` +
-      `*${company.name}* %0A%0A` +
-      `Hello ${customer.company || customer.name}, %0A` +
-      `We have received your payment. %0A%0A` +
-      `*Amount:* Rs. ${payment.amount.toFixed(2)} %0A` +
-      `*Date:* ${payment.date} %0A` +
-      `*Mode:* ${payment.mode} %0A` +
-      `*Ref:* ${payment.reference || 'N/A'} %0A%0A` +
-      `*Current Balance:* Rs. ${customer.balance.toFixed(2)} %0A%0A` +
-      `📒 *View Ledger:* ${ledgerLink} %0A%0A` +
+    const message = `*PAYMENT RECEIPT*\n` +
+      `*${company.name}*\n\n` +
+      `Hello ${customer.company || customer.name},\n` +
+      `We have received your payment.\n\n` +
+      `*Amount:* Rs. ${payment.amount.toFixed(2)}\n` +
+      `*Date:* ${payment.date}\n` +
+      `*Mode:* ${payment.mode}\n` +
+      `*Ref:* ${payment.reference || 'N/A'}\n\n` +
+      `*Current Balance:* Rs. ${customer.balance.toFixed(2)}\n\n` +
+      `📒 *View Ledger:* ${ledgerLink}\n\n` +
       `Thank you!`;
 
+    // AI Translation if configured
+    let finalMessage = message;
+    const lang = company.invoiceSettings?.language || 'English';
+    if (lang !== 'English' && AIService.isConfigured()) {
+      try {
+        finalMessage = await AIService.translateContent(message, lang as any);
+      } catch (e) {
+        console.error("WhatsApp AI translation failed", e);
+      }
+    }
+
     if (confirm(`Share payment receipt via WhatsApp to +91 ${phone}?`)) {
-      window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(finalMessage)}`, '_blank');
     }
   }
 };

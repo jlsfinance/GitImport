@@ -2,15 +2,18 @@
 import React, { useState, useEffect } from 'react';
 import { Invoice, CompanyProfile, DEFAULT_COMPANY, Customer } from '../types';
 import { StorageService } from '../services/storageService';
-import { ArrowLeft, Download, Edit, Trash2, MoreVertical, MessageCircle, Users, ChevronRight, FileText, Share2 } from 'lucide-react';
+import { ArrowLeft, Download, Edit, Trash2, MoreVertical, MessageCircle, Users, ChevronRight, FileText, Share2, Languages, Loader2 } from 'lucide-react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { InvoicePdfService } from '../services/invoicePdfService';
+import { AIService } from '../services/aiService';
 import QRCode from 'qrcode';
 import { Capacitor } from '@capacitor/core';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { Share } from '@capacitor/share';
 import { ContactService } from '../services/contactService';
 import ContactPermissionModal from './ContactPermissionModal';
+import { useAI } from '@/contexts/AIContext';
 import { formatDate } from '../utils/dateUtils';
 
 interface InvoiceViewProps {
@@ -31,6 +34,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onDe
   isPublicView = false
 }) => {
   const { company: firebaseCompany } = useCompany();
+  const { showKeySetup, isConfigured: isAIConfigured } = useAI();
   const [company, setCompany] = useState<CompanyProfile>(DEFAULT_COMPANY);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -46,6 +50,11 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onDe
   const [waName, setWaName] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Share Options
+  const [shareWithPdf, setShareWithPdf] = useState(false);
+  const [shareTranslated, setShareTranslated] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
 
   const [showContactChoice, setShowContactChoice] = useState(false);
 
@@ -79,6 +88,11 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onDe
       };
     }
     setCompany(companyData);
+
+    // Default WhatsApp translation based on company settings
+    if (companyData.invoiceSettings?.language === 'Hindi' || companyData.invoiceSettings?.language === 'Hinglish') {
+      setShareTranslated(true);
+    }
 
     // Get Customer Details
     const cust = StorageService.getCustomers().find(c => c.id === invoice.customerId);
@@ -143,37 +157,73 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onDe
 
 
   const sendWhatsApp = async (phone: string, name: string) => {
-    // Generate Item List String
-    let itemsList = "";
-    invoice.items.forEach((item, index) => {
-      itemsList += `${index + 1}. *${item.description}* \n   ${item.quantity} x ₹${item.rate} = *₹${(item.totalAmount || 0).toLocaleString()}*\n`;
-    });
+    setIsTranslating(true);
+    try {
+      // Generate Item List String
+      let itemsList = "";
+      invoice.items.forEach((item, index) => {
+        itemsList += `${index + 1}. *${item.description}* \n   ${item.quantity} x ₹${item.rate} = *₹${(item.totalAmount || 0).toLocaleString()}*\n`;
+      });
 
-    const dateStr = formatDate(invoice.date);
+      const dateStr = formatDate(invoice.date);
 
-    let message = `🧾 *INVOICE: #${invoice.invoiceNumber}*\n` +
-      `📅 ${dateStr}\n\n` +
-      `*Billed To:* ${name || 'Customer'}\n\n` +
-      `*Items:*\n` +
-      `${itemsList}\n` +
-      `--------------------------------\n` +
-      `*NET TOTAL: ₹${invoice.total.toLocaleString()}*\n`;
+      let message = `🧾 *INVOICE: #${invoice.invoiceNumber}*\n` +
+        `📅 ${dateStr}\n\n` +
+        `*Billed To:* ${name || 'Customer'}\n\n` +
+        `*Items:*\n` +
+        `${itemsList}\n` +
+        `--------------------------------\n` +
+        `*NET TOTAL: ₹${invoice.total.toLocaleString()}*\n`;
 
-    if (showPrevBalance && prevBalance !== 0) {
-      message += `*Prev. Balance: ₹${prevBalance.toLocaleString()}*\n`;
-      message += `*Grand Total: ₹${(invoice.total + prevBalance).toLocaleString()}*\n`;
-    }
+      if (showPrevBalance && prevBalance !== 0) {
+        message += `*Prev. Balance: ₹${prevBalance.toLocaleString()}*\n`;
+        message += `*Grand Total: ₹${(invoice.total + prevBalance).toLocaleString()}*\n`;
+      }
 
-    message += `--------------------------------\n\n` +
-      `Thank you!\n` +
-      `*${company.name}*`;
+      message += `--------------------------------\n\n` +
+        `Thank you!\n` +
+        `*${company.name}*`;
 
-    const url = `https://wa.me/91${phone}?text=${encodeURIComponent(message)}`;
+      // Translation
+      if (shareTranslated) {
+        if (!isAIConfigured) {
+          setIsTranslating(false);
+          showKeySetup("WhatsApp Translation");
+          return;
+        }
+        const targetLang = company.invoiceSettings?.language || 'Hinglish';
+        message = await AIService.translateContent(message, targetLang as any);
+      }
 
-    if (Capacitor.isNativePlatform()) {
-      window.open(url, '_system');
-    } else {
-      window.open(url, '_blank');
+      if (shareWithPdf) {
+        // Native Share with File
+        const pdfPath = await InvoicePdfService.generatePDF(invoice, company, customer, qrCodeUrl, showPrevBalance, false); // False = Don't auto-share
+        if (pdfPath && Capacitor.isNativePlatform()) {
+          console.log("Sharing PDF Path:", pdfPath);
+          await Share.share({
+            title: `Invoice ${invoice.invoiceNumber}`,
+            text: message,
+            files: [pdfPath],
+            dialogTitle: 'Share Invoice via...'
+          });
+        } else {
+          // Web/Fallback
+          await InvoicePdfService.generatePDF(invoice, company, customer, qrCodeUrl, showPrevBalance, true);
+        }
+      } else {
+        // Direct WhatsApp Text
+        const url = `https://wa.me/91${phone}?text=${encodeURIComponent(message)}`;
+        if (Capacitor.isNativePlatform()) {
+          window.open(url, '_system');
+        } else {
+          window.open(url, '_blank');
+        }
+      }
+    } catch (e) {
+      console.error("Share Failed", e);
+      alert("Sharing failed. Please try again.");
+    } finally {
+      setIsTranslating(false);
     }
   };
 
@@ -181,8 +231,26 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onDe
 
 
 
+  const handleHeaderWhatsAppClick = () => {
+    if (waPhone && waPhone.length >= 10) {
+      sendWhatsApp(waPhone, waName);
+    } else {
+      setShowWhatsAppPhoneModal(true);
+    }
+  };
+
   const handleDownload = async () => {
-    await InvoicePdfService.generatePDF(invoice, company, customer, qrCodeUrl, showPrevBalance);
+    try {
+      // Check if multi-lingual PDF is requested but AI is not ready
+      if (company.invoiceSettings?.language && company.invoiceSettings.language !== 'English' && !isAIConfigured) {
+        showKeySetup(`Auto-Translation (${company.invoiceSettings.language})`);
+        return;
+      }
+      await InvoicePdfService.generatePDF(invoice, company, customer, qrCodeUrl, showPrevBalance);
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert("Failed to download PDF. Please check your internet connection and try again.");
+    }
   };
 
   const handleDelete = () => {
@@ -233,6 +301,13 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onDe
         <div className="flex items-center gap-2">
           <motion.button
             whileTap={{ scale: 0.9 }}
+            onClick={handleHeaderWhatsAppClick}
+            className="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-google-green"
+          >
+            <MessageCircle className="w-5 h-5" />
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
             onClick={handleDownload}
             className="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-foreground"
           >
@@ -252,186 +327,144 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onDe
       </div>
 
       {/* Main Content */}
-      <div id="printable-area" className="max-w-4xl mx-auto p-4 md:p-10">
-        <div className={`bg-surface ${isPosView ? 'rounded-[12px]' : 'rounded-[40px] shadow-google'} border border-border overflow-hidden`}>
+      {/* Main Content */}
+      <div id="printable-area" className="max-w-4xl mx-auto p-2 md:p-4">
+        <div className={`bg-surface ${isPosView ? 'rounded-[12px]' : 'rounded-3xl shadow-sm'} border border-border overflow-hidden`}>
 
-          {/* M3 Bill Header */}
-          <div className="bg-surface-container-high/30 p-8 md:p-12 border-b border-border">
-            <div className="flex flex-col md:flex-row justify-between gap-10">
-              <div className="max-w-md">
-                <h1 className="text-3xl md:text-5xl font-black font-heading text-foreground tracking-tight mb-4">{company.name}</h1>
-                <p className="text-sm font-bold text-muted-foreground leading-relaxed whitespace-pre-line">{company.address}</p>
-                <div className="mt-6 flex flex-wrap gap-6">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-google-blue border border-border">
-                      <MessageCircle className="w-4 h-4" />
-                    </div>
-                    <span className="text-sm font-black text-foreground">{company.phone}</span>
-                  </div>
-                  {company.gstin && (
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-google-green border border-border text-[10px] font-black">GST</div>
-                      <span className="text-sm font-black text-foreground">{company.gstin}</span>
-                    </div>
-                  )}
-                </div>
+          {/* Compact Quick Summary Bar */}
+          <div className="bg-surface-container-high/20 p-4 border-b border-border">
+            <div className="flex flex-wrap justify-between items-center gap-4">
+              <div className="space-y-0.5">
+                <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest block">Customer</span>
+                <p className="text-base font-black text-foreground truncate max-w-[200px]">{invoice.customerName}</p>
+                {invoice.customerGstin && (
+                  <span className="text-[8px] font-black text-google-blue uppercase tracking-tighter">GST: {invoice.customerGstin}</span>
+                )}
               </div>
 
-              <div className="md:text-right flex flex-col items-start md:items-end justify-between">
-                <div>
-                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] block mb-2">
-                    {invoice.type === 'CREDIT_NOTE' ? 'Return Amount' : 'Invoice Amount'}
-                  </span>
-                  <h2 className={`text-4xl md:text-6xl font-black font-heading tracking-tighter ${invoice.type === 'CREDIT_NOTE' ? 'text-orange-500' : 'text-google-green'}`}>
-                    ₹{invoice.total.toLocaleString()}
-                  </h2>
+              <div className="flex gap-6">
+                <div className="text-right">
+                  <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest block">Date</span>
+                  <p className="text-xs font-bold text-foreground">{formatDate(invoice.date)}</p>
                 </div>
-                <div className="mt-8 space-y-1">
-                  <p className="text-sm font-black text-foreground">Date: {formatDate(invoice.date)}</p>
-                  {invoice.type !== 'CREDIT_NOTE' && (
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Due: {invoice.dueDate}</p>
-                  )}
+                <div className="text-right">
+                  <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest block">Items</span>
+                  <p className="text-xs font-black text-foreground">{invoice.items.length}</p>
+                </div>
+                <div className="text-right min-w-[100px]">
+                  <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest block">Amount Due</span>
+                  <p className={`text-xl font-black ${invoice.type === 'CREDIT_NOTE' ? 'text-orange-500' : 'text-google-green'}`}>
+                    ₹{invoice.total.toLocaleString()}
+                  </p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="p-8 md:p-12">
-            {/* Customer Details */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
-              <div>
-                <h3 className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                  Billed To <span className="bg-surface-container-highest px-3 py-0.5 rounded-full text-[9px] text-foreground">Customer</span>
-                </h3>
-                <div className="space-y-4">
-                  <p className="text-xl md:text-2xl font-black text-foreground">{invoice.customerName}</p>
-                  <p className="text-sm font-bold text-muted-foreground leading-relaxed italic">{invoice.customerAddress || 'No address provided'}</p>
-                  {invoice.customerGstin && (
-                    <div className="inline-flex items-end gap-2 px-4 py-2 bg-surface-container-high rounded-2xl border border-border">
-                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">GSTIN</span>
-                      <span className="text-xs font-black text-google-blue">{invoice.customerGstin}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-col items-start md:items-end md:text-right">
-                <h3 className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em] mb-6">Tax Summary</h3>
-                <div className="space-y-3 w-full max-w-[240px]">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-bold text-muted-foreground">Subtotal</span>
-                    <span className="font-black text-foreground">₹{invoice.subtotal.toLocaleString()}</span>
-                  </div>
-                  {invoice.gstEnabled && (
-                    <>
-                      {(invoice.totalCgst ?? 0) > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span className="font-bold text-muted-foreground">CGST</span>
-                          <span className="font-black text-foreground">₹{(invoice.totalCgst ?? 0).toLocaleString()}</span>
-                        </div>
-                      )}
-                      {(invoice.totalSgst ?? 0) > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span className="font-bold text-muted-foreground">SGST</span>
-                          <span className="font-black text-foreground">₹{(invoice.totalSgst ?? 0).toLocaleString()}</span>
-                        </div>
-                      )}
-                      {(invoice.totalIgst ?? 0) > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span className="font-bold text-muted-foreground">IGST</span>
-                          <span className="font-black text-foreground">₹{(invoice.totalIgst ?? 0).toLocaleString()}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
-                  {(invoice.discountAmount ?? 0) > 0 && (
-                    <div className="flex justify-between text-sm text-google-red">
-                      <span className="font-bold">
-                        Discount {invoice.discountType === 'PERCENTAGE' && invoice.discountValue ? `(${invoice.discountValue}%)` : ''}
-                      </span>
-                      <span className="font-black">-₹{(invoice.discountAmount ?? 0).toLocaleString()}</span>
-                    </div>
-                  )}
-                  <div className="h-px bg-border my-4" />
-                  <div className="flex justify-between text-lg md:text-xl font-black text-foreground">
-                    <span>TOTAL</span>
-                    <span>₹{invoice.total.toLocaleString()}</span>
-                  </div>
-
-                  {showPrevBalance && (
-                    <>
-                      <div className="flex justify-between text-sm text-muted-foreground mt-2">
-                        <span className="font-bold">Prev. Balance</span>
-                        <span className="font-bold">₹{prevBalance.toLocaleString()}</span>
-                      </div>
-                      <div className="h-px bg-border my-2" />
-                      <div className="flex justify-between text-xl md:text-2xl font-black text-google-blue">
-                        <span>{invoice.type === 'CREDIT_NOTE' ? 'NET REFUND' : 'NET PAYABLE'}</span>
-                        <span>₹{(invoice.total + prevBalance).toLocaleString()}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Items Table */}
-            <div className="overflow-x-auto -mx-8 md:mx-0 mb-16 px-8 md:px-0">
-              <table className="w-full">
+          <div className="p-0">
+            {/* Items Table - REDESIGNED FOR MAX ITEMS */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b-2 border-border">
-                    <th className="px-2 py-4 md:px-4 md:py-6 text-left text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Item</th>
-                    <th className="px-2 py-4 md:px-4 md:py-6 text-center text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Qty</th>
-                    <th className="px-2 py-4 md:px-4 md:py-6 text-right text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Rate</th>
-                    {invoice.gstEnabled && <th className="px-2 py-4 md:px-4 md:py-6 text-right text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">GST</th>}
-                    <th className="px-2 py-4 md:px-4 md:py-6 text-right text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Amt</th>
+                  <tr className="bg-surface-container-low border-b border-border">
+                    <th className="px-4 py-3 text-left font-black text-muted-foreground uppercase tracking-widest w-10 text-[9px]">#</th>
+                    <th className="px-4 py-3 text-left font-black text-muted-foreground uppercase tracking-widest text-[9px]">Item Description</th>
+                    <th className="px-4 py-3 text-center font-black text-muted-foreground uppercase tracking-widest text-[9px]">Qty</th>
+                    <th className="px-3 py-3 text-right font-black text-muted-foreground uppercase tracking-widest text-[9px]">Rate</th>
+                    {invoice.gstEnabled && <th className="px-3 py-3 text-right font-black text-muted-foreground uppercase tracking-widest text-[9px]">GST</th>}
+                    <th className="px-4 py-3 text-right font-black text-muted-foreground uppercase tracking-widest text-[9px]">Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-border/50">
                   {invoice.items.map((item, idx) => (
-                    <tr key={idx} className="group">
-                      <td className="px-2 py-4 md:px-4 md:py-8">
-                        <div className="flex flex-col">
-                          <span className="text-sm md:text-base font-black text-foreground group-hover:text-google-blue transition-colors line-clamp-2">{item.description}</span>
-                          {item.hsn && <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mt-1">HSN: {item.hsn}</span>}
+                    <tr key={idx} className="hover:bg-surface-container-high/20 transition-colors">
+                      <td className="px-4 py-2.5 text-muted-foreground font-bold">{idx + 1}</td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex flex-col leading-tight">
+                          <span className="font-bold text-foreground">{item.description}</span>
+                          {item.hsn && <span className="text-[8px] text-muted-foreground">HSN: {item.hsn}</span>}
                         </div>
                       </td>
-                      <td className="px-2 py-4 md:px-4 md:py-8 text-center text-sm font-bold text-muted-foreground">{item.quantity}</td>
-                      <td className="px-2 py-4 md:px-4 md:py-8 text-right text-sm font-bold text-foreground">₹{item.rate.toLocaleString()}</td>
-                      {invoice.gstEnabled && <td className="px-2 py-4 md:px-4 md:py-8 text-right text-sm font-bold text-muted-foreground">{item.gstRate}%</td>}
-                      <td className="px-2 py-4 md:px-4 md:py-8 text-right text-sm md:text-base font-black text-foreground">₹{(item.totalAmount ?? 0).toLocaleString()}</td>
+                      <td className="px-4 py-2.5 text-center">
+                        <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-surface-container-high text-foreground font-black">
+                          {item.quantity}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-medium text-muted-foreground">₹{item.rate.toLocaleString()}</td>
+                      {invoice.gstEnabled && <td className="px-3 py-2.5 text-right font-medium text-muted-foreground">{item.gstRate}%</td>}
+                      <td className="px-4 py-2.5 text-right font-black text-foreground">₹{(item.totalAmount ?? 0).toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>
+                <tfoot className="bg-surface-container-high/10">
+                  <tr className="border-t border-border">
+                    <td colSpan={2} className="px-4 py-4 text-left">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Total Qty:</span>
+                        <span className="text-sm font-black text-foreground">
+                          {invoice.items.reduce((sum, item) => sum + (item.quantity || 0), 0)}
+                        </span>
+                      </div>
+                    </td>
+                    <td colSpan={invoice.gstEnabled ? 4 : 3} className="px-4 py-4">
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="flex justify-between w-full max-w-[200px] text-[10px] font-bold text-muted-foreground">
+                          <span>Subtotal:</span>
+                          <span>₹{invoice.subtotal.toLocaleString()}</span>
+                        </div>
+                        {(invoice.discountAmount ?? 0) > 0 && (
+                          <div className="flex justify-between w-full max-w-[200px] text-[10px] font-bold text-google-red">
+                            <span>Discount:</span>
+                            <span>-₹{(invoice.discountAmount ?? 0).toLocaleString()}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between w-full max-w-[200px] text-lg font-black text-foreground mt-1 py-1 border-t border-border/30">
+                          <span>TOTAL:</span>
+                          <span className={invoice.type === 'CREDIT_NOTE' ? 'text-orange-500' : 'text-google-green'}>
+                            ₹{invoice.total.toLocaleString()}
+                          </span>
+                        </div>
+
+                        {showPrevBalance && (
+                          <div className="w-full max-w-[200px] mt-2 pt-2 border-t border-border flex flex-col gap-1">
+                            <div className="flex justify-between text-[10px] font-bold text-muted-foreground">
+                              <span>Prev. Balance:</span>
+                              <span>₹{prevBalance.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between text-xl font-black text-google-blue">
+                              <span>NET:</span>
+                              <span>₹{(invoice.total + prevBalance).toLocaleString()}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
 
-            {/* Bottom Info */}
-            <div className="flex flex-col md:flex-row gap-12 items-start justify-between border-t border-border pt-12">
-              <div className="flex-1 max-w-sm">
-                <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4">Terms & Conditions</h3>
-                <p className="text-xs font-bold text-muted-foreground leading-relaxed opacity-60">1. Goods once sold will not be taken back.\n2. Payment is due within 30 days.\n3. This is a computer generated invoice.</p>
+            {/* Bottom Compact Info */}
+            {(invoice.notes || (company.upiId && qrCodeUrl)) && (
+              <div className="p-4 border-t border-border bg-surface-container-low/30 flex flex-col md:flex-row justify-between items-center gap-6">
                 {invoice.notes && (
-                  <div className="mt-8 p-4 bg-surface-container-high/50 rounded-2xl border border-border italic text-sm text-foreground">
-                    "{invoice.notes}"
+                  <div className="flex-1 max-w-sm">
+                    <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Notes</span>
+                    <p className="text-[11px] font-bold text-foreground italic">"{invoice.notes}"</p>
                   </div>
                 )}
-              </div>
 
-              <div className="flex flex-col items-start md:items-end gap-6 text-left md:text-right">
                 {company.upiId && qrCodeUrl && (
-                  <div className="p-4 bg-surface border-2 border-border rounded-3xl flex flex-col items-center gap-3">
-                    <img src={qrCodeUrl} alt="UPI QR" className="w-24 h-24" />
-                    <span className="text-[9px] font-black text-google-blue uppercase tracking-[0.2em]">Scan to Pay via UPI</span>
+                  <div className="flex items-center gap-4 bg-surface p-2 rounded-2xl border border-border">
+                    <img src={qrCodeUrl} alt="UPI QR" className="w-14 h-14" />
+                    <div>
+                      <span className="text-[8px] font-black text-google-blue uppercase tracking-widest block">Payment QR</span>
+                      <p className="text-[10px] font-black text-foreground">{company.upiId}</p>
+                    </div>
                   </div>
                 )}
-                <div className="pt-6">
-                  <div className="w-48 h-px bg-border mb-4" />
-                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Authorized Signatory</p>
-                  <p className="text-lg font-black text-foreground mt-4 font-heading">{company.name}</p>
-                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -470,15 +503,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onDe
 
                 <button onClick={() => {
                   setShowOptions(false);
-                  if (navigator.share) {
-                    navigator.share({
-                      title: `Invoice ${invoice.invoiceNumber}`,
-                      text: `Details for Invoice ${invoice.invoiceNumber}`,
-                      url: window.location.href
-                    }).catch(console.error);
-                  } else {
-                    setShowWhatsAppPhoneModal(true);
-                  }
+                  handleHeaderWhatsAppClick();
                 }} className="w-full p-6 text-left hover:bg-surface-container-high rounded-[32px] flex items-center gap-4 transition-colors">
                   <div className="w-10 h-10 rounded-full bg-surface-container-highest text-foreground flex items-center justify-center">
                     <Share2 className="w-5 h-5" />
@@ -669,13 +694,36 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, onEdit, onDe
               </div>
 
               <div className="flex flex-col gap-3">
+
+                {/* Share Options */}
+                <div className="flex gap-3 mb-2">
+                  <button
+                    onClick={() => setShareWithPdf(!shareWithPdf)}
+                    className={`flex-1 p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all ${shareWithPdf ? 'border-google-blue bg-google-blue/10 text-google-blue font-bold' : 'border-border text-muted-foreground'}`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Attach PDF</span>
+                  </button>
+
+                  {AIService.isConfigured() && (
+                    <button
+                      onClick={() => setShareTranslated(!shareTranslated)}
+                      className={`flex-1 p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all ${shareTranslated ? 'border-google-green bg-google-green/10 text-google-green font-bold' : 'border-border text-muted-foreground'}`}
+                    >
+                      <Languages className="w-4 h-4" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider">Hinglish AI</span>
+                    </button>
+                  )}
+                </div>
+
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => sendWhatsApp(waPhone, waName)}
-                  className="w-full py-5 bg-google-green text-white rounded-full font-black uppercase tracking-widest text-[11px] shadow-lg shadow-google-green/30 flex items-center justify-center gap-3"
+                  disabled={isTranslating}
+                  className={`w-full py-5 bg-google-green text-white rounded-full font-black uppercase tracking-widest text-[11px] shadow-lg shadow-google-green/30 flex items-center justify-center gap-3 ${isTranslating ? 'opacity-70' : ''}`}
                 >
-                  <MessageCircle className="w-5 h-5" />
-                  Send Digital Link
+                  {isTranslating ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageCircle className="w-5 h-5" />}
+                  {shareWithPdf ? 'Share PDF & Details' : 'Send WhatsApp Details'}
                 </motion.button>
 
                 <div className="flex flex-col gap-3">

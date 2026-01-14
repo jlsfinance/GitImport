@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Check, Download, Calculator, X, Package, Plus, ChevronRight, MessageCircle, QrCode, Users, Search, Minus } from 'lucide-react';
+import { ArrowLeft, Check, Download, Calculator, X, Package, Plus, ChevronRight, MessageCircle, QrCode, Users, Search, Minus, Eye, Edit2 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { StorageService } from '../../../services/storageService';
 import { Invoice, InvoiceItem, Customer, Product, InvoiceFormat } from '@/types';
@@ -45,6 +45,7 @@ const SmartCalculator: React.FC<SmartCalculatorProps> = ({ onBack, onSaveSuccess
     const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
     const [showProductSearch, setShowProductSearch] = useState(false);
     const [productSearchQuery, setProductSearchQuery] = useState('');
+    const [showBillPreview, setShowBillPreview] = useState(false);
 
     // Invoice Creation State
     // const [isPaid, setIsPaid] = useState(true); // Removed unused state
@@ -421,9 +422,18 @@ const SmartCalculator: React.FC<SmartCalculatorProps> = ({ onBack, onSaveSuccess
                     </div>
                     Smart Billing
                 </h2>
-                <button onClick={onBack} className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center hover:bg-surface-container-highest transition-colors">
-                    <X className="w-5 h-5 text-foreground" />
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => { setShowBillPreview(true); HapticService.medium(); }}
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${items.length > 0 ? 'bg-google-blue/10 text-google-blue' : 'bg-surface-container-high text-muted-foreground opacity-50 cursor-not-allowed'}`}
+                        disabled={items.length === 0}
+                    >
+                        <Eye className="w-5 h-5" />
+                    </button>
+                    <button onClick={onBack} className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center hover:bg-surface-container-highest transition-colors">
+                        <X className="w-5 h-5 text-foreground" />
+                    </button>
+                </div>
             </div>
 
             {/* List of Added Items (Preview) */}
@@ -1018,12 +1028,114 @@ const SmartCalculator: React.FC<SmartCalculatorProps> = ({ onBack, onSaveSuccess
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* Bill Preview Modal */}
+            <AnimatePresence>
+                {showBillPreview && (
+                    <div className="fixed inset-0 z-[110] bg-background flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+                        <div className="p-4 border-b border-border flex items-center justify-between bg-surface-container">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-google-blue/10 flex items-center justify-center">
+                                    <Eye className="w-5 h-5 text-google-blue" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black font-heading text-foreground">Bill Preview</h2>
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{items.length} Items Added</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowBillPreview(false)} className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-surface-container-low">
+                            {items.map((item, idx) => (
+                                <div key={idx} className="bg-surface-container p-4 rounded-2xl border border-border shadow-sm flex justify-between items-center">
+                                    <div className="flex gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-google-blue/10 flex items-center justify-center text-google-blue font-black text-xs">
+                                            {idx + 1}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-sm text-foreground">{item.description}</p>
+                                            <p className="text-xs text-muted-foreground font-medium">₹{item.rate} × {item.quantity}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-black text-foreground">₹{(item.totalAmount || 0).toLocaleString('en-IN')}</p>
+                                        {item.gstRate ? <p className="text-[9px] font-bold text-google-green uppercase tracking-tighter">GST {item.gstRate}% Included</p> : null}
+                                    </div>
+                                </div>
+                            ))}
+
+                            <div className="mt-6 p-6 bg-surface-container rounded-[32px] border border-border space-y-3">
+                                <div className="flex justify-between items-center text-sm font-bold text-muted-foreground">
+                                    <span>Subtotal</span>
+                                    <span>₹{calculateSubtotal().toLocaleString('en-IN')}</span>
+                                </div>
+                                {discountValue > 0 && (
+                                    <div className="flex justify-between items-center text-sm font-bold text-purple-600">
+                                        <span>Discount ({discountValue}{discountType === 'PERCENTAGE' ? '%' : '₹'})</span>
+                                        <span>- ₹{(calculateSubtotal() - calculateTotal()).toLocaleString('en-IN')}</span>
+                                    </div>
+                                )}
+                                {(calculateTotalCGST() > 0 || calculateTotalSGST() > 0 || calculateTotalIGST() > 0) && (
+                                    <div className="pt-2 border-t border-dashed border-border flex flex-col gap-1">
+                                        {calculateTotalCGST() > 0 && (
+                                            <div className="flex justify-between items-center text-[11px] font-bold text-muted-foreground">
+                                                <span>CGST Total</span>
+                                                <span>₹{calculateTotalCGST().toLocaleString('en-IN')}</span>
+                                            </div>
+                                        )}
+                                        {calculateTotalSGST() > 0 && (
+                                            <div className="flex justify-between items-center text-[11px] font-bold text-muted-foreground">
+                                                <span>SGST Total</span>
+                                                <span>₹{calculateTotalSGST().toLocaleString('en-IN')}</span>
+                                            </div>
+                                        )}
+                                        {calculateTotalIGST() > 0 && (
+                                            <div className="flex justify-between items-center text-[11px] font-bold text-muted-foreground">
+                                                <span>IGST Total</span>
+                                                <span>₹{calculateTotalIGST().toLocaleString('en-IN')}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                <div className="pt-3 border-t-2 border-border flex justify-between items-center">
+                                    <span className="text-sm font-black uppercase tracking-widest text-foreground">Grand Total</span>
+                                    <span className="text-2xl font-black text-google-blue">₹{calculateRoundedTotal().toLocaleString('en-IN')}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-surface-container border-t border-border flex gap-3">
+                            <button
+                                onClick={() => { setShowBillPreview(false); HapticService.light(); }}
+                                className="flex-1 py-4 rounded-2xl bg-surface-container-high text-foreground font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 border border-border active:scale-95 transition-all"
+                            >
+                                <Edit2 className="w-4 h-4" />
+                                Vapas (Edit)
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowBillPreview(false);
+                                    handleSave();
+                                    HapticService.success();
+                                }}
+                                className="flex-[1.5] py-4 rounded-2xl bg-google-green text-white font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 shadow-google shadow-google-green/20 active:scale-95 transition-all"
+                            >
+                                <Check className="w-5 h-5" />
+                                Save & Bill
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </AnimatePresence>
             <WhatsAppNumberModal
                 isOpen={showWhatsAppModal}
                 onClose={() => setShowWhatsAppModal(false)}
-                onSubmit={(phone) => {
+                onSubmit={async (phone) => {
                     if (createdInvoice && company) {
-                        WhatsAppService.shareInvoice(createdInvoice, selectedCustomer || undefined, company as any, phone);
+                        await WhatsAppService.shareInvoice(createdInvoice, selectedCustomer || undefined, company as any, phone);
                     }
                 }}
             />
