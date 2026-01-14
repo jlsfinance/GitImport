@@ -52,6 +52,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     const [adminAds, setAdminAds] = useState<any[]>([]);
     const [adIndex, setAdIndex] = useState(0);
     const [showBackupSettings, setShowBackupSettings] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -67,10 +69,24 @@ const Dashboard: React.FC<DashboardProps> = ({
             setAdIndex(prev => prev + 1);
         }, 5000);
 
+        const handleScroll = () => {
+            const mainContent = document.querySelector('main');
+            const scrollTop = mainContent ? mainContent.scrollTop : window.scrollY;
+            setScrolled(scrollTop > 10);
+        };
+
+        const mainContent = document.querySelector('main');
+        if (mainContent) {
+            mainContent.addEventListener('scroll', handleScroll);
+        }
+        window.addEventListener('scroll', handleScroll, true);
+
         return () => {
             clearInterval(interval);
             clearInterval(slideInterval);
             clearInterval(adTimer);
+            if (mainContent) mainContent.removeEventListener('scroll', handleScroll);
+            window.removeEventListener('scroll', handleScroll, true);
         };
     }, [timeFilter]);
 
@@ -102,7 +118,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         // Calculate Total Sales (All Time)
         setTotalSales(allInvoices.reduce((sum, inv) => sum + inv.total, 0));
 
-        // 2. Filter Main Dashboard List
+        // 2. Filter Main Dashboard List (Current selection)
         const filteredInvoices = allInvoices.filter(inv => {
             const invDate = new Date(inv.date);
             if (timeFilter === 'TODAY') {
@@ -113,24 +129,23 @@ const Dashboard: React.FC<DashboardProps> = ({
             return true;
         });
 
-        setInvoices(filteredInvoices);
-        setTotalRevenue(filteredInvoices.reduce((sum, inv) => sum + inv.total, 0));
-        setPendingInvoices(filteredInvoices.filter(i => (i.total - (i.paidAmount || 0)) > 0).length);
-    };
+        // 3. Sort ALL invoices by date for Recent Transactions (Latest first)
+        const sortedInvoices = [...allInvoices].sort((a, b) => {
+            return new Date(b.date).getTime() - new Date(a.date).getTime() ||
+                (parseInt(b.invoiceNumber.replace(/\D/g, '')) - parseInt(a.invoiceNumber.replace(/\D/g, '')));
+        });
 
-    // switchCompany now comes from useCompany hook
+        setInvoices(sortedInvoices);
+        setTotalRevenue(filteredInvoices.reduce((sum, inv) => sum + inv.total, 0));
+        setPendingInvoices(allInvoices.filter(i => (i.total - (i.paidAmount || 0)) > 0).length);
+    };
 
     const createNewCompany = () => {
         if (!newCompanyName.trim()) return;
-        // StorageService.createCompany({ name: newCompanyName, ... });
         alert("Multi-company support coming soon!");
         setShowCreateDialog(false);
         setNewCompanyName('');
     };
-
-
-
-    // const currentSlide = heroSlides[activeHeroIndex];
 
     return (
         <div className="pb-32 bg-surface-container-low dark:bg-slate-950 min-h-screen">
@@ -218,15 +233,61 @@ const Dashboard: React.FC<DashboardProps> = ({
                         </div>
                     </div>
                 </div>
+
+                {/* Animated Search Bar on Scroll - Buttery Smooth Spring Animation */}
+                <AnimatePresence>
+                    {scrolled && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0, y: -20, scale: 0.95 }}
+                            animate={{
+                                height: 'auto',
+                                opacity: 1,
+                                y: 0,
+                                scale: 1,
+                                transition: {
+                                    height: { type: "spring", stiffness: 300, damping: 30 },
+                                    opacity: { duration: 0.2 },
+                                    y: { type: "spring", stiffness: 300, damping: 30 },
+                                    scale: { type: "spring", stiffness: 300, damping: 30 }
+                                }
+                            }}
+                            exit={{
+                                opacity: 0,
+                                y: -20,
+                                scale: 0.98,
+                                transition: { duration: 0.15 }
+                            }}
+                            className="max-w-5xl mx-auto pb-4 pt-1 px-1 origin-top"
+                        >
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                                    <span className="material-symbols-outlined text-[20px] text-google-blue">search</span>
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Search bills, items, or customers..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full bg-white dark:bg-slate-800 border-2 border-google-blue/30 rounded-[20px] py-4 pl-12 pr-4 text-sm font-bold text-on-surface placeholder:text-on-surface-variant/40 outline-none focus:border-google-blue focus:ring-4 focus:ring-google-blue/10 shadow-xl shadow-google-blue/5 transition-all"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute inset-y-0 right-4 flex items-center text-on-surface-variant/40 hover:text-on-surface active:scale-90 transition-transform"
+                                    >
+                                        <span className="material-symbols-outlined text-[18px]">close</span>
+                                    </button>
+                                )}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* DASHBOARD GRID - Material 3 Cards */}
             <div className="grid grid-cols-2 gap-3 px-4 mt-6">
-                {/* 1. SALES CARD with Period Slider - Material 3 Tertiary Palette */}
-                <motion.div
-                    className="col-span-1 h-36 rounded-[32px] bg-tertiary-container text-on-tertiary-container shadow-sm p-4 flex flex-col justify-between relative overflow-hidden"
-                >
-                    {/* Period Slider Toggle */}
+                {/* 1. SALES CARD with Period Slider */}
+                <motion.div className="col-span-1 h-36 rounded-[32px] bg-tertiary-container text-on-tertiary-container shadow-sm p-4 flex flex-col justify-between relative overflow-hidden">
                     <div className="flex items-center justify-between">
                         <div className="w-8 h-8 rounded-xl bg-on-tertiary-container/10 flex items-center justify-center">
                             <TrendingUp className="w-4 h-4" />
@@ -240,26 +301,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                                         HapticService.light();
                                         setSalesPeriod(idx);
                                     }}
-                                    className={`px-2.5 py-1 rounded-full text-[8px] font-black transition-all ${salesPeriod === idx
-                                        ? 'bg-on-tertiary-container text-tertiary-container'
-                                        : 'text-on-tertiary-container/60'
-                                        }`}
+                                    className={`px-2.5 py-1 rounded-full text-[8px] font-black transition-all ${salesPeriod === idx ? 'bg-on-tertiary-container text-tertiary-container' : 'text-on-tertiary-container/60'}`}
                                 >
                                     {label}
                                 </button>
                             ))}
                         </div>
                     </div>
-
-                    {/* Sales Value based on Period */}
-                    <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => {
-                            if (onOpenReports) onOpenReports();
-                        }}
-                        className="cursor-pointer"
-                    >
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => onOpenReports()} className="cursor-pointer">
                         <p className="text-[10px] font-black uppercase tracking-widest opacity-70">
                             {salesPeriod === 0 ? 'Day Sale' : salesPeriod === 1 ? 'Month Sale' : 'Total Sale'}
                         </p>
@@ -270,10 +319,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </motion.div>
                 </motion.div>
 
-                {/* 2. METRICS SLIDER - Material 3 Primary Container */}
-                <motion.div
-                    className="col-span-1 h-36 rounded-[32px] bg-primary-container text-on-primary-container shadow-sm flex flex-col justify-between relative overflow-hidden"
-                >
+                {/* 2. METRICS SLIDER */}
+                <motion.div className="col-span-1 h-36 rounded-[32px] bg-primary-container text-on-primary-container shadow-sm flex flex-col justify-between relative overflow-hidden">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={metricIndex}
@@ -296,22 +343,18 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     {metricIndex === 3 && "Pending Bills"}
                                 </p>
                                 <h3 className="text-xl font-black truncate tracking-tighter">
-                                    {metricIndex === 0 && `₹${invoices.reduce((s, i) => s + i.total, 0).toLocaleString('en-IN')}`}
-                                    {metricIndex === 1 && `₹${(timeFilter === 'TODAY' ? todayReceived : invoices.reduce((s, i) => s + (i.paidAmount || 0), 0)).toLocaleString('en-IN')}`}
+                                    {metricIndex === 0 && `₹${invoices.filter(inv => {
+                                        const d = new Date(inv.date);
+                                        const now = new Date();
+                                        return timeFilter === 'TODAY' ? d.toDateString() === now.toDateString() : d.getMonth() === now.getMonth();
+                                    }).reduce((s, i) => s + i.total, 0).toLocaleString('en-IN')}`}
+                                    {metricIndex === 1 && `₹${(timeFilter === 'TODAY' ? todayReceived : todayReceived * 30).toLocaleString('en-IN')}`}
                                     {metricIndex === 2 && `₹${(totalRevenue * 0.2).toLocaleString('en-IN')}`}
                                     {metricIndex === 3 && `${pendingInvoices.toLocaleString('en-IN')}`}
                                 </h3>
                             </div>
-
-                            {/* Footer Branding in Reports */}
-                            <div className="mt-12 mb-8 text-center opacity-30">
-                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
-                                    Report Engine by Lavneet ❤️
-                                </p>
-                            </div>
                         </motion.div>
                     </AnimatePresence>
-                    {/* Progress indicator */}
                     <div className="absolute bottom-3 right-4 flex gap-1.5">
                         {[0, 1, 2, 3].map(i => (
                             <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${i === metricIndex ? 'bg-on-primary-container w-3' : 'bg-on-primary-container/20'}`} />
@@ -319,13 +362,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 </motion.div>
 
-                {/* 3. SMART CALC - Material 3 Surface Variant */}
-                <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={onOpenSmartCalc}
-                    className="col-span-1 h-36 rounded-[32px] bg-secondary-container text-on-secondary-container p-4 flex flex-col justify-between cursor-pointer"
-                >
+                {/* 3. SMART CALC */}
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={onOpenSmartCalc} className="col-span-1 h-36 rounded-[32px] bg-secondary-container text-on-secondary-container p-4 flex flex-col justify-between cursor-pointer">
                     <div className="w-10 h-10 rounded-2xl bg-on-secondary-container/10 flex items-center justify-center">
                         <Calculator className="w-5 h-5" />
                     </div>
@@ -335,14 +373,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 </motion.div>
 
-
-                {/* 5. JLS AI - Material 3 Surface Variant (Alt) */}
-                <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={onOpenAI}
-                    className="col-span-1 h-36 rounded-[32px] bg-surface-container-highest text-on-surface p-4 flex flex-col justify-between cursor-pointer border border-outline-variant"
-                >
+                {/* 5. JLS AI */}
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={onOpenAI} className="col-span-1 h-36 rounded-[32px] bg-surface-container-highest text-on-surface p-4 flex flex-col justify-between cursor-pointer border border-outline-variant">
                     <div className="w-10 h-10 rounded-2xl bg-google-blue/10 flex items-center justify-center text-google-blue">
                         <span className="material-symbols-outlined text-[20px] font-black">smart_toy</span>
                     </div>
@@ -353,12 +385,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </motion.div>
             </div>
 
-            {/* AD BANNER - Material 3 Promotion Style */}
+            {/* AD BANNER */}
             <div className="px-4 mt-6 mb-2 relative">
                 <AnimatePresence mode="wait">
                     {(() => {
-                        const hasAds = adminAds.length > 0;
-                        const currentAd = hasAds ? adminAds[adIndex % adminAds.length] : {
+                        const currentAd = adminAds.length > 0 ? adminAds[adIndex % adminAds.length] : {
                             id: 'default',
                             title: 'AI Bill Scanning Live!',
                             content: 'Super Admin says: "Use JLS AI to scan bills instantly."',
@@ -372,87 +403,86 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
-                                transition={{ duration: 0.4 }}
-                                className={`w-full h-40 rounded-[36px] bg-gradient-to-br ${currentAd.gradient || 'from-google-blue to-indigo-600'} p-6 flex flex-col justify-center relative overflow-hidden shadow-lg shadow-google-blue/20`}
+                                className={`w-full h-40 rounded-[36px] bg-gradient-to-br ${currentAd.gradient || 'from-google-blue to-indigo-600'} p-6 flex flex-col justify-center shadow-lg shadow-google-blue/20`}
                             >
-                                <div className="z-10 text-white">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <span className="px-3 py-1 rounded-full bg-white/20 text-[9px] font-black uppercase tracking-[0.15em] backdrop-blur-md border border-white/10">
-                                            {currentAd.type || 'Update'}
-                                        </span>
-                                    </div>
+                                <div className="text-white">
+                                    <span className="px-3 py-1 rounded-full bg-white/20 text-[9px] font-black uppercase tracking-widest backdrop-blur-md border border-white/10 mb-3 inline-block">
+                                        {currentAd.type || 'Update'}
+                                    </span>
                                     <h3 className="text-xl font-black leading-tight tracking-tight mb-1">{currentAd.title}</h3>
-                                    <p className="text-xs text-blue-50 mt-1 font-medium max-w-[85%] line-clamp-2 opacity-90">{currentAd.content}</p>
+                                    <p className="text-xs text-blue-50 mt-1 font-medium line-clamp-2 opacity-90">{currentAd.content}</p>
                                 </div>
-                                {/* Pagination */}
-                                {hasAds && (
-                                    <div className="absolute bottom-4 right-6 flex gap-1.5">
-                                        {adminAds.map((_: any, i: number) => (
-                                            <div key={i} className={`h-1.5 rounded-full transition-all ${i === (adIndex % adminAds.length) ? 'bg-white w-4' : 'bg-white/30 w-1.5'}`} />
-                                        ))}
-                                    </div>
-                                )}
                             </motion.div>
                         );
                     })()}
                 </AnimatePresence>
             </div>
 
-            {/* QUICK ACTIONS & RECENT ACTIVITY - M3 Design */}
+            {/* RECENT TRANSACTIONS */}
             <div className="px-5 mt-8">
                 <div className="flex items-center justify-between mb-4 px-2">
                     <h3 className="text-[11px] font-black text-on-surface-variant uppercase tracking-[0.25em]">Recent Transactions</h3>
-                    <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        onClick={onOpenReports}
-                        className="text-[10px] font-black text-google-blue uppercase tracking-widest bg-google-blue/5 px-3 py-1 rounded-full"
-                    >
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={onOpenReports} className="text-[10px] font-black text-google-blue uppercase tracking-widest bg-google-blue/5 px-3 py-1 rounded-full">
                         View All
                     </motion.button>
                 </div>
 
-                <div className="bg-surface-container-highest/40 dark:bg-slate-900 rounded-[36px] border border-outline-variant/30 overflow-hidden shadow-sm">
-                    {invoices.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-[240px] text-slate-400">
-                            <div className="w-12 h-12 rounded-2xl bg-surface-container-highest flex items-center justify-center mb-3">
-                                <FileText className="w-6 h-6 opacity-40" />
+                <div className="bg-white dark:bg-slate-900 rounded-[36px] border border-outline-variant/30 overflow-hidden shadow-sm">
+                    {(() => {
+                        const filtered = invoices.filter(inv =>
+                            inv.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            inv.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            inv.items.some(item => item.description.toLowerCase().includes(searchQuery.toLowerCase()))
+                        );
+
+                        if (filtered.length === 0) {
+                            return (
+                                <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                                    <FileText className="w-6 h-6 opacity-40 mb-3" />
+                                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">
+                                        {searchQuery ? "No matches found" : "No recent activity"}
+                                    </p>
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <div className="divide-y divide-outline-variant/10">
+                                {filtered.map(inv => (
+                                    <motion.div
+                                        key={inv.id}
+                                        whileTap={{ scale: 0.98 }}
+                                        className="p-5 flex justify-between items-center cursor-pointer hover:bg-surface-container-low transition-colors"
+                                        onClick={() => onViewInvoice(inv)}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-2xl bg-google-blue/5 flex items-center justify-center text-google-blue text-sm font-bold">
+                                                {inv.customerName.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-sm text-on-surface leading-tight">{inv.customerName}</p>
+                                                <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-tighter opacity-60 mt-0.5">
+                                                    #{inv.invoiceNumber} • {formatDate(inv.date)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-black text-sm text-on-surface">₹{inv.total.toLocaleString('en-IN')}</p>
+                                            <div className={`text-[8px] font-black px-2 py-0.5 rounded-full inline-block mt-1 uppercase tracking-tighter ${inv.status === 'PAID' ? 'bg-google-green text-white shadow-sm shadow-google-green/20' : 'bg-google-red text-white shadow-sm shadow-google-red/20'}`}>
+                                                {inv.status}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                                <div className="p-8 text-center bg-surface-container-low/30">
+                                    <span className="text-[9px] font-black text-on-surface-variant uppercase tracking-widest">End of History</span>
+                                </div>
                             </div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">No recent activity</p>
-                        </div>
-                    ) : (
-                        <div className="divide-y divide-outline-variant/20 max-h-[400px] overflow-y-auto">
-                            {invoices.slice(0, 20).map(inv => (
-                                <motion.div
-                                    key={inv.id}
-                                    whileTap={{ backgroundColor: 'rgba(0,0,0,0.05)' }}
-                                    className="p-5 flex justify-between items-center cursor-pointer active:bg-surface-container-high transition-colors"
-                                    onClick={() => onViewInvoice(inv)}
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-google-blue/10 flex items-center justify-center text-google-blue">
-                                            <FileText className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-sm text-on-surface">{inv.customerName}</p>
-                                            <p className="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider opacity-70">
-                                                #{inv.invoiceNumber} • {formatDate(inv.date)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="font-black text-sm text-on-surface">₹{inv.total.toLocaleString('en-IN')}</p>
-                                        <div className={`text-[9px] font-bold px-2 py-0.5 rounded-full inline-block mt-1 ${inv.status === 'PAID' ? 'bg-google-green/10 text-google-green' : 'bg-google-red/10 text-google-red'}`}>
-                                            {inv.status}
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </div>
-                    )}
+                        );
+                    })()}
                 </div>
             </div>
 
-            {/* Create Company Dialog - Copied from Previous Version */}
             <AnimatePresence>
                 {showCreateDialog && (
                     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md p-6">
@@ -467,17 +497,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 )}
             </AnimatePresence>
-            {/* Footer Branding */}
+
             <div className="mt-12 mb-8 text-center opacity-40">
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-on-surface">
-                    Made with <span className="text-red-500 animate-pulse">❤️</span> by Lavneet
-                </p>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-on-surface">Made with ❤️ by Lavneet</p>
             </div>
 
-            {/* Backup Settings Modal */}
-            {showBackupSettings && (
-                <BackupSettings onClose={() => setShowBackupSettings(false)} />
-            )}
+            {showBackupSettings && <BackupSettings onClose={() => setShowBackupSettings(false)} />}
         </div>
     );
 };

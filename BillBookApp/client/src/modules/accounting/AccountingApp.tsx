@@ -30,6 +30,7 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { useTheme } from 'next-themes';
 import { HapticService } from '@/services/hapticService';
 import { CompanyForm } from '@/components/CompanyForm';
+import { useAI } from '@/contexts/AIContext';
 import Auth from '@/components/Auth';
 import { PermissionErrorModal } from '@/components/PermissionErrorModal';
 import { showErrorAlert } from '@/utils/errorCodes';
@@ -41,6 +42,7 @@ const AccountingApp: React.FC = () => {
     const { user, loading: authLoading } = useAuth();
     const { company, loading: companyLoading, permissionError } = useCompany();
     const { theme, setTheme } = useTheme();
+    const { showKeySetup, isConfigured: isAIConfigured } = useAI();
 
     const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -62,6 +64,7 @@ const AccountingApp: React.FC = () => {
     const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
     const [pendingShareInvoice, setPendingShareInvoice] = useState<Invoice | null>(null);
     const [showBackupSettings, setShowBackupSettings] = useState(false);
+    const [daybookDate, setDaybookDate] = useState<string | null>(null);
 
     useEffect(() => {
         const initApp = async () => {
@@ -98,6 +101,21 @@ const AccountingApp: React.FC = () => {
             }
         };
         initApp();
+
+        // Listen for External Navigation Events (from Notifications)
+        const handleNavigationEvent = (event: CustomEvent) => {
+            const { view, date } = event.detail;
+            if (view === 'DAYBOOK') {
+                if (date) setDaybookDate(date);
+                setCurrentView(ViewState.DAYBOOK);
+            }
+        };
+
+        window.addEventListener('NAVIGATE_TO_VIEW', handleNavigationEvent as EventListener);
+
+        return () => {
+            window.removeEventListener('NAVIGATE_TO_VIEW', handleNavigationEvent as EventListener);
+        };
     }, [user]);
 
 
@@ -134,6 +152,11 @@ const AccountingApp: React.FC = () => {
                 StorageService.saveInvoice(invoice);
             }
         }
+
+        // Update Notification Schedule with latest sale info
+        import('../../services/notificationService').then(({ NotificationService }) => {
+            NotificationService.scheduleDailyNotification();
+        });
 
         // Refresh Data
         // setInvoices(StorageService.getInvoices());
@@ -192,6 +215,10 @@ const AccountingApp: React.FC = () => {
     };
 
     const handleOpenAI = () => {
+        if (!isAIConfigured) {
+            showKeySetup("JLS AI Assistant");
+            return;
+        }
         setStartAI(true);
         setShowImport(true);
     };
@@ -376,7 +403,13 @@ const AccountingApp: React.FC = () => {
                                     }}
                                 />
                             )}
-                            {currentView === ViewState.DAYBOOK && <Daybook onViewCustomerLedger={handleViewCustomerLedger} />}
+                            {currentView === ViewState.DAYBOOK && (
+                                <Daybook
+                                    initialDate={daybookDate}
+                                    key={daybookDate || 'default'}
+                                    onViewCustomerLedger={handleViewCustomerLedger}
+                                />
+                            )}
                             {currentView === ViewState.EXPENSES && <Expenses />}
                             {currentView === ViewState.PAYMENTS && <Payments onBack={() => setCurrentView(ViewState.DASHBOARD)} createTrigger={triggerPaymentCreate} />}
                             {currentView === ViewState.REPORTS && <Reports onBack={() => setCurrentView(ViewState.DASHBOARD)} />}

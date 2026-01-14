@@ -7,7 +7,7 @@ import { AlertModal } from '@/components/AlertModal';
 import { Customer, Invoice, Payment } from '../types';
 import { StorageService } from '../services/storageService';
 import { WhatsAppService } from '../services/whatsappService';
-import { Search, Phone, Mail, MapPin, ArrowLeft, FileText, Download, TrendingUp, Eye, X, Banknote, MessageCircle, Edit, Trash2, Plus, ChevronRight } from 'lucide-react';
+import { Search, Phone, Mail, MapPin, ArrowLeft, FileText, Download, TrendingUp, Eye, X, Banknote, MessageCircle, Edit, Trash2, Plus, ChevronRight, UserPlus } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
@@ -83,6 +83,8 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack, initialCus
   });
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [phoneSuggestions, setPhoneSuggestions] = useState<any[]>([]);
+  const [showPhoneSuggestions, setShowPhoneSuggestions] = useState(false);
 
   const [showEditCustomer, setShowEditCustomer] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -202,15 +204,15 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack, initialCus
     setPaymentMode('CASH');
   };
 
-  const handleShare = (tx: Transaction) => {
+  const handleShare = async (tx: Transaction) => {
     if (!selectedCustomer) return;
     const company = StorageService.getCompanyProfile();
 
     if (selectedCustomer.phone) {
       if (tx.type === 'INVOICE') {
-        WhatsAppService.shareInvoice(tx.data as Invoice, selectedCustomer, company);
+        await WhatsAppService.shareInvoice(tx.data as Invoice, selectedCustomer, company);
       } else {
-        WhatsAppService.sharePayment(tx.data as Payment, selectedCustomer, company);
+        await WhatsAppService.sharePayment(tx.data as Payment, selectedCustomer, company);
       }
     } else {
       setPendingShareTx(tx);
@@ -454,7 +456,7 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack, initialCus
 
         // Status Column
         doc.setFont("helvetica", isPaid ? "normal" : "bold");
-        doc.text(isPaid ? "PAID" : "DUE", margin + colWidth - 18, y);
+        doc.text(isPaid ? "P" : "D", margin + colWidth - 18, y);
         doc.setFont("helvetica", "normal");
 
         // Amount
@@ -586,6 +588,11 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack, initialCus
     doc.setFont("helvetica", "bold");
     doc.text(company.name.toUpperCase(), pageWidth - margin - 5, footerY, { align: 'right' });
 
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 100, 100);
+    doc.text("Made from JLS Bill App", margin + 5, footerY);
+
     // Unified Save/Share Logic
     const fileName = `Ledger_${selectedCustomer.company.replace(/[^a-zA-Z0-9]/g, '_')}_${todayDate}.pdf`;
     if (Capacitor.isNativePlatform()) {
@@ -635,6 +642,7 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack, initialCus
                   setViewingInvoice(null);
                   if (onEditInvoice) onEditInvoice(inv);
                 }}
+                onClosePostSaveActions={() => setViewingInvoice(null)}
               />
             </motion.div>
           )}
@@ -1434,68 +1442,97 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack, initialCus
               <div className="p-8">
                 <form onSubmit={handleAddCustomer} className="space-y-6">
                   <div className="group space-y-2 relative">
-                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2 flex items-center gap-2">
-                      Customer Name <span className="w-1 h-1 rounded-full bg-google-red" />
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2 flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        Customer Name <span className="w-1 h-1 rounded-full bg-google-red" />
+                      </span>
+                      {newCustomer.name.length >= 2 && suggestions.length === 0 && (
+                        <span className="text-[9px] text-muted-foreground/60 normal-case tracking-normal">
+                          No contacts found
+                        </span>
+                      )}
                     </label>
-                    <input
-                      type="text"
-                      required
-                      value={newCustomer.name}
-                      onChange={async (e) => {
-                        const val = e.target.value;
-                        setNewCustomer({ ...newCustomer, name: val });
-                        if (val.length >= 2) {
-                          const results = await ContactsService.searchContacts(val);
-                          setSuggestions(results);
-                          setShowSuggestions(results.length > 0);
-                        } else {
-                          setShowSuggestions(false);
-                        }
-                      }}
-                      onFocus={async () => {
-                        await ContactsService.requestWithDisclosure();
-                      }}
-                      className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-lg font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all placeholder:text-muted-foreground/30"
-                      placeholder="Search or type name..."
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        value={newCustomer.name}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          setNewCustomer({ ...newCustomer, name: val });
+                          if (val.length >= 2) {
+                            const results = await ContactsService.searchContacts(val);
+                            setSuggestions(results);
+                            setShowSuggestions(results.length > 0);
+                          } else {
+                            setShowSuggestions(false);
+                          }
+                        }}
+                        onFocus={async () => {
+                          await ContactsService.requestWithDisclosure();
+                        }}
+                        className="w-full p-4 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-lg font-bold text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all placeholder:text-muted-foreground/30"
+                        placeholder="Type to search contacts..."
+                      />
+                      {/* Searching indicator */}
+                      {newCustomer.name.length >= 2 && newCustomer.name.length < 20 && (
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                          <div className="w-4 h-4 border-2 border-google-blue/20 border-t-google-blue rounded-full animate-spin"></div>
+                        </div>
+                      )}
+                    </div>
 
-                    {/* Contact Suggestions Dropdown */}
+                    {/* Contact Suggestions Dropdown - Enhanced */}
                     <AnimatePresence>
                       {showSuggestions && suggestions.length > 0 && (
                         <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 10 }}
-                          className="absolute z-[120] left-0 right-0 top-full mt-2 bg-surface-container-highest border border-border rounded-[28px] shadow-google-lg max-h-60 overflow-y-auto p-2"
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute z-[120] left-0 right-0 top-full mt-2 bg-surface-container-highest border-2 border-google-blue/20 rounded-[28px] shadow-google-lg overflow-hidden"
                         >
-                          {suggestions.map((s, i) => (
-                            <button
-                              key={i}
-                              type="button"
-                              onClick={() => {
-                                setNewCustomer(prev => ({
-                                  ...prev,
-                                  name: s.name,
-                                  phone: s.phone.replace(/\D/g, '').slice(-10),
-                                  company: prev.company || s.name
-                                }));
-                                setShowSuggestions(false);
-                                HapticService.light();
-                              }}
-                              className="w-full p-4 flex items-center justify-between hover:bg-surface-container-high rounded-[20px] transition-all text-left"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-google-blue/10 text-google-blue flex items-center justify-center font-black text-xs shrink-0">
-                                  {s.name.charAt(0)}
+                          <div className="bg-gradient-to-r from-google-blue/10 to-google-blue/5 px-4 py-2 border-b border-google-blue/10">
+                            <p className="text-[10px] font-black text-google-blue uppercase tracking-widest flex items-center gap-2">
+                              <UserPlus className="w-3 h-3" />
+                              {suggestions.length} Contact{suggestions.length > 1 ? 's' : ''} Found
+                            </p>
+                          </div>
+                          <div className="p-2 max-h-60 overflow-y-auto">
+                            {suggestions.map((s, i) => (
+                              <motion.button
+                                key={i}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: i * 0.05 }}
+                                type="button"
+                                onClick={() => {
+                                  setNewCustomer(prev => ({
+                                    ...prev,
+                                    name: s.name,
+                                    phone: s.phone.replace(/\D/g, '').slice(-10),
+                                    company: prev.company || s.name
+                                  }));
+                                  setShowSuggestions(false);
+                                  HapticService.light();
+                                }}
+                                className="w-full p-4 flex items-center justify-between hover:bg-surface-container-high rounded-[20px] transition-all text-left border-2 border-transparent hover:border-google-blue/20 mb-1"
+                              >
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-google-blue/20 to-google-blue/10 text-google-blue flex items-center justify-center font-black text-lg shrink-0 group-hover:from-google-blue group-hover:to-google-blue/80 group-hover:text-white transition-all shadow-sm">
+                                    {s.name.charAt(0)}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-base font-black text-foreground truncate mb-0.5">{s.name}</div>
+                                    <div className="text-[10px] font-bold text-muted-foreground flex items-center gap-1.5">
+                                      <Phone className="w-3 h-3" />
+                                      <span className="tracking-wide">{s.phone}</span>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-black text-foreground truncate">{s.name}</div>
-                                  <div className="text-[10px] font-bold text-muted-foreground">{s.phone}</div>
-                                </div>
-                              </div>
-                              <ChevronRight className="w-4 h-4 text-muted-foreground/30" />
-                            </button>
-                          ))}
+                                <ChevronRight className="w-5 h-5 text-muted-foreground/30 group-hover:text-google-blue transition-colors" />
+                              </motion.button>
+                            ))}
+                          </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -1529,18 +1566,123 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack, initialCus
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">Phone Number</label>
-                    <div className="relative">
-                      <span className="absolute left-6 top-1/2 -translate-y-1/2 text-google-blue font-black">+91</span>
-                      <input
-                        type="tel"
-                        value={newCustomer.phone}
-                        onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                        className="w-full p-4 pl-16 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-base font-black text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all tracking-widest placeholder:text-muted-foreground/30"
-                        placeholder="00000 00000"
-                      />
+                  <div className="space-y-2 relative">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2 flex items-center justify-between">
+                      <span>Phone Number</span>
+                      {newCustomer.phone.length >= 3 && phoneSuggestions.length === 0 && (
+                        <span className="text-[9px] text-muted-foreground/60 normal-case tracking-normal">
+                          No contacts found
+                        </span>
+                      )}
+                    </label>
+                    <div className="flex gap-3">
+                      <div className="relative flex-1">
+                        <span className="absolute left-6 top-1/2 -translate-y-1/2 text-google-blue font-black">+91</span>
+                        <input
+                          type="tel"
+                          value={newCustomer.phone}
+                          onChange={async (e) => {
+                            const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                            setNewCustomer({ ...newCustomer, phone: val });
+                            if (val.length >= 3) {
+                              const results = await ContactsService.searchByPhone(val);
+                              setPhoneSuggestions(results);
+                              setShowPhoneSuggestions(results.length > 0);
+                            } else {
+                              setShowPhoneSuggestions(false);
+                            }
+                          }}
+                          className="w-full p-4 pl-16 bg-surface-container-high border-2 border-transparent focus:border-google-blue/30 rounded-[24px] text-base font-black text-foreground focus:ring-4 focus:ring-google-blue/5 outline-none transition-all tracking-widest placeholder:text-muted-foreground/30"
+                          placeholder="Type number to search..."
+                        />
+                        {/* Searching indicator */}
+                        {newCustomer.phone.length >= 3 && newCustomer.phone.length < 10 && (
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                            <div className="w-4 h-4 border-2 border-google-blue/20 border-t-google-blue rounded-full animate-spin"></div>
+                          </div>
+                        )}
+                      </div>
+                      {/* Pick Contact Button - More Prominent */}
+                      <motion.button
+                        type="button"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={async () => {
+                          HapticService.light();
+                          const contact = await ContactsService.pickContact();
+                          if (contact) {
+                            setNewCustomer(prev => ({
+                              ...prev,
+                              name: prev.name || contact.name,
+                              phone: contact.phone,
+                              company: prev.company || contact.name
+                            }));
+                            setShowPhoneSuggestions(false);
+                            HapticService.success();
+                          }
+                        }}
+                        className="w-16 h-16 shrink-0 bg-gradient-to-br from-google-blue to-google-blue/80 hover:from-google-blue/90 hover:to-google-blue/70 border-2 border-google-blue/20 rounded-[20px] flex flex-col items-center justify-center transition-all shadow-lg shadow-google-blue/20 hover:shadow-xl hover:shadow-google-blue/30"
+                        title="Pick from Contacts"
+                      >
+                        <UserPlus className="w-6 h-6 text-white mb-0.5" />
+                        <span className="text-[8px] font-black text-white/90 uppercase tracking-wider">Pick</span>
+                      </motion.button>
                     </div>
+
+                    {/* Phone Suggestions Dropdown - Enhanced */}
+                    <AnimatePresence>
+                      {showPhoneSuggestions && phoneSuggestions.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute z-[120] left-0 right-0 top-full mt-2 bg-surface-container-highest border-2 border-google-blue/20 rounded-[28px] shadow-google-lg overflow-hidden"
+                        >
+                          <div className="bg-gradient-to-r from-google-blue/10 to-google-blue/5 px-4 py-2 border-b border-google-blue/10">
+                            <p className="text-[10px] font-black text-google-blue uppercase tracking-widest flex items-center gap-2">
+                              <Phone className="w-3 h-3" />
+                              {phoneSuggestions.length} Contact{phoneSuggestions.length > 1 ? 's' : ''} Found
+                            </p>
+                          </div>
+                          <div className="p-2 max-h-60 overflow-y-auto">
+                            {phoneSuggestions.map((s, i) => (
+                              <motion.button
+                                key={i}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: i * 0.05 }}
+                                type="button"
+                                onClick={() => {
+                                  setNewCustomer(prev => ({
+                                    ...prev,
+                                    name: prev.name || s.name,
+                                    phone: s.phone.replace(/\D/g, '').slice(-10),
+                                    company: prev.company || s.name
+                                  }));
+                                  setShowPhoneSuggestions(false);
+                                  HapticService.light();
+                                }}
+                                className="w-full p-4 flex items-center justify-between hover:bg-surface-container-high rounded-[20px] transition-all text-left border-2 border-transparent hover:border-google-blue/20 mb-1"
+                              >
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-google-blue/20 to-google-blue/10 text-google-blue flex items-center justify-center font-black text-lg shrink-0 group-hover:from-google-blue group-hover:to-google-blue/80 group-hover:text-white transition-all shadow-sm">
+                                    {s.name.charAt(0)}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-base font-black text-foreground truncate mb-0.5">{s.name}</div>
+                                    <div className="text-[10px] font-bold text-muted-foreground flex items-center gap-1.5">
+                                      <Phone className="w-3 h-3" />
+                                      <span className="tracking-wide">{s.phone}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <ChevronRight className="w-5 h-5 text-muted-foreground/30 group-hover:text-google-blue transition-colors" />
+                              </motion.button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
 
                   <div className="space-y-2">
@@ -1596,13 +1738,13 @@ const Customers: React.FC<CustomersProps> = ({ onEditInvoice, onBack, initialCus
       <WhatsAppNumberModal
         isOpen={showWhatsAppModal}
         onClose={() => setShowWhatsAppModal(false)}
-        onSubmit={(phone) => {
+        onSubmit={async (phone) => {
           if (pendingShareTx && selectedCustomer) {
             const company = StorageService.getCompanyProfile();
             if (pendingShareTx.type === 'INVOICE') {
-              WhatsAppService.shareInvoice(pendingShareTx.data as Invoice, selectedCustomer, company, phone);
+              await WhatsAppService.shareInvoice(pendingShareTx.data as Invoice, selectedCustomer, company, phone);
             } else {
-              WhatsAppService.sharePayment(pendingShareTx.data as Payment, selectedCustomer, company, phone);
+              await WhatsAppService.sharePayment(pendingShareTx.data as Payment, selectedCustomer, company, phone);
             }
             setPendingShareTx(null);
           }

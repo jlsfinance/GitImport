@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { CompanyProvider } from '@/contexts/CompanyContext';
+import { AIProvider } from '@/contexts/AIContext';
 import { ThemeProvider } from 'next-themes';
 import AccountingApp from './modules/accounting/AccountingApp';
 import { StorageService } from './services/storageService';
@@ -10,7 +11,7 @@ import { ChangelogModal } from './components/ChangelogModal';
 import { NotificationService } from './services/notificationService';
 
 // App version - update this with each release
-const APP_VERSION = '1.9.5';
+const APP_VERSION = '2.1.0';
 
 const RootApp: React.FC = () => {
   const location = useLocation();
@@ -92,15 +93,17 @@ const RootApp: React.FC = () => {
       />
       <AuthProvider>
         <CompanyProvider>
-          <div
-            className="min-h-[100dvh] bg-slate-50 dark:bg-slate-900 overflow-x-hidden selection:bg-indigo-100 dark:selection:bg-indigo-900/40"
-            style={{
-              paddingTop: 'env(safe-area-inset-top)',
-              paddingBottom: 'env(safe-area-inset-bottom)',
-            }}
-          >
-            <AccountingApp />
-          </div>
+          <AIProvider>
+            <div
+              className="min-h-[100dvh] bg-slate-50 dark:bg-slate-900 overflow-x-hidden selection:bg-indigo-100 dark:selection:bg-indigo-900/40"
+              style={{
+                paddingTop: 'env(safe-area-inset-top)',
+                paddingBottom: 'env(safe-area-inset-bottom)',
+              }}
+            >
+              <AccountingApp />
+            </div>
+          </AIProvider>
         </CompanyProvider>
       </AuthProvider>
     </>

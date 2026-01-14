@@ -146,6 +146,8 @@ export interface Invoice {
   notes?: string;
   terms?: string;
   templateFormat?: InvoiceFormat;
+  translatedLabels?: any;
+  totalInWords?: string;
 }
 
 // ... existing code
@@ -160,7 +162,8 @@ export enum InvoiceFormat {
   ELEGANT = 'ELEGANT',
   COMPACT = 'COMPACT',
   BOLD = 'BOLD',
-  RETRO = 'RETRO'
+  RETRO = 'RETRO',
+  SAVE_PAPER = 'SAVE_PAPER'
 }
 
 export interface InvoiceSettings {
@@ -168,6 +171,7 @@ export interface InvoiceSettings {
   showWatermark?: boolean;
   watermarkText?: string;
   primaryColor?: string;
+  language?: 'English' | 'Hindi' | 'Hinglish';
 }
 
 export interface CompanyProfile {

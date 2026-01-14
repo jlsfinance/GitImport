@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CompanyProfile, InvoiceFormat } from '../types';
 import { StorageService } from '../services/storageService';
 import { AIService } from '../services/aiService';
-import { ChevronRight, User, Building2, Cloud, Database, Sparkles, Shield, Trash2, Download, Upload } from 'lucide-react';
+import { ChevronRight, User, Building2, Cloud, Database, Sparkles, Shield, Trash2, Download, Upload, Briefcase } from 'lucide-react';
 import { FirebaseService } from '../services/firebaseService';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,6 +13,8 @@ import { InputModal } from '@/components/InputModal';
 import { ConfirmationModal } from '@/components/ConfirmationModal';
 import { AlertModal } from '@/components/AlertModal';
 import { AdminAdsManager } from './AdminAdsManager';
+import { FeedbackModal } from './FeedbackModal';
+import { DigitalCardGenerator } from './DigitalCardGenerator';
 
 const Settings: React.FC = () => {
   const { company, saveCompany } = useCompany();
@@ -32,6 +34,7 @@ const Settings: React.FC = () => {
   const [invoiceTemplate, setInvoiceTemplate] = useState(company?.invoiceSettings?.format || (company?.invoiceTemplate?.toUpperCase() as any) || InvoiceFormat.DEFAULT);
   const [isFirebaseReady, setIsFirebaseReady] = useState(false);
   const [isGeminiConfigured, setIsGeminiConfigured] = useState(false);
+  const [invoiceLanguage, setInvoiceLanguage] = useState<'English' | 'Hindi' | 'Hinglish'>(company?.invoiceSettings?.language || 'English');
 
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
@@ -43,6 +46,8 @@ const Settings: React.FC = () => {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showBackupModal, setShowBackupModal] = useState(false);
   const [showAdminAds, setShowAdminAds] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showCardGenerator, setShowCardGenerator] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState('');
 
   // Modal States
@@ -77,6 +82,7 @@ const Settings: React.FC = () => {
     setIsFirebaseReady(FirebaseService.isReady());
     setIsGeminiConfigured(AIService.isConfigured());
     setApiKeyInput(AIService.getApiKey() || '');
+    setInvoiceLanguage(company?.invoiceSettings?.language || 'English');
   }, [company]);
 
   const handleSaveProfile = async () => {
@@ -120,13 +126,35 @@ const Settings: React.FC = () => {
       await saveCompany({
         invoiceTemplate: newTemplate as any,
         invoiceSettings: {
-          format: newTemplate
+          ...company.invoiceSettings,
+          format: newTemplate,
+          language: invoiceLanguage
         }
       });
 
       console.log('✅ Template saved:', newTemplate);
     } catch (error) {
       console.error("Template save error:", error);
+    }
+  };
+
+  const handleSaveLanguage = async (newLang: 'English' | 'Hindi' | 'Hinglish') => {
+    try {
+      if (!company) return;
+
+      setInvoiceLanguage(newLang);
+
+      await saveCompany({
+        invoiceSettings: {
+          ...company.invoiceSettings,
+          format: invoiceTemplate as InvoiceFormat,
+          language: newLang
+        }
+      });
+
+      console.log('✅ Language saved:', newLang);
+    } catch (error) {
+      console.error("Language save error:", error);
     }
   };
 
@@ -242,6 +270,13 @@ const Settings: React.FC = () => {
               onClick={() => setShowProfileEditor(true)}
             />
             <SettingsItem
+              icon={Briefcase}
+              title="Digital Business Card"
+              subtitle="Share your visiting card"
+              badge="NEW"
+              onClick={() => setShowCardGenerator(true)}
+            />
+            <SettingsItem
               icon={Database}
               title="Backup & Restore"
               subtitle="Manage your data safely"
@@ -284,7 +319,8 @@ const Settings: React.FC = () => {
                 { id: InvoiceFormat.PROFESSIONAL, name: 'Pro', emoji: '📜' },
                 { id: InvoiceFormat.ELEGANT, name: 'Elegant', emoji: '💎' },
                 { id: InvoiceFormat.COMPACT, name: 'Compact', emoji: '📱' },
-                { id: InvoiceFormat.RETRO, name: 'Retro', emoji: '🏛️' }
+                { id: InvoiceFormat.RETRO, name: 'Retro', emoji: '🏛️' },
+                { id: InvoiceFormat.SAVE_PAPER, name: 'Save Paper', emoji: '🌱' }
               ].map((template) => (
                 <button
                   key={template.id}
@@ -302,7 +338,28 @@ const Settings: React.FC = () => {
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-slate-400 text-center uppercase tracking-widest">Swipe to see more styles</p>
+            <p className="text-[10px] text-slate-400 text-center uppercase tracking-widest mb-6">Swipe to see more styles</p>
+
+            <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 border-t border-slate-100 dark:border-slate-800 pt-6">Print Language</h3>
+            <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-900/50 rounded-2xl">
+              {['English', 'Hindi', 'Hinglish'].map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => handleSaveLanguage(lang as any)}
+                  className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${invoiceLanguage === lang
+                    ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm'
+                    : 'text-slate-500'
+                    }`}
+                >
+                  {lang}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-slate-400 mt-3 px-2 leading-relaxed">
+              {invoiceLanguage === 'English'
+                ? "Invoices will be printed in standard English."
+                : `Powered by Gemini AI, invoice items and terms will be automatically translated to ${invoiceLanguage} during PDF generation.`}
+            </p>
           </div>
         </div>
 
@@ -349,6 +406,20 @@ const Settings: React.FC = () => {
               title="Refund Policy"
               subtitle="Cancellation & refunds"
               onClick={() => setShowRefundModal(true)}
+              last
+            />
+          </div>
+        </div>
+
+        {/* Support Section */}
+        <div>
+          <h2 className="px-4 mb-2 text-xs font-black text-slate-400 uppercase tracking-wider">Support</h2>
+          <div className="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-sm">
+            <SettingsItem
+              icon={Sparkles}
+              title="Send Feedback"
+              subtitle="Rate us & share suggestions"
+              onClick={() => setShowFeedbackModal(true)}
               last
             />
           </div>
@@ -522,6 +593,8 @@ const Settings: React.FC = () => {
       <PrivacyModal isOpen={showPrivacyModal} onClose={() => setShowPrivacyModal(false)} />
       <TermsModal isOpen={showTermsModal} onClose={() => setShowTermsModal(false)} />
       <RefundModal isOpen={showRefundModal} onClose={() => setShowRefundModal(false)} />
+      <FeedbackModal isOpen={showFeedbackModal} onClose={() => setShowFeedbackModal(false)} />
+      {showCardGenerator && <DigitalCardGenerator onClose={() => setShowCardGenerator(false)} />}
 
       <InputModal
         isOpen={showDeleteModal}
@@ -714,7 +787,7 @@ const Settings: React.FC = () => {
       }
 
       {showAdminAds && <AdminAdsManager onClose={() => setShowAdminAds(false)} />}
-    </div>
+    </div >
   );
 };
 

@@ -24,7 +24,9 @@ interface CompanyData {
     showWatermark?: boolean;
     watermarkText?: string;
     primaryColor?: string;
+    language?: 'English' | 'Hindi' | 'Hinglish';
   };
+  allowed_emails?: string[];
 }
 
 interface CompanyContextType {

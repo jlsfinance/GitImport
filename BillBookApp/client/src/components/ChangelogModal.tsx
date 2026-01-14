@@ -11,8 +11,8 @@ interface ChangelogModalProps {
 export const ChangelogModal: React.FC<ChangelogModalProps> = ({ isOpen, onClose, version }) => {
     const changelogs = [
         {
-            version: '1.0.5',
-            date: '5 Jan 2026',
+            version: '1.9.8',
+            date: '14 Jan 2026',
             features: [
                 '🎤 Voice Input - Now with proper microphone permission request',
                 '🔔 Daily Sales Notifications - Get your sales summary every evening at 9 PM',

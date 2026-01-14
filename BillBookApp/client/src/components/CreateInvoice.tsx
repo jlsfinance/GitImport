@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { Customer, Product, Invoice, InvoiceItem, InvoiceFormat } from '../types';
 import { StorageService } from '../services/storageService';
-import { Plus, Trash2, Save, X, CreditCard, Banknote, ArrowLeft, AlertCircle, Calculator, Package, UserPlus, User, Phone, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Save, Eye, X, CreditCard, Banknote, ArrowLeft, AlertCircle, Calculator, Package, UserPlus, User, Phone, ChevronRight } from 'lucide-react';
 import Autocomplete from './Autocomplete';
+// import InvoiceView from './InvoiceView'; // Removed unused import
 import { useCompany } from '@/contexts/CompanyContext';
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion';
 import { HapticService } from '@/services/hapticService';
@@ -91,6 +92,8 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
 
   const [hasChanges, setHasChanges] = useState(false);
   const [showEditWarning, setShowEditWarning] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewData, setPreviewData] = useState<Invoice | null>(null);
 
   // Focus navigation
 
@@ -883,18 +886,19 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     setPendingProductIndex(null);
   };
 
-  const handleSubmit = () => {
-    if (initialInvoice && hasChanges && !showEditWarning) {
-      setShowEditWarning(true);
-      return;
+  const prepareInvoiceData = (): Invoice | null => {
+    const customer = customers.find(c => c.id === selectedCustomerId);
+    if (!customer) {
+      alert('Select a customer');
+      return null;
     }
 
-    const customer = customers.find(c => c.id === selectedCustomerId);
-    if (!customer) return alert('Select a customer');
     // Filter out items with no product selected (ghost rows)
     const validItems = items.filter(i => i.productId && i.productId.trim() !== '');
-
-    if (validItems.length === 0) return alert('Add at least one item');
+    if (validItems.length === 0) {
+      alert('Add at least one item');
+      return null;
+    }
 
     const cleanedItems: InvoiceItem[] = validItems.map(item => ({
       ...item,
@@ -908,7 +912,6 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
       totalAmount: Number(item.totalAmount) || 0
     }));
 
-    const status = paymentMode === 'CASH' ? 'PAID' : 'PENDING';
     const subtotal = calculateSubtotal();
     const totalCgst = calculateTotalCGST();
     const totalSgst = calculateTotalSGST();
@@ -916,20 +919,18 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
     const supplier = company as any;
     const taxType = (supplier?.state || 'Delhi') === (customer.state || '') ? 'INTRA_STATE' : 'INTER_STATE';
 
-    // Calculate final total with discount
     let globalDiscountAmount = 0;
     if (discountType === 'PERCENTAGE') {
       globalDiscountAmount = (subtotal * discountValue) / 100;
     } else {
       globalDiscountAmount = discountValue;
     }
-    // const totalBeforeDiscount = subtotal + totalCgst + totalSgst + totalIgst;
-    // const finalTotal = totalBeforeDiscount - globalDiscountAmount;
 
     const roundedTotal = calculateRoundedTotal();
     const roundUpAmount = getRoundUpAmount();
+    const status = paymentMode === 'CASH' ? 'PAID' : 'PENDING';
 
-    const invoiceData: Invoice = {
+    return {
       id: initialInvoice ? initialInvoice.id : crypto.randomUUID(),
       invoiceNumber: initialInvoice ? initialInvoice.invoiceNumber : (isCreditNote ? `CN-${StorageService.generateInvoiceNumber(customer.id, date)}` : StorageService.generateInvoiceNumber(customer.id, date)),
       customerId: customer.id,
@@ -953,30 +954,26 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
       roundUpTo: roundUpTo,
       roundUpAmount: Math.round(roundUpAmount * 100) / 100,
       total: Math.round(roundedTotal * 100) / 100,
-      status: isCreditNote ? 'PENDING' : status, // Returns are effectively Pending credits
+      status: isCreditNote ? 'PENDING' : status,
       previousBalance: includePreviousBalance ? previousBalance : 0,
       notes: notes,
       paymentMode: isCreditNote ? 'CREDIT' : paymentMode,
       type: isCreditNote ? 'CREDIT_NOTE' : 'SALE',
       templateFormat: company?.invoiceSettings?.format || (company as any).invoiceTemplate?.toUpperCase() || InvoiceFormat.DEFAULT
     };
+  };
+
+  const handleSubmit = () => {
+    if (initialInvoice && hasChanges && !showEditWarning) {
+      setShowEditWarning(true);
+      return;
+    }
+
+    const invoiceData = prepareInvoiceData();
+    if (!invoiceData) return;
 
     if (isCreditNote) {
       StorageService.saveCreditNote(invoiceData);
-    } else {
-      // Regular save handled by Parent usually but here we call onSave
-      // Wait, onSave usually calls StorageService.saveInvoice
-      // If we're creating a CREDIT_NOTE, the parent might expect an invoice
-      // But if we use onSave, it might try to save as regular Invoice unless we check type in parent
-      // Or we handle saving here?
-      // Let's defer to onSave but ensure the OBJECT has the correct type.
-      // The parent (AccountingApp) handles saveInvoice vs updateInvoice.
-      // We need to make sure AccountingApp handles CREDIT_NOTE type in handleSaveInvoice or we do it here.
-      // AccountingApp: handleSaveInvoice calls StorageService.saveInvoice(invoice).
-      // StorageService.saveInvoice uses `invoices` array.
-      // StorageService.saveCreditNote uses `invoices` array too but might add specific logic?
-      // Actually both live in `invoices` collection usually, distinguished by type.
-      // Let's rely on standard onSave, but ensures `type: 'CREDIT_NOTE'` is set.
     }
 
     // Play success sound and haptic feedback
@@ -1031,7 +1028,23 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
               {getInvoiceNumberPreview()}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                const data = prepareInvoiceData();
+                if (data) {
+                  setPreviewData(data);
+                  setShowPreview(true);
+                  HapticService.light();
+                }
+              }}
+              className="p-2.5 rounded-full bg-surface-container-highest text-foreground hover:bg-surface-container-high transition-colors border border-border"
+              title="Preview Invoice"
+            >
+              <Eye className="w-5 h-5" />
+            </motion.button>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.95 }}
@@ -1196,13 +1209,18 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
             </AnimatePresence>
           </div>
 
-          <button
-            onClick={handleAddItemAndOpen}
-            className="w-full py-4 rounded-xl border-2 border-dashed border-blue-200 dark:border-slate-700 bg-blue-50/30 dark:bg-slate-900/40 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center gap-2 hover:bg-blue-50 transition-all active:scale-[0.98] text-sm"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Add Item</span>
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handleAddItemAndOpen}
+              className="flex-1 py-4 rounded-xl border-2 border-dashed border-blue-200 dark:border-slate-700 bg-blue-50/30 dark:bg-slate-900/40 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center gap-2 hover:bg-blue-50 transition-all active:scale-[0.98] text-sm"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Add Item</span>
+            </button>
+
+            {/* Voice Input Button */}
+            <VoiceInput onItemsParsed={handleVoiceItems} />
+          </div>
         </div>
 
       </div>
@@ -1461,9 +1479,28 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
                 </button>
               </div>
 
-              <button onClick={handleSmartFinish} className="w-full mt-3 py-4 rounded-2xl bg-slate-100 text-slate-500 font-bold active:scale-95 transition-all flex items-center justify-center hover:bg-slate-200">
-                <span className="text-xs font-black uppercase text-blue-600">Save & Close</span>
-              </button>
+              <div className="flex gap-3 mt-3">
+                <button
+                  onClick={() => {
+                    const data = prepareInvoiceData();
+                    if (data) {
+                      setPreviewData(data);
+                      setShowPreview(true);
+                      HapticService.light();
+                    }
+                  }}
+                  className="flex-1 py-4 rounded-2xl bg-slate-100 text-slate-600 font-bold active:scale-95 transition-all flex items-center justify-center gap-2 hover:bg-slate-200"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span className="text-[10px] font-black uppercase">Check Bill</span>
+                </button>
+                <button
+                  onClick={handleSmartFinish}
+                  className="flex-[2] py-4 rounded-2xl bg-blue-600 text-white font-bold active:scale-95 transition-all flex items-center justify-center shadow-lg shadow-blue-500/20 hover:bg-blue-700"
+                >
+                  <span className="text-xs font-black uppercase">Finish & Save</span>
+                </button>
+              </div>
             </div>
 
 
@@ -1802,6 +1839,109 @@ const CreateInvoice: React.FC<CreateInvoiceProps> = ({ onSave, onCancel, initial
         </div>
       </div>
 
+      <AnimatePresence>
+        {showPreview && previewData && (
+          <motion.div
+            initial={{ opacity: 0, y: "100%" }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="fixed inset-0 z-[200] bg-background flex flex-col"
+          >
+            {/* Custom Preview Header */}
+            <div className="bg-surface-container-low border-b border-border px-6 py-4 flex items-center justify-between z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-google-blue/10 flex items-center justify-center text-google-blue">
+                  <Eye className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-foreground">Bill Verification</h3>
+                  <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Review before final save</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowPreview(false)}
+                className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="max-w-2xl mx-auto">
+                <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800/50">
+                        <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Item Name</th>
+                        <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Qty</th>
+                        <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Rate</th>
+                        <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {previewData.items.map((item, idx) => (
+                        <tr key={idx}>
+                          <td className="px-6 py-5">
+                            <p className="font-bold text-slate-800 dark:text-white">{item.description}</p>
+                            {item.hsn && <p className="text-[9px] text-slate-400 font-bold mt-0.5">HSN: {item.hsn}</p>}
+                          </td>
+                          <td className="px-6 py-5 text-center">
+                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-black text-xs">
+                              {item.quantity}
+                            </span>
+                          </td>
+                          <td className="px-6 py-5 text-right font-bold text-slate-600 dark:text-slate-400">₹{item.rate.toLocaleString()}</td>
+                          <td className="px-6 py-5 text-right font-black text-slate-900 dark:text-white">₹{(item.totalAmount || 0).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-slate-50 dark:bg-slate-800/50">
+                      <tr>
+                        <td className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-wider">Total Units</td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-black text-xs">
+                            {previewData.items.reduce((sum, item) => sum + (item.quantity || 0), 0)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-wider">Net Total</td>
+                        <td className="px-6 py-4 text-right text-2xl font-black text-blue-600">₹{previewData.total.toLocaleString()}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                <div className="mt-8 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-3xl border border-blue-100 dark:border-blue-800/50">
+                  <div className="flex items-center gap-3 text-blue-700 dark:text-blue-300">
+                    <AlertCircle className="w-5 h-5 shrink-0" />
+                    <p className="text-sm font-bold">Please verify the items and total amount before saving.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Final Verification Footer */}
+            <div className="bg-surface-container border-t border-border p-6 shadow-2xl flex gap-4">
+              <button
+                onClick={() => setShowPreview(false)}
+                className="flex-1 py-4 bg-surface-container-highest text-foreground rounded-3xl font-black uppercase tracking-widest text-[11px] border border-border transition-all active:scale-[0.98]"
+              >
+                Go Back & Edit
+              </button>
+              <button
+                onClick={() => {
+                  setShowPreview(false);
+                  handleSubmit();
+                }}
+                className="flex-[2] py-4 bg-google-blue text-white rounded-3xl font-black uppercase tracking-widest text-[11px] shadow-lg shadow-google-blue/30 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+              >
+                <Save className="w-5 h-5" />
+                Confirm & Save Bill
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div >
   );
 };

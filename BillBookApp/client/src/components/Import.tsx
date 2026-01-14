@@ -4,6 +4,7 @@ import { StorageService } from '../services/storageService';
 import { AIService } from '../services/aiService';
 import { Product, Customer } from '../types';
 import { useCompany } from '@/contexts/CompanyContext';
+import { useAI as useAIContext } from '@/contexts/AIContext';
 import VoiceInput from './VoiceInput';
 import * as XLSX from 'xlsx';
 
@@ -26,6 +27,7 @@ type ImportStep = 'MODE_SELECT' | 'UPLOAD' | 'PREVIEW';
 
 const Import: React.FC<ImportProps> = ({ onClose, onImportComplete, startWithAI = false }) => {
   useCompany(); // Keep hook call for potential future use
+  const { showKeySetup, isConfigured: isAIConfigured } = useAIContext();
   const [loading, setLoading] = useState(false);
   const [useAI, setUseAI] = useState(false); // Whether to use AI parsing
   const [showAIChat, setShowAIChat] = useState(startWithAI); // Whether to show full-screen AI chat
@@ -280,7 +282,11 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete, startWithAI 
     }
 
     // Smart AI Import mode - use Gemini for intelligent parsing
-    if (useAI && AIService.isConfigured()) {
+    if (useAI) {
+      if (!isAIConfigured) {
+        showKeySetup("Smart AI Import");
+        return;
+      }
       setLoading(true);
       setStatus({ type: 'idle', message: '' });
       try {
@@ -432,6 +438,11 @@ const Import: React.FC<ImportProps> = ({ onClose, onImportComplete, startWithAI 
     setLoading(true);
 
     try {
+      if (!isAIConfigured) {
+        setLoading(false);
+        showKeySetup("JLS Assistant Chat");
+        return;
+      }
       // Gather real business data
       const products = StorageService.getProducts();
       const customers = StorageService.getCustomers();
