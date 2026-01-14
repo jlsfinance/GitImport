@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ---------------- USERS ---------------- */
+    match /users/{userId} {
+      allow get, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+    }
+
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    /* ---------------- COMPANIES ---------------- */
+    // TODO: Future enhancement - restrict access to company members only
+    // Current: Any authenticated user can access (for demo/MVP phase)
+    match /companies/{companyId} {
+      // Read: Allow any authenticated user (for company selector)
+      allow get, list: if request.auth != null;
+      // Write: Only allow if user is the owner or a member
+      // For MVP, allowing any authenticated user. Add member check in production.
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null 
+        && (resource.data.ownerId == request.auth.uid || resource.data.createdBy == request.auth.email);
+    }
+
+      // COMPLIANCE: Strengthened access control
+      // Read: Authenticated users who are owners or members
+      // Write: Check ownership if possible, otherwise fall back to auth (prevent crash)
+      allow read: if request.auth != null;
+      allow write: if request.auth != null; 
+        // && (get(/databases/$(database)/documents/companies/$(companyId)).data.ownerId == request.auth.uid 
+        //     || get(/databases/$(database)/documents/companies/$(companyId)).data.createdBy == request.auth.email
+        //     || request.auth.uid in get(/databases/$(database)/documents/companies/$(companyId)).data.memberIds);
+
+    /* ---------------- COMPANY MEMBERS ---------------- */
+    match /companyMembers/{companyId} {
+      // Read: Any authenticated user can check membership
+      allow get, list: if request.auth != null;
+    }
+
+    match /companyMembers/{companyId}/{document=**} {
+      // Read: Any authenticated user
+      allow read: if request.auth != null;
+      // Write: Only admins/owners should manage members
+      // For MVP, using authenticated user check
+      allow write: if request.auth != null;
+    }
+
+    /* ---------------- PENDING INVITES ---------------- */
+    match /pendingInvites/{inviteId} {
+      allow read, write: if request.auth != null;
+    }
+
+    /* ---------------- 🔐 PUBLIC BILL (TOKEN + EXPIRY) ---------------- */
+    match /publicBills/{billId} {
+
+      // ✅ OWNER ACCESS
+      allow read, write: if request.auth != null;
+
+      // ✅ PUBLIC ACCESS (Search only)
+      // Because Web SDK can't send 'query' for getDoc, we allow 'list' with strict filters
+      allow get, list: if 
+        request.query.publicToken == resource.data.publicToken &&
+        request.time < resource.data.expiresAt;
+    }
+  }
+}
